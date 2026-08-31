@@ -1,157 +1,160 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Wali Kelas - Sistem Absensi Modern</title>
+    <title>Dashboard Guru - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        /* CSS Animasi Custom */
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-            50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
-        }
-        @keyframes pulseGlowBlue {
-            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.7); }
-        }
-        @keyframes glitch {
-            0% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-            100% { transform: translate(0); }
-        }
-        @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(1000%); }
-        }
-
-        .glow-wa { animation: pulseGlow 3s infinite ease-in-out; }
-        .glow-scan { animation: pulseGlowBlue 3s infinite ease-in-out; }
-        .glitch-hover:hover { animation: glitch 0.3s infinite; }
-        .scanline-effect {
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(to right, transparent, #3b82f6, transparent);
-            opacity: 0.6;
-            animation: scanline 8s linear infinite;
-        }
-    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-black">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans">
 
     <div>
-        <!-- Navbar Professional Dark Mode -->
-        <nav class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
-            <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+        <!-- Navbar Resmi Sekolah -->
+        <nav class="bg-blue-900 text-white border-b-4 border-amber-400 sticky top-0 z-50 shadow-md">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
                 <div class="flex items-center space-x-3">
-                    <div class="relative flex items-center justify-center w-11 h-11 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/30">
-                        <i class="fa-solid fa-user-shield text-xl text-white"></i>
-                        <span class="absolute -top-1 -right-1 flex h-3 w-3">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-                        </span>
+                    <div class="w-10 h-10 bg-white text-blue-900 rounded-lg flex items-center justify-center font-black text-lg">
+                        <i class="fa-solid fa-school"></i>
                     </div>
                     <div>
-                        <h2 class="font-bold text-slate-100 tracking-wide text-base leading-tight"><%= user.nama %></h2>
-                        <p class="text-xs text-cyan-400 font-mono">Tugas: <%= user.nama_kelas %></p>
+                        <h1 class="font-bold text-sm tracking-wide leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                        <p class="text-[11px] text-blue-200">Wali Kelas: <span class="font-semibold text-white"><%= user.nama %></span> (<%= user.nama_kelas %>)</p>
                     </div>
                 </div>
-                
-                <a href="/" class="text-xs font-semibold text-rose-400 hover:text-white bg-rose-950/40 hover:bg-rose-600 px-4 py-2.5 rounded-xl border border-rose-800/50 transition-all duration-300 shadow-lg shadow-rose-950/50">
-                    <i class="fa-solid fa-power-off mr-1.5"></i> Logout
+                <a href="/" class="text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                    <i class="fa-solid fa-power-off mr-1"></i> Keluar
                 </a>
             </div>
         </nav>
 
-        <div class="max-w-4xl mx-auto px-4 mt-8 space-y-8 relative">
-            <div class="scanline-effect pointer-events-none"></div>
+        <div class="max-w-6xl mx-auto px-4 mt-6 space-y-6">
 
-            <!-- Card Gateway WhatsApp (Glow & Cyberpunk Style) -->
-            <div class="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
-                            <i class="fa-brands fa-whatsapp"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-slate-100 text-lg tracking-wide flex items-center gap-2">
-                                Gateway WhatsApp
-                                <span class="text-[10px] uppercase tracking-widest bg-cyan-950 text-cyan-400 border border-cyan-800 px-2 py-0.5 rounded-md font-mono">Baileys Engine</span>
-                            </h3>
-                            <p class="text-xs text-slate-400">Koneksi otomatis langsung tanpa perantara server luar</p>
-                        </div>
-                    </div>
-
-                    <div id="wa-badge" class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold bg-amber-950/50 text-amber-400 border border-amber-800/50 w-fit">
-                        <span class="w-2 h-2 mr-2 bg-amber-400 rounded-full animate-ping"></span> Belum Terhubung
-                    </div>
-                </div>
-
-                <div class="pt-4 border-t border-slate-800/80 text-center">
-                    <button id="btn-qr" onclick="generateQR()" class="glitch-hover bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm px-6 py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-300 transform active:scale-95">
-                        <i class="fa-solid fa-qrcode mr-2"></i> Tampilkan QR Code WhatsApp
-                    </button>
-                    
-                    <div id="qr-container" class="mt-4 hidden">
-                        <p id="qr-status-text" class="text-xs font-mono text-cyan-400 mb-4 animate-pulse">Menyiapkan koneksi socket...</p>
-                        <div class="inline-block bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-2xl relative glow-wa">
-                            <img id="qr-img" src="" alt="QR WhatsApp" class="w-60 h-60 mx-auto hidden rounded-lg border border-slate-700">
-                            <div id="qr-loading" class="py-10 px-8 text-slate-400">
-                                <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-cyan-400"></i>
-                                <p class="text-xs font-mono text-slate-400">Memuat Socket WhatsApp...<br><span class="text-[10px] text-slate-500">(Hanya memakan waktu 2-3 detik)</span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card Scanner Utama (Glow Moving Border & Neon Blue Gradient) -->
-            <div class="relative group glow-scan rounded-2xl overflow-hidden">
-                <div class="bg-gradient-to-br from-blue-900/90 via-slate-900 to-indigo-950 rounded-2xl p-8 border border-blue-500/40 shadow-2xl flex flex-col sm:flex-row justify-between items-center gap-6">
+            <!-- Card Utama Scanner Absensi & WA Status -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Card Buka Scanner -->
+                <div class="lg:col-span-2 bg-gradient-to-br from-blue-800 to-blue-950 rounded-2xl p-6 text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 border border-blue-700">
                     <div>
-                        <div class="inline-flex items-center space-x-2 bg-blue-950/80 text-cyan-300 text-[10px] font-mono px-3 py-1 rounded-md border border-cyan-500/30 mb-3">
-                            <i class="fa-solid fa-bolt text-yellow-400 animate-bounce"></i>
-                            <span>FITUR UTAMA SISTEM</span>
-                        </div>
-                        <h3 class="text-2xl font-black text-white tracking-wide">Mulai Absensi Siswa</h3>
-                        <p class="text-slate-300 text-xs mt-1 max-w-md leading-relaxed">Pindai QR Code pada kartu siswa untuk mencatatkan kehadiran & mengirimkan notifikasi WA otomatis secara real-time.</p>
+                        <span class="bg-amber-400 text-blue-950 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">Modul Absensi</span>
+                        <h2 class="text-xl font-bold mt-2">Pindai Kartu Presensi Siswa</h2>
+                        <p class="text-xs text-blue-200 mt-1">Gunakan kamera HP untuk scan QR Code siswa kelas <%= user.nama_kelas %></p>
                     </div>
-
-                    <a href="/scan?userId=<%= userId %>" 
-                       class="glitch-hover w-full sm:w-auto text-center bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black px-8 py-4 rounded-xl shadow-xl shadow-cyan-500/25 transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-camera text-lg"></i>
+                    <a href="/scan?userId=<%= userId %>" class="w-full sm:w-auto text-center bg-amber-400 hover:bg-amber-300 text-blue-950 font-extrabold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-camera text-base"></i>
                         <span>BUKA SCANNER QR</span>
                     </a>
                 </div>
+
+                <!-- Card Status WA Engine -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i> Status WA Ortu
+                            </span>
+                            <span id="wa-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                Belum Terhubung
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500">Hubungkan WA HP Anda untuk mengirim notifikasi absensi ke ortu siswa secara otomatis.</p>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+                        <button id="btn-qr" onclick="generateQR()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition">
+                            <i class="fa-solid fa-qrcode mr-1"></i> Tampilkan QR WhatsApp
+                        </button>
+
+                        <div id="qr-container" class="mt-3 hidden">
+                            <div id="qr-loading" class="py-4 text-slate-500 text-xs">
+                                <i class="fa-solid fa-spinner fa-spin text-blue-900 text-lg mb-1"></i>
+                                <p>Menyiapkan Socket WA...</p>
+                            </div>
+                            <img id="qr-img" src="" alt="QR WA" class="w-48 h-48 mx-auto hidden rounded-lg border border-slate-300">
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
+            <!-- Bagian Rincian Siswa & Log Absensi Hari Ini -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- Daftar Siswa di Kelas Ini -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-graduation-cap text-amber-500"></i> Daftar Siswa Kelas <%= user.nama_kelas %> (<%= siswaList.length %>)
+                    </h3>
+                    <div class="overflow-y-auto max-h-64 text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                                <tr>
+                                    <th class="p-2">ID</th>
+                                    <th class="p-2">Nama Siswa</th>
+                                    <th class="p-2">No. WA Ortu</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <% if (siswaList.length === 0) { %>
+                                    <tr><td colspan="3" class="p-3 text-center text-slate-400">Belum ada data siswa di kelas ini.</td></tr>
+                                <% } else { %>
+                                    <% siswaList.forEach(s => { %>
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-2 font-mono text-slate-400">#<%= s.id %></td>
+                                            <td class="p-2 font-semibold text-slate-800"><%= s.nama %></td>
+                                            <td class="p-2 text-emerald-700 font-mono"><%= s.nomor_wa_ortu %></td>
+                                        </tr>
+                                    <% }) %>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Log Absensi Masuk Hari Ini -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> Presensi Masuk Hari Ini (<%= absensiHariIni.length %>)
+                    </h3>
+                    <div class="overflow-y-auto max-h-64 text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                                <tr>
+                                    <th class="p-2">Waktu Masuk</th>
+                                    <th class="p-2">Nama Siswa</th>
+                                    <th class="p-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <% if (absensiHariIni.length === 0) { %>
+                                    <tr><td colspan="3" class="p-3 text-center text-slate-400">Belum ada siswa absen masuk hari ini.</td></tr>
+                                <% } else { %>
+                                    <% absensiHariIni.forEach(a => { %>
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-2 font-mono text-slate-600"><%= new Date(a.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) %> WIB</td>
+                                            <td class="p-2 font-semibold text-slate-800"><%= a.nama %></td>
+                                            <td class="p-2"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">HADIR</span></td>
+                                        </tr>
+                                    <% }) %>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </div>
 
-    <!-- Section Developer / Pengembang Zeeo -->
-    <footer class="mt-16 border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-md py-6">
-        <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-500/40 text-cyan-400 flex items-center justify-center font-mono font-bold">
-                    Z
-                </div>
-                <div>
-                    <p class="text-slate-300 font-semibold">Dikembangkan oleh <span class="text-cyan-400 font-bold tracking-wider">Zeeo</span></p>
-                    <p class="text-[10px] text-slate-500 font-mono">Sistem Absensi Sekolah QR Code v1.0</p>
-                </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-4 text-slate-400 text-[11px] font-mono">
-                <a href="mailto:vektorzero0@gmail.com" class="hover:text-cyan-400 transition flex items-center gap-1.5">
-                    <i class="fa-regular fa-envelope text-cyan-500"></i> vektorzero0@gmail.com
-                </a>
-                <span class="text-slate-700">|</span>
-                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-400 transition flex items-center gap-1.5">
-                    <i class="fa-brands fa-whatsapp text-emerald-500"></i> 082371729760
-                </a>
+    <!-- Footer Developer -->
+    <footer class="bg-white border-t border-slate-200 py-3 text-slate-600 text-xs mt-8">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="font-medium">Dikembangkan oleh <span class="font-bold text-blue-900">Zeeo</span></p>
+            <div class="flex items-center gap-4 text-slate-500">
+                <a href="mailto:vektorzero0@gmail.com" class="hover:text-blue-700"><i class="fa-regular fa-envelope text-blue-800 mr-1"></i>vektorzero0@gmail.com</a>
+                <span>|</span>
+                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-600"><i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i>082371729760</a>
             </div>
         </div>
     </footer>
@@ -179,18 +182,16 @@
                     const badge = document.getElementById('wa-badge');
                     const qrImg = document.getElementById('qr-img');
                     const qrLoading = document.getElementById('qr-loading');
-                    const statusText = document.getElementById('qr-status-text');
 
                     if (data.status === 'TERHUBUNG') {
-                        badge.className = "inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-500/50 shadow-lg shadow-emerald-500/20";
-                        badge.innerHTML = `<span class="w-2 h-2 mr-2 bg-emerald-400 rounded-full animate-ping"></span> Terhubung`;
-                        document.getElementById('qr-container').innerHTML = `<p class="text-emerald-400 font-mono font-bold text-sm py-4"><i class="fa-solid fa-circle-check text-xl mr-2 text-emerald-400"></i> WhatsApp Berhasil Terhubung!</p>`;
+                        badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800";
+                        badge.innerText = "Terhubung";
+                        document.getElementById('qr-container').innerHTML = `<p class="text-emerald-700 font-bold text-xs py-2"><i class="fa-solid fa-circle-check mr-1"></i> WhatsApp Terhubung!</p>`;
                         clearInterval(pollInterval);
                     } else if (data.qr) {
                         qrLoading.classList.add('hidden');
                         qrImg.classList.remove('hidden');
                         qrImg.src = data.qr;
-                        statusText.innerText = "Scan QR Code di bawah dengan WhatsApp HP Anda:";
                     }
                 });
         }
