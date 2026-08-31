@@ -1,9 +1,10 @@
 /**
  * ============================================================================
  * SISTEM ABSENSI SEKOLAH AUTOMATION ENGINE
- * Developed by : Zeeo
- * Email        : vektorzero0@gmail.com
- * WhatsApp     : 082371729760
+ * Instansi      : UPTD SD NEGERI 1 KARYA MULYA SARI
+ * Developed by  : Zeeo
+ * Email         : vektorzero0@gmail.com
+ * WhatsApp      : 082371729760
  * ============================================================================
  */
 
@@ -20,32 +21,24 @@ const {
 const app = express();
 const port = process.env.PORT || 10000;
 
-// Setup Template Engine & Parser
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Database Connection (PostgreSQL / Neon.tech)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// Cache Penyimpanan Sesi WhatsApp Multi-User (Baileys)
 const waSockets = {};
 const qrCodes = {};
 const waStatus = {};
 
-/**
- * Functions: Inisialisasi WhatsApp Gateway via Baileys WebSocket
- * Bebas Browser Chromium -> Ringan RAM, Super Cepat & Tanpa Crash di Render
- */
 async function initWA(userId) {
     if (waSockets[userId]) return;
 
     waStatus[userId] = 'MENYIAPKAN';
-    console.log(`[Zeeo Engine] Menyiapkan Socket WhatsApp untuk User ID: ${userId}...`);
 
     try {
         const { state, saveCreds } = await useMultiFileAuthState(`baileys_session_user_${userId}`);
@@ -53,7 +46,7 @@ async function initWA(userId) {
         const sock = makeWASocket({
             auth: state,
             printQRInTerminal: false,
-            browser: ["Zeeo Absensi System", "Chrome", "1.0.0"]
+            browser: ["SDN 1 Karya Mulya Sari", "Chrome", "1.0.0"]
         });
 
         sock.ev.on('creds.update', saveCreds);
@@ -66,13 +59,11 @@ async function initWA(userId) {
                     if (!err) {
                         qrCodes[userId] = url;
                         waStatus[userId] = 'BELUM_TERHUBUNG';
-                        console.log(`[Zeeo Engine] QR Code Terbuat untuk User ID: ${userId}`);
                     }
                 });
             }
 
             if (connection === 'open') {
-                console.log(`[Zeeo Engine] WA User ID ${userId} BERHASIL TERHUBUNG!`);
                 waStatus[userId] = 'TERHUBUNG';
                 qrCodes[userId] = null;
             }
@@ -80,8 +71,6 @@ async function initWA(userId) {
             if (connection === 'close') {
                 const statusCode = (lastDisconnect?.error)?.output?.statusCode;
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-                
-                console.log(`[Zeeo Engine] WA Terputus (User ID: ${userId}). Reconnect: ${shouldReconnect}`);
                 
                 delete waSockets[userId];
                 delete qrCodes[userId];
@@ -96,25 +85,22 @@ async function initWA(userId) {
         waSockets[userId] = sock;
 
     } catch (err) {
-        console.error(`[Zeeo Engine Error] Gagal Inisialisasi User ID ${userId}:`, err.message);
         waStatus[userId] = 'BELUM_TERHUBUNG';
     }
 }
 
-// ==================== ROUTES & APIS ====================
+// ------------------- ROUTES -------------------
 
-// 1. Halaman Login Utama
 app.get('/', (req, res) => {
     res.render('login', { error: null });
 });
 
-// 2. Auth Login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
         const query = `
             SELECT u.id, u.nama, u.username, u.password, u.role, u.kelas_id,
-                   COALESCE(k.nama_kelas, 'Tidak Ada Kelas') AS nama_kelas
+                   COALESCE(k.nama_kelas, 'Guru Mapel / Staf') AS nama_kelas
             FROM users u
             LEFT JOIN kelas k ON u.kelas_id = k.id
             WHERE LOWER(u.username) = LOWER($1) AND u.password = $2
@@ -132,22 +118,48 @@ app.post('/login', async (req, res) => {
 
         return res.redirect(`/wali?userId=${user.id}`);
     } catch (err) {
-        console.error("Login Error:", err);
         res.render('login', { error: 'Terjadi kesalahan sistem database.' });
     }
 });
 
-// 3. Dashboard Admin Ops
 app.get('/admin', async (req, res) => {
     const userId = req.query.userId;
     try {
-        const siswaRes = await pool.query(`SELECT s.id, s.nama, s.nomor_wa_ortu, k.nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY k.id ASC, s.nama ASC`);
-        const usersRes = await pool.query(`SELECT u.id, u.nama, u.username, u.role, COALESCE(k.nama_kelas, 'Guru Mapel / Admin') AS nama_kelas FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id ORDER BY u.id ASC`);
-        const absensiRes = await pool.query(`SELECT a.id, a.siswa_id, a.waktu, a.status, s.nama, k.nama_kelas FROM absensi a JOIN siswa s ON a.siswa_id = s.id LEFT JOIN kelas k ON s.kelas_id = k.id WHERE DATE(a.waktu) = CURRENT_DATE ORDER BY a.waktu DESC`);
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
+            FROM siswa s 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            ORDER BY k.id ASC, s.nama ASC
+        `);
+        
+        const usersRes = await pool.query(`
+            SELECT u.id, u.nama, u.username, u.role, COALESCE(k.nama_kelas, 'Guru Mapel / Admin') AS nama_kelas 
+            FROM users u 
+            LEFT JOIN kelas k ON u.kelas_id = k.id 
+            ORDER BY u.id ASC
+        `);
+        
+        const kelasRes = await pool.query(`
+            SELECT k.id, k.nama_kelas, COUNT(s.id) AS jumlah_siswa 
+            FROM kelas k 
+            LEFT JOIN siswa s ON s.kelas_id = k.id 
+            GROUP BY k.id, k.nama_kelas 
+            ORDER BY k.id ASC
+        `);
+
+        const absensiRes = await pool.query(`
+            SELECT a.id, a.siswa_id, a.waktu, a.status, s.nama, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE DATE(a.waktu) = CURRENT_DATE 
+            ORDER BY a.waktu DESC
+        `);
 
         res.render('admin-dashboard', {
             users: usersRes.rows,
             siswa: siswaRes.rows,
+            kelas: kelasRes.rows,
             absensi: absensiRes.rows,
             userId: userId
         });
@@ -156,43 +168,56 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// 4. Dashboard Wali Kelas / Guru
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.redirect('/');
 
     try {
-        const query = `
-            SELECT u.id, u.nama, u.role, 
+        const userRes = await pool.query(`
+            SELECT u.id, u.nama, u.role, u.kelas_id,
                    COALESCE(k.nama_kelas, 'Guru Mapel') AS nama_kelas
             FROM users u
             LEFT JOIN kelas k ON u.kelas_id = k.id
             WHERE u.id = $1
-        `;
-        const result = await pool.query(query, [userId]);
-        if (result.rows.length === 0) return res.redirect('/');
+        `, [userId]);
+
+        if (userRes.rows.length === 0) return res.redirect('/');
+
+        const user = userRes.rows[0];
+
+        // Ambil data siswa di kelas wali kelas tersebut
+        const siswaKelasRes = await pool.query(`
+            SELECT id, nama, nomor_wa_ortu FROM siswa WHERE kelas_id = $1 ORDER BY nama ASC
+        `, [user.kelas_id]);
+
+        // Ambil riwayat absen kelas hari ini
+        const absensiHariIniRes = await pool.query(`
+            SELECT a.waktu, s.nama 
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            WHERE s.kelas_id = $1 AND DATE(a.waktu) = CURRENT_DATE 
+            ORDER BY a.waktu DESC
+        `, [user.kelas_id]);
 
         res.render('walikelas-dashboard', {
-            user: result.rows[0],
+            user: user,
+            siswaList: siswaKelasRes.rows,
+            absensiHariIni: absensiHariIniRes.rows,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
-        res.status(500).send("Gagal memuat Dashboard Wali Kelas.");
+        res.status(500).send("Gagal memuat Dashboard Guru.");
     }
 });
 
-// 5. API Trigger Inisialisasi Socket WA
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId;
-    if (userId) {
-        initWA(userId);
-    }
+    if (userId) initWA(userId);
     res.json({ status: 'PROSES' });
 });
 
-// 6. API Polling Status Koneksi & Data QR Code
 app.get('/api/status-wa', (req, res) => {
     const userId = req.query.userId;
     res.json({
@@ -201,14 +226,12 @@ app.get('/api/status-wa', (req, res) => {
     });
 });
 
-// 7. Halaman Kamera Scanner QR Siswa
 app.get('/scan', (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.redirect('/');
     res.render('scan', { userId: userId });
 });
 
-// 8. API Pindaian QR Siswa & Pengiriman Pesan WA Instan
 app.post('/api/absen', async (req, res) => {
     const { siswaId, waliKelasId } = req.body;
 
@@ -227,13 +250,11 @@ app.post('/api/absen', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
-        // Simpan log absensi ke database
         await pool.query(
             `INSERT INTO absensi (siswa_id, scanned_by) VALUES ($1, $2)`, 
             [siswa.id, waliKelasId]
         );
 
-        // Kirim Notifikasi via Baileys Engine
         const sock = waSockets[waliKelasId];
         let waTerkirim = false;
 
@@ -244,31 +265,25 @@ app.post('/api/absen', async (req, res) => {
                 const jid = `${noWA}@s.whatsapp.net`;
 
                 const waktuFormat = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                const pesan = `*NOTIFIKASI ABSENSI SEKOLAH*\n\nYth. Bapak/Ibu Orang Tua/Wali,\n\nKami menginformasikan bahwa siswa:\n*Nama*: ${siswa.nama}\n*Kelas*: ${siswa.nama_kelas}\n*Waktu Masuk*: ${waktuFormat} WIB\n*Status*: HADIR ✅\n\nTerima kasih.`;
+                const pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n\n*NOTIFIKASI KEHADIRAN SISWA*\n\nYth. Bapak/Ibu Orang Tua/Wali,\n\nInformasi absensi putra/putri Anda:\n*Nama*: ${siswa.nama}\n*Kelas*: ${siswa.nama_kelas}\n*Waktu Masuk*: ${waktuFormat} WIB\n*Status*: HADIR ✅\n\n_Pesan otomatis dari Sistem Absensi Digital Sekolah._`;
 
                 await sock.sendMessage(jid, { text: pesan });
                 waTerkirim = true;
             } catch (waErr) {
-                console.error("[Zeeo Engine] Gagal Mengirim WA:", waErr.message);
+                console.error("Gagal kirim WA:", waErr.message);
             }
         }
 
         return res.json({
             success: true,
-            message: `Absen Berhasil: ${siswa.nama} (${siswa.nama_kelas}) ${waTerkirim ? '📲 WA Terkirim' : '⚠️ WA Gagal Terkirim'}`
+            message: `Absen Berhasil: ${siswa.nama} (${siswa.nama_kelas}) ${waTerkirim ? '📲 Notifikasi WA Terkirim' : '⚠️ WA Belum Terkoneksi'}`
         });
 
     } catch (err) {
-        console.error("API Absen Error:", err);
         return res.json({ success: false, message: 'Terjadi kesalahan sistem.' });
     }
 });
 
-// Jalankan Express Server
 app.listen(port, () => {
-    console.log(`=======================================================`);
-    console.log(` System Active on Port : ${port}`);
-    console.log(` Engine Core           : Baileys WebSocket (Fast & Light)`);
-    console.log(` Developer             : Zeeo (vektorzero0@gmail.com)`);
-    console.log(`=======================================================`);
+    console.log(`Server Absensi Aktif di Port ${port}`);
 });
