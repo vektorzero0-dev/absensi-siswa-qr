@@ -1,0 +1,17 @@
+{
+  "name": "absensi-siswa-qr",
+  "version": "1.0.0",
+  "description": "Sistem Absensi QR Code dan Notifikasi WA",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.9",
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "qrcode": "^1.5.3"
+  }
+}
