@@ -30,7 +30,7 @@
     <!-- Frame Kamera Scanner -->
     <div class="w-full max-w-md bg-slate-900 border border-slate-800 p-3 rounded-3xl shadow-2xl relative overflow-hidden">
         <div id="reader" class="w-full rounded-2xl overflow-hidden bg-black min-h-[320px] flex items-center justify-center">
-            <span class="text-xs text-slate-500">Memuat modul kamera...</span>
+            <span class="text-xs text-slate-500">Memuat kamera belakang...</span>
         </div>
     </div>
 
@@ -84,8 +84,34 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             if (typeof Html5QrcodeScanner !== 'undefined') {
-                const scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: { width: 220, height: 220 } }, false);
-                scanner.render(onScanSuccess, () => {});
+                // Mengunci pengaturan ke Kamera Belakang (facingMode: environment)
+                const scanner = new Html5QrcodeScanner(
+                    "reader", 
+                    { 
+                        fps: 15, 
+                        qrbox: { width: 220, height: 220 },
+                        videoConstraints: {
+                            facingMode: { exact: "environment" }
+                        }
+                    }, 
+                    false
+                );
+
+                // Menjalankan scanner dengan fallback otomatis jika browser PC/Webcam tidak mendukung mode 'exact'
+                try {
+                    scanner.render(onScanSuccess, () => {});
+                } catch (e) {
+                    const fallbackScanner = new Html5QrcodeScanner(
+                        "reader", 
+                        { 
+                            fps: 15, 
+                            qrbox: { width: 220, height: 220 },
+                            videoConstraints: { facingMode: "environment" }
+                        }, 
+                        false
+                    );
+                    fallbackScanner.render(onScanSuccess, () => {});
+                }
             }
         });
     </script>
