@@ -3,154 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Guru - Presensi Sekolah</title>
+    <title>Dashboard Pendidik - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 flex flex-col justify-between">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
 
     <div>
-        <!-- Header Container -->
-        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 backdrop-blur-md shadow-2xl">
-            <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-2xl font-bold">
-                    <i class="fa-solid fa-chalkboard-user"></i>
+        <!-- Navbar -->
+        <header class="bg-blue-950 text-white border-b border-blue-900 shadow-lg">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-base tracking-wide text-white">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                        <p class="text-xs text-emerald-400 font-medium">Sistem Notifikasi Presensi WhatsApp</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-white"><%= user.nama %></h1>
-                    <p class="text-xs text-emerald-400 font-semibold mt-0.5"><%= user.nama_kelas %></p>
+                <div class="flex items-center gap-3">
+                    <a href="/scan?userId=<%= userId %>" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-md">
+                        <i class="fa-solid fa-camera"></i> Buka Camera Scanner
+                    </a>
+                    <a href="/" class="bg-blue-900 hover:bg-rose-600 text-blue-200 hover:text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition border border-blue-800">
+                        <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                    </a>
                 </div>
             </div>
-            <div class="flex items-center gap-3 w-full md:w-auto">
-                <a href="/scan?userId=<%= userId %>" class="flex-1 md:flex-none justify-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-600/30">
-                    <i class="fa-solid fa-qrcode"></i> Scan QR Presensi
-                </a>
-                <a href="/" class="px-4 py-2.5 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-400 text-slate-300 rounded-xl text-xs font-semibold transition border border-slate-700/50">
-                    <i class="fa-solid fa-right-from-bracket"></i> Keluar
-                </a>
-            </div>
-        </div>
+        </header>
 
-        <!-- Main Content Grid -->
-        <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
             
-            <!-- WhatsApp & Absensi Log -->
-            <div class="space-y-6">
-                
-                <!-- Status WA -->
-                <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-brands fa-whatsapp text-emerald-400 text-base"></i> Status WhatsApp
-                        </h2>
-                        <span id="wa-badge" class="text-[10px] font-mono px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800 text-slate-400">
-                            <%= statusWA %>
-                        </span>
-                    </div>
-
-                    <div class="flex flex-col items-center justify-center py-4 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-                        <% if (qrCodeWA) { %>
-                            <img src="<%= qrCodeWA %>" alt="QR WhatsApp" class="w-44 h-44 rounded-xl shadow-md">
-                            <p class="text-[11px] text-amber-400 mt-3 font-semibold text-center px-2">Scan QR Code dengan WhatsApp HP Anda</p>
-                        <% } else if (statusWA === 'TERHUBUNG') { %>
-                            <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl mb-2">
-                                <i class="fa-solid fa-circle-check"></i>
-                            </div>
-                            <p class="text-xs text-emerald-400 font-semibold">WhatsApp Siap Mengirim Notifikasi</p>
-                        <% } else { %>
-                            <p class="text-xs text-slate-500 mb-4 text-center">Koneksi WhatsApp Belum Aktif</p>
-                            <button onclick="startWA()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-md">
-                                Hubungkan WhatsApp
-                            </button>
-                        <% } %>
-                    </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900"><%= user.nama %></h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Pengampu: <strong class="text-emerald-700 font-semibold"><%= user.nama_kelas %></strong></p>
                 </div>
-
-                <!-- Absensi Log Hari Ini -->
-                <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-clock-rotate-left text-sky-400"></i> Hadir Hari Ini
-                        </h2>
-                        <span class="text-xs text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 rounded-full font-mono">
-                            <%= absensiHariIni.length %> Siswa
+                <div>
+                    <% if (statusWA === 'TERHUBUNG') { %>
+                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-600"></i> WhatsApp Terhubung
                         </span>
-                    </div>
-
-                    <div class="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                        <% if (absensiHariIni && absensiHariIni.length > 0) { %>
-                            <% absensiHariIni.forEach(a => { %>
-                                <div class="p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl flex justify-between items-center">
-                                    <span class="font-semibold text-xs text-white"><%= a.nama %></span>
-                                    <span class="text-[10px] text-slate-400 font-mono"><%= new Date(a.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) %> WIB</span>
-                                </div>
-                            <% }); %>
-                        <% } else { %>
-                            <p class="text-xs text-slate-500 text-center py-6">Belum ada presensi masuk hari ini.</p>
-                        <% } %>
-                    </div>
+                    <% } else { %>
+                        <span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> WhatsApp Belum Aktif
+                        </span>
+                    <% } %>
                 </div>
-
             </div>
 
-            <!-- Daftar Siswa Kelolaan -->
-            <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-users text-emerald-400 text-lg"></i>
-                            <h2 class="text-base font-bold text-white">Daftar Siswa (<%= user.nama_kelas %>)</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Sisi Kiri: WA & Presensi Hari Ini -->
+                <div class="space-y-6">
+                    
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                            <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i> Hubungkan WhatsApp Notifikasi
+                        </h3>
+                        
+                        <div class="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <% if (qrCodeWA) { %>
+                                <img src="<%= qrCodeWA %>" alt="QR WA" class="w-40 h-40 rounded-lg border border-slate-300">
+                                <p class="text-[11px] text-slate-600 mt-3 text-center font-medium">Scan QR Code ini menggunakan WhatsApp HP Anda.</p>
+                            <% } else if (statusWA === 'TERHUBUNG') { %>
+                                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-2">
+                                    <i class="fa-solid fa-check"></i>
+                                </div>
+                                <p class="text-xs font-bold text-emerald-700">WhatsApp Siap Mengirim Notifikasi</p>
+                            <% } else { %>
+                                <p class="text-xs text-slate-500 mb-3 text-center">Koneksi WhatsApp belum diaktifkan.</p>
+                                <button onclick="startWA()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow">
+                                    Aktifkan WhatsApp
+                                </button>
+                            <% } %>
                         </div>
-                        <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                            <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Hadir Hari Ini
+                            </h3>
+                            <span class="text-xs bg-blue-50 text-blue-700 font-bold px-2.5 py-0.5 rounded-full">
+                                <%= absensiHariIni.length %> Siswa
+                            </span>
+                        </div>
+                        <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                            <% if (absensiHariIni && absensiHariIni.length > 0) { %>
+                                <% absensiHariIni.forEach(a => { %>
+                                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+                                        <span class="font-bold text-slate-800"><%= a.nama %></span>
+                                        <span class="text-[11px] font-mono text-slate-500"><%= new Date(a.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) %> WIB</span>
+                                    </div>
+                                <% }); %>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 text-center py-6">Belum ada presensi tercatat hari ini.</p>
+                            <% } %>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Sisi Kanan: Master Siswa Kelolaan & QR -->
+                <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-users text-emerald-600"></i> Data Siswa & QR Code Presensi
+                        </h3>
+                        <span class="text-xs bg-slate-100 text-slate-600 font-semibold px-3 py-1 rounded-full">
                             Total: <%= siswaList.length %> Siswa
                         </span>
                     </div>
 
-                    <div class="overflow-x-auto max-h-[440px] overflow-y-auto">
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0">
-                                <tr>
-                                    <th class="p-3.5">ID QR</th>
-                                    <th class="p-3.5">Nama Siswa</th>
-                                    <th class="p-3.5">Kelas</th>
-                                    <th class="p-3.5">No. WA Orang Tua (Tes)</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-800/60">
-                                <% if (siswaList && siswaList.length > 0) { %>
-                                    <% siswaList.forEach(s => { %>
-                                        <tr class="hover:bg-slate-800/40 transition">
-                                            <td class="p-3.5 font-mono text-emerald-400 font-bold">#<%= s.id %></td>
-                                            <td class="p-3.5 font-semibold text-white"><%= s.nama %></td>
-                                            <td class="p-3.5 text-slate-400"><%= s.nama_kelas %></td>
-                                            <td class="p-3.5 font-mono text-emerald-400 font-semibold"><%= s.nomor_wa_ortu %></td>
-                                        </tr>
-                                    <% }); %>
-                                <% } else { %>
-                                    <tr>
-                                        <td colspan="4" class="p-6 text-center text-slate-500">Belum ada data siswa di kelas ini.</td>
-                                    </tr>
-                                <% } %>
-                            </tbody>
-                        </table>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[480px] overflow-y-auto pr-2">
+                        <% if (siswaList && siswaList.length > 0) { %>
+                            <% siswaList.forEach(s => { %>
+                                <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50 flex flex-col items-center text-center hover:border-emerald-500 transition shadow-sm">
+                                    <h4 class="font-bold text-slate-900 text-xs leading-tight"><%= s.nama %></h4>
+                                    <p class="text-[10px] text-slate-500 font-mono mt-0.5"><%= s.nomor_wa_ortu %></p>
+                                    
+                                    <div class="bg-white p-2 rounded-xl border border-slate-200 my-2">
+                                        <img src="<%= s.qrImage %>" alt="QR Code" class="w-28 h-28">
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 font-mono mb-2">ID QR: #<%= s.id %></span>
+                                    <button onclick="cetakQR('<%= s.nama %>', '<%= s.nama_kelas %>', '<%= s.qrImage %>')" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold py-1.5 rounded-xl flex items-center justify-center gap-1.5 transition">
+                                        <i class="fa-solid fa-print"></i> Cetak Kartu
+                                    </button>
+                                </div>
+                            <% }); %>
+                        <% } else { %>
+                            <div class="col-span-full py-12 text-center text-slate-400 text-xs">
+                                Belum ada data siswa di kelas ini.
+                            </div>
+                        <% } %>
                     </div>
                 </div>
+
             </div>
 
-        </div>
+        </main>
     </div>
 
     <!-- Developer Footer -->
-    <footer class="mt-12 max-w-6xl mx-auto w-full pt-6 border-t border-slate-800/80 text-center text-xs text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-3">
-        <div>
-            © Presensi SD Negeri 1 Karya Mulya Sari
-        </div>
-        <div class="flex items-center gap-4 text-[11px]">
-            <span>Developer: <strong class="text-slate-200">Zeeo</strong></span>
-            <span>•</span>
-            <a href="mailto:vektorzero0@gmail.com" class="hover:text-indigo-400 transition"><i class="fa-solid fa-envelope"></i> vektorzero0@gmail.com</a>
-            <span>•</span>
-            <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-400 transition"><i class="fa-brands fa-whatsapp"></i> 082371729760</a>
+    <footer class="bg-white border-t border-slate-200/80 py-6 px-6 text-slate-500 text-xs mt-12">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="font-medium text-slate-600">
+                © UPTD SD NEGERI 1 KARYA MULYA SARI
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-3 text-slate-600 font-medium">
+                <span>Pengembang Aplikasi: <strong>Zeeo</strong></span>
+                <span>•</span>
+                <a href="mailto:vektorzero0@gmail.com" class="hover:text-blue-600 transition"><i class="fa-solid fa-envelope"></i> vektorzero0@gmail.com</a>
+                <span>•</span>
+                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-600 transition"><i class="fa-brands fa-whatsapp"></i> 082371729760</a>
+            </div>
         </div>
     </footer>
 
@@ -158,6 +168,35 @@
         async function startWA() {
             await fetch('/api/start-wa?userId=<%= userId %>');
             location.reload();
+        }
+
+        function cetakQR(nama, kelas, qrSrc) {
+            const win = window.open('', '', 'width=450,height=550');
+            win.document.write(`
+                <html>
+                <head>
+                    <title>Kartu Presensi - ${nama}</title>
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding: 20px; }
+                        .card { border: 2px solid #000; padding: 20px; border-radius: 12px; max-width: 300px; margin: auto; }
+                        h2 { margin: 0; font-size: 13px; font-weight: bold; }
+                        h3 { margin: 4px 0 10px 0; font-size: 11px; color: #444; }
+                        img { width: 170px; height: 170px; margin: 10px 0; }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    <div class="card">
+                        <h2>UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
+                        <h3>KARTU PRESENSI DIGITAL SISWA</h3>
+                        <hr>
+                        <img src="${qrSrc}" />
+                        <h4 style="margin: 5px 0 0 0; font-size: 14px;">${nama}</h4>
+                        <p style="margin: 3px 0; font-size: 12px; font-weight: bold;">${kelas}</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            win.document.close();
         }
     </script>
 </body>
