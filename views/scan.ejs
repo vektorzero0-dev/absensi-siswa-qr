@@ -22,7 +22,7 @@
                     <p class="text-[11px] text-blue-200">UPTD SD Negeri 1 Karya Mulya Sari</p>
                 </div>
             </div>
-            <a href="javascript:history.back()" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1.5">
+            <a href="/wali?userId=<%= userId %>" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1.5">
                 <i class="fa-solid fa-arrow-left"></i> Kembali
             </a>
         </div>
@@ -87,8 +87,15 @@
 
     </main>
 
+    <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
+        <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
+        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-600">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-blue-700 font-medium hover:underline">0823-7172-9760</a></p>
+    </footer>
+
     <script>
-        const userId = <%= userId %>;
+        // Mengambil userId dari URL parameter atau fallback ke variabel template
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId') || <%= userId %>;
         let isProcessing = false;
 
         function onScanSuccess(decodedText, decodedResult) {
@@ -101,7 +108,10 @@
             fetch('/api/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ siswa_id: decodedText, scanned_by: userId })
+                body: JSON.stringify({ 
+                    siswa_id: decodedText, 
+                    scanned_by: userId 
+                })
             })
             .then(res => res.json())
             .then(data => {
@@ -126,40 +136,25 @@
             })
             .catch(err => {
                 console.error("Kesalahan Pemindaian:", err);
+                const resCard = document.getElementById('resultCard');
+                const errCard = document.getElementById('errorCard');
+                
+                resCard.classList.add('hidden');
+                document.getElementById('errorMsg').innerText = "Gagal terhubung ke server!";
+                errCard.classList.remove('hidden');
+
                 setTimeout(() => { isProcessing = false; }, 3000);
             });
         }
 
-        // Inisialisasi Html5QrcodeScanner dengan orientasi ke kamera belakang
+        // Inisialisasi Scanner Kamera Belakang
         const scannerConfig = {
             fps: 10,
-            qrbox: { width: 220, height: 220 },
-            videoConstraints: {
-                facingMode: { exact: "environment" }
-            }
+            qrbox: { width: 220, height: 220 }
         };
 
         const html5QrcodeScanner = new Html5QrcodeScanner("reader", scannerConfig, false);
-
-        html5QrcodeScanner.render(onScanSuccess).catch(err => {
-            console.warn("Perangkat tidak mendukung constraint exact, mengaktifkan mode kamera belakang alternatif...");
-            
-            // Fallback untuk perangkat atau browser tertentu
-            const fallbackConfig = {
-                fps: 10,
-                qrbox: { width: 220, height: 220 },
-                videoConstraints: { facingMode: "environment" }
-            };
-            
-            const fallbackScanner = new Html5QrcodeScanner("reader", fallbackConfig, false);
-            fallbackScanner.render(onScanSuccess);
-        });
+        html5QrcodeScanner.render(onScanSuccess);
     </script>
-
-    <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
-        <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
-        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-600">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-blue-700 font-medium hover:underline">0823-7172-9760</a></p>
-    </footer>
-
 </body>
 </html>
