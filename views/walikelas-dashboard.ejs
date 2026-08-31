@@ -1,25 +1,81 @@
 <!DOCTYPE html>
-<html>
-<head><title>Dashboard Wali Kelas</title></head>
-<body style="font-family: Arial; padding: 20px;">
-    <h2>Selamat Datang, <%= user.nama %> (<%= user.nama_kelas %>)</h2>
-    <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px;">
-        <h3>Status WA: <span style="color: <%= statusWA === 'TERHUBUNG' ? 'green' : 'red' %>;"><%= statusWA %></span></h3>
-        <% if (statusWA !== 'TERHUBUNG') { %>
-            <p>Scan QR WhatsApp Web di bawah menggunakan aplikasi WA di HP Anda:</p>
-            <% if (qrCodeWA) { %>
-                <img src="<%= qrCodeWA %>" width="250">
-            <% } else { %>
-                <p><i>Memuat QR Code... Segarkan halaman (refresh) berkala.</i></p>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Wali Kelas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 pb-12">
+    <!-- Navbar Top -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold text-slate-800 leading-tight"><%= user.nama %></h2>
+                    <p class="text-xs text-slate-500">Wali Kelas: <%= user.nama_kelas || '-' %></p>
+                </div>
+            </div>
+            <a href="/" class="text-sm font-semibold text-rose-600 bg-rose-50 px-3.5 py-2 rounded-xl border border-rose-200 hover:bg-rose-100 transition">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
+        <!-- Status WhatsApp Card -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-brands fa-whatsapp text-3xl text-emerald-500"></i>
+                    <div>
+                        <h3 class="font-bold text-slate-800">Status Gateway WhatsApp</h3>
+                        <p class="text-xs text-slate-500">Koneksi nomor HP Wali Kelas untuk notifikasi ortu</p>
+                    </div>
+                </div>
+                <% if (statusWA === 'TERHUBUNG') { %>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                        <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Terhubung
+                    </span>
+                <% } else { %>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                        <span class="w-2 h-2 mr-1.5 bg-amber-500 rounded-full"></span> Belum Terhubung
+                    </span>
+                <% } %>
+            </div>
+
+            <% if (statusWA !== 'TERHUBUNG') { %>
+                <div class="mt-4 pt-4 border-t border-slate-100 text-center">
+                    <% if (qrCodeWA) { %>
+                        <p class="text-sm font-medium text-slate-600 mb-3">Scan QR Code di bawah pakai WhatsApp HP Anda:</p>
+                        <div class="inline-block bg-white p-3 rounded-2xl border border-slate-300 shadow-inner">
+                            <img src="<%= qrCodeWA %>" alt="QR WhatsApp" class="w-56 h-56 mx-auto">
+                        </div>
+                    <% } else { %>
+                        <div class="py-6 text-slate-400">
+                            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                            <p class="text-sm">Menyiapkan QR Code WhatsApp... (Segarkan halaman jika lama)</p>
+                        </div>
+                    <% } %>
+                </div>
             <% } %>
-        <% } else { %>
-            <p>✅ WhatsApp Aktif.</p>
-        <% } %>
+        </div>
+
+        <!-- Tombol Quick Action -->
+        <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-blue-500/20 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h3 class="text-xl font-bold">Mulai Absensi Siswa</h3>
+                <p class="text-blue-100 text-sm mt-1">Buka scanner kamera HP untuk mulai memindai kartu QR siswa.</p>
+            </div>
+            <a href="/scan?userId=<%= userId %>" 
+               class="w-full sm:w-auto text-center bg-white text-blue-600 hover:bg-blue-50 font-bold px-6 py-3.5 rounded-xl shadow transition transform active:scale-95">
+                <i class="fa-solid fa-qrcode mr-2"></i> Buka Scanner QR
+            </a>
+        </div>
     </div>
-    <% if (statusWA === 'TERHUBUNG') { %>
-        <a href="/scan?userId=<%= userId %>" style="padding: 15px 25px; background: green; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-            📷 Buka Kamera Scanner
-        </a>
-    <% } %>
 </body>
 </html>
