@@ -1,60 +1,160 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Sistem Absensi</title>
+    <title>Dashboard Admin - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-black">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans">
 
     <div>
-        <nav class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
-            <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <!-- Navbar Administrator Sekolah -->
+        <nav class="bg-blue-900 text-white border-b-4 border-amber-400 sticky top-0 z-50 shadow-md">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-cyan-950 border border-cyan-500/40 text-cyan-400 rounded-xl flex items-center justify-center font-bold">
-                        <i class="fa-solid fa-user-gear"></i>
+                    <div class="w-10 h-10 bg-white text-blue-900 rounded-lg flex items-center justify-center font-black text-lg">
+                        <i class="fa-solid fa-school"></i>
                     </div>
                     <div>
-                        <h2 class="font-bold text-white text-base">Dashboard Administrator</h2>
-                        <p class="text-xs text-cyan-400 font-mono">Monitoring & Control System</p>
+                        <h1 class="font-bold text-sm tracking-wide leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                        <p class="text-[11px] text-blue-200">Panel Kontrol Administrator Sekolah</p>
                     </div>
                 </div>
-                <a href="/" class="text-xs font-semibold text-rose-400 hover:text-white bg-rose-950/40 hover:bg-rose-600 px-4 py-2.5 rounded-xl border border-rose-800/50 transition">
-                    <i class="fa-solid fa-power-off mr-1"></i> Logout
+                <a href="/" class="text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                    <i class="fa-solid fa-power-off mr-1"></i> Keluar
                 </a>
             </div>
         </nav>
 
-        <div class="max-w-6xl mx-auto px-4 mt-8 space-y-8">
-            <!-- Tabel Log Absensi Hari Ini -->
-            <div class="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 shadow-2xl">
-                <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-cyan-400"></i> Log Kehadiran Hari Ini
+        <div class="max-w-6xl mx-auto px-4 mt-6 space-y-6">
+
+            <!-- Stat Ringkasan Sekolah -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-500">TOTAL GURU & STAF</p>
+                        <h3 class="text-2xl font-black text-blue-900 mt-1"><%= users.length %></h3>
+                    </div>
+                    <div class="w-10 h-10 bg-blue-50 text-blue-900 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-500">TOTAL KELAS</p>
+                        <h3 class="text-2xl font-black text-blue-900 mt-1"><%= kelas.length %></h3>
+                    </div>
+                    <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-door-open"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-500">TOTAL SISWA</p>
+                        <h3 class="text-2xl font-black text-blue-900 mt-1"><%= siswa.length %></h3>
+                    </div>
+                    <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabel Guru & Kelas -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Daftar Guru -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-users text-amber-500"></i> Daftar Guru & Pengguna System
+                    </h3>
+                    <div class="overflow-x-auto text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-100 text-slate-600">
+                                <tr>
+                                    <th class="p-2">ID</th>
+                                    <th class="p-2">Nama Guru</th>
+                                    <th class="p-2">Username</th>
+                                    <th class="p-2">Tugas / Kelas</th>
+                                    <th class="p-2">Role</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <% users.forEach(u => { %>
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-2 text-slate-400 font-mono">#<%= u.id %></td>
+                                        <td class="p-2 font-semibold text-slate-800"><%= u.nama %></td>
+                                        <td class="p-2 text-blue-800 font-mono"><%= u.username %></td>
+                                        <td class="p-2"><%= u.nama_kelas %></td>
+                                        <td class="p-2">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold <%= u.role === 'ADMIN_OPS' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>">
+                                                <%= u.role %>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Daftar Kelas -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
+                        <i class="fa-solid fa-school text-amber-500"></i> Daftar Kelas
+                    </h3>
+                    <div class="overflow-x-auto text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-100 text-slate-600">
+                                <tr>
+                                    <th class="p-2">ID</th>
+                                    <th class="p-2">Nama Kelas</th>
+                                    <th class="p-2 text-right">Siswa</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <% kelas.forEach(k => { %>
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-2 text-slate-400 font-mono">#<%= k.id %></td>
+                                        <td class="p-2 font-semibold text-slate-800"><%= k.nama_kelas %></td>
+                                        <td class="p-2 text-right font-bold text-emerald-700"><%= k.jumlah_siswa %></td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Log Absensi Hari Ini -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
+                    <i class="fa-solid fa-list-check text-amber-500"></i> Rekap Presensi Masuk Hari Ini
                 </h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs font-mono">
-                        <thead class="bg-slate-950 text-cyan-400 uppercase border-b border-slate-800">
+                <div class="overflow-x-auto text-xs">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-100 text-slate-600">
                             <tr>
-                                <th class="p-3">Waktu</th>
-                                <th class="p-3">Nama Siswa</th>
-                                <th class="p-3">Kelas</th>
-                                <th class="p-3">Status</th>
+                                <th class="p-2">Waktu Masuk</th>
+                                <th class="p-2">Nama Siswa</th>
+                                <th class="p-2">Kelas</th>
+                                <th class="p-2">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                        <tbody class="divide-y divide-slate-100">
                             <% if (absensi.length === 0) { %>
-                                <tr>
-                                    <td colspan="4" class="p-4 text-center text-slate-500">Belum ada data absensi hari ini.</td>
-                                </tr>
+                                <tr><td colspan="4" class="p-3 text-center text-slate-400">Belum ada data absensi hari ini.</td></tr>
                             <% } else { %>
-                                <% absensi.forEach(row => { %>
-                                    <tr class="hover:bg-slate-800/40">
-                                        <td class="p-3"><%= new Date(row.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) %> WIB</td>
-                                        <td class="p-3 font-semibold text-white"><%= row.nama %></td>
-                                        <td class="p-3"><%= row.nama_kelas %></td>
-                                        <td class="p-3"><span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-1 rounded-md">HADIR</span></td>
+                                <% absensi.forEach(a => { %>
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-2 font-mono text-slate-600"><%= new Date(a.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) %> WIB</td>
+                                        <td class="p-2 font-semibold text-slate-800"><%= a.nama %></td>
+                                        <td class="p-2"><%= a.nama_kelas %></td>
+                                        <td class="p-2"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">HADIR</span></td>
                                     </tr>
                                 <% }) %>
                             <% } %>
@@ -62,17 +162,18 @@
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 
-    <!-- Footer Developer Zeeo -->
-    <footer class="mt-16 border-t border-slate-800/80 bg-slate-950/90 py-6">
-        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-slate-400">
-            <p>Dikembangkan oleh <span class="text-cyan-400 font-bold">Zeeo</span></p>
-            <div class="flex items-center gap-4 text-[11px]">
-                <a href="mailto:vektorzero0@gmail.com" class="hover:text-cyan-400"><i class="fa-regular fa-envelope text-cyan-500"></i> vektorzero0@gmail.com</a>
+    <!-- Footer Developer -->
+    <footer class="bg-white border-t border-slate-200 py-3 text-slate-600 text-xs mt-8">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="font-medium">Dikembangkan oleh <span class="font-bold text-blue-900">Zeeo</span></p>
+            <div class="flex items-center gap-4 text-slate-500">
+                <a href="mailto:vektorzero0@gmail.com" class="hover:text-blue-700"><i class="fa-regular fa-envelope text-blue-800 mr-1"></i>vektorzero0@gmail.com</a>
                 <span>|</span>
-                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-400"><i class="fa-brands fa-whatsapp text-emerald-500"></i> 082371729760</a>
+                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-600"><i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i>082371729760</a>
             </div>
         </div>
     </footer>
