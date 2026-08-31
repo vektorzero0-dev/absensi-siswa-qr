@@ -1,36 +1,70 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scanner QR Absensi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        .laser-line {
+            position: absolute;
+            left: 0; right: 0; height: 2px;
+            background: #06b6d4;
+            box-shadow: 0 0 15px #06b6d4;
+            animation: scanline 2.5s infinite linear;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col">
-    <!-- Header -->
-    <div class="p-4 flex justify-between items-center bg-slate-800 border-b border-slate-700">
-        <h1 class="font-bold flex items-center gap-2">
-            <i class="fa-solid fa-camera text-blue-400"></i> Scanner Absensi
-        </h1>
-        <a href="/wali?userId=<%= userId %>" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-semibold transition">
-            Kembali
-        </a>
-    </div>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-black">
 
-    <!-- Scanner Area -->
-    <div class="flex-1 flex flex-col items-center justify-center p-4">
-        <div class="w-full max-w-sm bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 p-3 shadow-2xl">
-            <div id="reader" class="w-full rounded-xl overflow-hidden"></div>
+    <div>
+        <nav class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
+            <div class="max-w-xl mx-auto px-4 py-4 flex justify-between items-center">
+                <a href="/wali?userId=<%= userId %>" class="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-2">
+                    <i class="fa-solid fa-chevron-left"></i> Kembali ke Dashboard
+                </a>
+                <span class="text-xs font-mono text-slate-400">Scanner Aktif</span>
+            </div>
+        </nav>
+
+        <div class="max-w-xl mx-auto px-4 mt-6">
+            <div class="bg-slate-900/90 rounded-3xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div class="text-center mb-4">
+                    <h2 class="text-xl font-bold text-white">Scanner Kartu Siswa</h2>
+                    <p class="text-xs text-slate-400">Arahkan kamera ke QR Code di kartu siswa</p>
+                </div>
+
+                <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950">
+                    <div id="reader" class="w-full"></div>
+                    <div class="laser-line pointer-events-none"></div>
+                </div>
+
+                <!-- Alert Hasil Absen -->
+                <div id="result-box" class="mt-4 hidden p-4 rounded-xl border text-xs font-mono text-center"></div>
+            </div>
         </div>
-
-        <!-- Pop-up Status Result -->
-        <div id="result-box" class="hidden mt-6 w-full max-w-sm p-4 rounded-xl text-center font-bold text-sm shadow-lg transition"></div>
     </div>
+
+    <!-- Footer Developer Zeeo -->
+    <footer class="mt-8 border-t border-slate-800/80 bg-slate-950/90 py-4">
+        <div class="max-w-xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono text-slate-500">
+            <p>Dikembangkan oleh <span class="text-cyan-400 font-bold">Zeeo</span></p>
+            <div class="flex items-center gap-3">
+                <a href="mailto:vektorzero0@gmail.com" class="hover:text-cyan-400"><i class="fa-regular fa-envelope text-cyan-500"></i> vektorzero0@gmail.com</a>
+                <span>|</span>
+                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-400"><i class="fa-brands fa-whatsapp text-emerald-500"></i> 082371729760</a>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        const userId = "<%= userId %>";
+        const waliKelasId = "<%= userId %>";
         let isProcessing = false;
 
         function onScanSuccess(decodedText) {
@@ -38,39 +72,34 @@
             isProcessing = true;
 
             const resultBox = document.getElementById('result-box');
-            resultBox.className = "mt-6 w-full max-w-sm p-4 rounded-xl text-center font-bold text-sm shadow-lg bg-blue-600 text-white block animate-pulse";
-            resultBox.innerText = "Memproses Absensi...";
+            resultBox.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            resultBox.classList.add('bg-cyan-950/80', 'border-cyan-800', 'text-cyan-300');
+            resultBox.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Memproses Absensi...`;
 
             fetch('/api/absen', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ siswaId: decodedText, waliKelasId: userId })
+                body: JSON.stringify({ siswaId: decodedText, waliKelasId: waliKelasId })
             })
             .then(res => res.json())
             .then(data => {
+                resultBox.classList.remove('bg-cyan-950/80', 'border-cyan-800', 'text-cyan-300');
                 if (data.success) {
-                    resultBox.className = "mt-6 w-full max-w-sm p-4 rounded-xl text-center font-bold text-sm shadow-lg bg-emerald-600 text-white block";
-                    resultBox.innerText = `✅ ${data.message}`;
+                    resultBox.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+                    resultBox.innerHTML = `<i class="fa-solid fa-circle-check mr-2"></i> ${data.message}`;
                 } else {
-                    resultBox.className = "mt-6 w-full max-w-sm p-4 rounded-xl text-center font-bold text-sm shadow-lg bg-rose-600 text-white block";
-                    resultBox.innerText = `❌ ${data.message}`;
+                    resultBox.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+                    resultBox.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i> ${data.message}`;
                 }
-                setTimeout(() => {
-                    resultBox.className = "hidden";
-                    isProcessing = false;
-                }, 3000);
+
+                setTimeout(() => { isProcessing = false; }, 3000);
             })
             .catch(() => {
-                resultBox.className = "mt-6 w-full max-w-sm p-4 rounded-xl text-center font-bold text-sm shadow-lg bg-rose-600 text-white block";
-                resultBox.innerText = "❌ Gagal koneksi server!";
-                setTimeout(() => {
-                    resultBox.className = "hidden";
-                    isProcessing = false;
-                }, 3000);
+                isProcessing = false;
             });
         }
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 220 });
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
         html5QrcodeScanner.render(onScanSuccess);
     </script>
 </body>
