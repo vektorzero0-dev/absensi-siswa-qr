@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Wali Kelas</title>
+    <title>Dashboard Guru & Wali Kelas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -17,7 +17,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-800 leading-tight"><%= user.nama %></h2>
-                    <p class="text-xs text-slate-500">Wali Kelas: <%= user.nama_kelas || '-' %></p>
+                    <p class="text-xs text-slate-500">Tugas: <%= user.nama_kelas %></p>
                 </div>
             </div>
             <a href="/" class="text-sm font-semibold text-rose-600 bg-rose-50 px-3.5 py-2 rounded-xl border border-rose-200 hover:bg-rose-100 transition">
@@ -34,7 +34,7 @@
                     <i class="fa-brands fa-whatsapp text-3xl text-emerald-500"></i>
                     <div>
                         <h3 class="font-bold text-slate-800">Status Gateway WhatsApp</h3>
-                        <p class="text-xs text-slate-500">Koneksi nomor HP Wali Kelas untuk notifikasi ortu</p>
+                        <p class="text-xs text-slate-500">Koneksi nomor HP Anda untuk notifikasi ke orang tua</p>
                     </div>
                 </div>
                 <% if (statusWA === 'TERHUBUNG') { %>
