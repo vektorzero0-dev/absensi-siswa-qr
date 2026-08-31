@@ -7,6 +7,9 @@ const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/bai
 const QRCode = require('qrcode');
 const pool = require('./db');
 
+// Set Timezone Server Node.js ke WIB (Asia/Jakarta)
+process.env.TZ = 'Asia/Jakarta';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -27,7 +30,11 @@ async function connectToWhatsApp(userId) {
     try {
         const authFolder = path.join(sessionsDir, `user_${userId}`);
         const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-        const sock = makeWASocket({ logger: pino({ level: 'silent' }), auth: state, printQRInTerminal: false });
+        const sock = makeWASocket({ 
+            logger: pino({ level: 'silent' }), 
+            auth: state, 
+            printQRInTerminal: false 
+        });
 
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
@@ -41,11 +48,13 @@ async function connectToWhatsApp(userId) {
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
+                console.log(`✅ WhatsApp User ID #${userId} TERHUBUNG`);
             }
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
+                console.log(`⚠️ WA User ID #${userId} TERPUTUS. Reconnect: ${shouldReconnect}`);
                 if (shouldReconnect) connectToWhatsApp(userId);
             }
         });
@@ -126,7 +135,14 @@ app.get('/wali', async (req, res) => {
         const targetKelasId = user.kelas_id;
 
         let siswaQuery = `SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id`;
-        let absensiQuery = `SELECT a.waktu, s.nama FROM absensi a JOIN siswa s ON a.siswa_id = s.id WHERE DATE(a.waktu) = CURRENT_DATE`;
+        
+        // Menggunakan waktu Asia/Jakarta pada Query PostgreSQL
+        let absensiQuery = `
+            SELECT (a.waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta') AS waktu, s.nama 
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            WHERE DATE(a.waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+        `;
 
         if (targetKelasId) {
             siswaQuery += ` WHERE s.kelas_id = ${parseInt(targetKelasId)}`;
@@ -167,6 +183,7 @@ app.get('/api/start-wa', (req, res) => {
     res.json({ success: true, message: 'Menghubungkan WhatsApp...' });
 });
 
+// API PROCESS SCAN PRESENSI
 app.post('/api/scan', async (req, res) => {
     const { siswa_id, scanned_by } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "ID Siswa tidak ditemukan." });
@@ -185,31 +202,68 @@ app.post('/api/scan', async (req, res) => {
         }
 
         const siswa = siswaRes.rows[0];
+
+        // Simpan Presensi ke DB
         await pool.query(`INSERT INTO absensi (siswa_id, status, scanned_by) VALUES ($1, 'HADIR', $2)`, [siswa.id, parsedScannedBy]);
 
-        const waClient = waSessions[parsedScannedBy];
+        // Cari WhatsApp Client Aktif (Cek ID pengguna yang scan, atau gunakan session aktif pertama jika ada)
+        let waClient = waSessions[parsedScannedBy];
+        if (!waClient) {
+            const activeSessionKeys = Object.keys(waSessions);
+            if (activeSessionKeys.length > 0) {
+                waClient = waSessions[activeSessionKeys[0]];
+            }
+        }
+
+        let waStatusResult = "WA Tidak Terkirim (WhatsApp Belum Terhubung)";
+
         if (waClient && siswa.nomor_wa_ortu) {
-            let phone = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
-            if (phone.startsWith('0')) phone = '62' + phone.slice(1);
-            if (!phone.endsWith('@s.whatsapp.net')) phone += '@s.whatsapp.net';
+            try {
+                // Pembersihan nomor WA
+                let rawPhone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+                if (rawPhone.startsWith('0')) {
+                    rawPhone = '62' + rawPhone.slice(1);
+                }
+                const formattedPhone = rawPhone + '@s.whatsapp.net';
 
-            const jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-            const message = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
-                            `--------------------------------------------------\n` +
-                            `*NOTIFIKASI KEHADIRAN SISWA*\n\n` +
-                            `Yth. Orang Tua / Wali Murid dari:\n` +
-                            `• Nama Siswa: *${siswa.nama}*\n` +
-                            `• Kelas: *${siswa.nama_kelas}*\n` +
-                            `• Waktu Scan: *${jam}*\n` +
-                            `• Status: *HADIR DI SEKOLAH ✅*\n\n` +
-                            `Terima kasih. Pesan ini dikirim secara otomatis oleh Sistem Presensi Digital UPTD SD Negeri 1 Karya Mulya Sari.`;
+                // Format Waktu Indonesia Barat (WIB)
+                const jamWib = new Date().toLocaleTimeString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                }) + ' WIB';
 
-            waClient.sendMessage(phone, { text: message }).catch(e => console.error("WA Send Error:", e));
+                const tanggalWib = new Date().toLocaleDateString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                const message = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
+                                `--------------------------------------------------\n` +
+                                `*NOTIFIKASI KEHADIRAN SISWA*\n\n` +
+                                `Yth. Orang Tua / Wali Murid dari:\n` +
+                                `• Nama Siswa: *${siswa.nama}*\n` +
+                                `• Kelas: *${siswa.nama_kelas}*\n` +
+                                `• Tanggal: *${tanggalWib}*\n` +
+                                `• Waktu Scan: *${jamWib}*\n` +
+                                `• Status: *HADIR DI SEKOLAH ✅*\n\n` +
+                                `Terima kasih. Pesan ini dikirim secara otomatis oleh Sistem Presensi Digital UPTD SD Negeri 1 Karya Mulya Sari.`;
+
+                await waClient.sendMessage(formattedPhone, { text: message });
+                waStatusResult = "WA Berhasil Terkirim ✅";
+            } catch (waErr) {
+                console.error("❌ Gagal Mengirim Pesan WA:", waErr.message);
+                waStatusResult = "Gagal Mengirim WA: " + waErr.message;
+            }
         }
 
         return res.json({
             success: true,
-            message: "Presensi Berhasil!",
+            message: `Presensi Berhasil! (${waStatusResult})`,
             siswa: { id: siswa.id, nama: siswa.nama, nama_kelas: siswa.nama_kelas }
         });
     } catch (err) {
