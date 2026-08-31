@@ -3,204 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    <title>Admin Dashboard - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between p-3 md:p-6 font-sans">
 
-    <div>
-        <!-- Navbar -->
-        <header class="bg-blue-950 text-white border-b border-blue-900 shadow-lg">
-            <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-extrabold text-base tracking-wide text-white">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                        <p class="text-xs text-blue-300 font-medium">Sistem Manajemen Presensi & Kehadiran Digital</p>
-                    </div>
+    <div class="max-w-6xl mx-auto w-full">
+        <!-- Header TopBar -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-400">
+                    <i class="fa-solid fa-user-shield text-xl"></i>
                 </div>
-                <div class="flex items-center gap-3">
-                    <a href="/scan?userId=<%= userId %>" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-md">
-                        <i class="fa-solid fa-camera"></i> Scan Presensi
-                    </a>
-                    <a href="/" class="bg-blue-900 hover:bg-rose-600 text-blue-200 hover:text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition border border-blue-800">
-                        <i class="fa-solid fa-right-from-bracket"></i> Keluar
-                    </a>
+                <div>
+                    <span class="text-[10px] text-amber-400 font-bold bg-amber-950/80 border border-amber-800/80 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                        ADMINISTRATOR
+                    </span>
+                    <h1 class="text-base font-bold text-white mt-1">DASHBOARD UTAMA SISTEM</h1>
+                    <p class="text-xs text-slate-400">UPTD SD NEGERI 1 KARYA MULYA SARI</p>
                 </div>
             </div>
-        </header>
-
-        <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
-
-            <!-- Banner Header -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-user-gear"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900">Administrator Utama Sekolah</h2>
-                        <p class="text-xs text-slate-500">Kelola master data pendidik, ruang kelas, dan kartu QR presensi siswa UPTD SD Negeri 1 Karya Mulya Sari.</p>
-                    </div>
-                </div>
-                <span class="bg-blue-50 text-blue-700 text-xs font-bold px-3.5 py-1.5 rounded-full border border-blue-200">
-                    <i class="fa-solid fa-shield-halved mr-1"></i> Mode Administrator
-                </span>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <a href="/scan?userId=<%= userId %>" class="flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 border border-emerald-500/30 transition">
+                    <i class="fa-solid fa-qrcode text-sm"></i> Buka Scanner Kartu
+                </a>
+                <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 flex items-center justify-center transition">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </a>
             </div>
+        </div>
 
-            <!-- Grid Ringkasan -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500 font-medium">Total Tenaga Pendidik</p>
-                        <h3 class="text-xl font-bold text-slate-900"><%= users.length %> Orang</h3>
-                    </div>
+        <!-- Metric Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+                <div>
+                    <p class="text-[11px] text-slate-400 font-medium">Total Akun Pengguna</p>
+                    <h3 class="text-xl font-bold text-white mt-0.5"><%= users.length %> <span class="text-xs font-normal text-slate-400">User</span></h3>
                 </div>
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-users"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500 font-medium">Siswa Terdaftar</p>
-                        <h3 class="text-xl font-bold text-slate-900"><%= siswa.length %> Siswa</h3>
-                    </div>
-                </div>
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-school"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500 font-medium">Jumlah Rombel / Kelas</p>
-                        <h3 class="text-xl font-bold text-slate-900"><%= kelas.length %> Rombel</h3>
-                    </div>
+                <div class="bg-blue-500/10 text-blue-400 border border-blue-500/20 p-3 rounded-xl">
+                    <i class="fa-solid fa-users text-lg"></i>
                 </div>
             </div>
 
-            <!-- Data Pendidik -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-                    <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-id-card text-blue-600"></i> Daftar Pendidik & Pengampu Kelas
-                    </h3>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+                <div>
+                    <p class="text-[11px] text-slate-400 font-medium">Total Siswa Terdaftar</p>
+                    <h3 class="text-xl font-bold text-emerald-400 mt-0.5"><%= siswa.length %> <span class="text-xs font-normal text-slate-400">Siswa</span></h3>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-100">
-                                <th class="p-4">ID</th>
-                                <th class="p-4">Nama Lengkap Pendidik</th>
-                                <th class="p-4">Username Login</th>
-                                <th class="p-4">Hak Akses (Role)</th>
-                                <th class="p-4">Penugasan Pengampu</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 text-slate-700">
-                            <% users.forEach(u => { %>
-                                <tr class="hover:bg-slate-50/80 transition">
-                                    <td class="p-4 font-mono text-slate-400">#<%= u.id %></td>
-                                    <td class="p-4 font-bold text-slate-900"><%= u.nama %></td>
-                                    <td class="p-4 font-mono text-blue-600"><%= u.username %></td>
-                                    <td class="p-4">
-                                        <% if (u.role === 'ADMIN') { %>
-                                            <span class="bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-md text-[10px] font-bold">ADMINISTRATOR</span>
-                                        <% } else if (u.role === 'GURU_MAPEL') { %>
-                                            <span class="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-md text-[10px] font-bold">GURU MAPEL</span>
-                                        <% } else { %>
-                                            <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md text-[10px] font-bold">WALI KELAS</span>
-                                        <% } %>
+                <div class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-3 rounded-xl">
+                    <i class="fa-solid fa-graduation-cap text-lg"></i>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+                <div>
+                    <p class="text-[11px] text-slate-400 font-medium">Total Rombel Kelas</p>
+                    <h3 class="text-xl font-bold text-purple-400 mt-0.5"><%= kelas.length %> <span class="text-xs font-normal text-slate-400">Kelas</span></h3>
+                </div>
+                <div class="bg-purple-500/10 text-purple-400 border border-purple-500/20 p-3 rounded-xl">
+                    <i class="fa-solid fa-school text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABEL 1: DATA SISWA & KARTU QR CODE -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                <div>
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-address-card text-emerald-400"></i> Data Kartu Presensi Siswa & QR Code
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Daftar QR ID kartu siswa yang digunakan untuk scan otomatis notifikasi WA.</p>
+                </div>
+                <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 font-medium transition self-start sm:self-auto flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> Cetak Semua QR
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left text-slate-300 min-w-[600px]">
+                    <thead class="bg-slate-800 text-slate-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="p-3 rounded-l-xl">ID Kartu</th>
+                            <th class="p-3">QR Code</th>
+                            <th class="p-3">Nama Siswa</th>
+                            <th class="p-3">Kelas</th>
+                            <th class="p-3 rounded-r-xl">No. WhatsApp Ortu</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <% if (siswa && siswa.length > 0) { %>
+                            <% siswa.forEach(s => { %>
+                                <tr class="hover:bg-slate-800/40 transition">
+                                    <td class="p-3 font-mono font-bold text-emerald-400">#<%= s.id %></td>
+                                    <td class="p-3">
+                                        <div class="bg-white p-1 rounded-lg inline-block border border-slate-700">
+                                            <img src="<%= s.qrImage %>" alt="QR <%= s.nama %>" class="w-12 h-12">
+                                        </div>
                                     </td>
-                                    <td class="p-4 font-medium"><%= u.nama_kelas %></td>
+                                    <td class="p-3 font-bold text-white"><%= s.nama %></td>
+                                    <td class="p-3">
+                                        <span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-md border border-slate-700">
+                                            <%= s.nama_kelas %>
+                                        </span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-300">
+                                        <i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
+                                    </td>
                                 </tr>
                             <% }); %>
-                        </tbody>
-                    </table>
-                </div>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-500 italic">Belum ada data siswa terdaftar.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TABEL 2: KELOLA GURU / USERS (NAMA CLEAN TANPA GELAR) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl mb-6">
+            <div class="mb-4">
+                <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-users-gear text-blue-400"></i> Akun Pengguna / Guru Wali Kelas
+                </h2>
+                <p class="text-xs text-slate-400 mt-0.5">Daftar pengelola aplikasi (Gelar telah dibersihkan otomatis dari tampilan).</p>
             </div>
 
-            <!-- Master Data Siswa & QR Code Presensi -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-                    <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-qrcode text-emerald-600"></i> Cetak Kartu Presensi QR Siswa
-                    </h3>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    <% siswa.forEach(s => { %>
-                        <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50 flex flex-col items-center text-center hover:border-blue-500 transition shadow-sm">
-                            <span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full mb-2"><%= s.nama_kelas %></span>
-                            <h4 class="font-bold text-slate-900 text-xs leading-tight"><%= s.nama %></h4>
-                            <p class="text-[11px] text-slate-500 font-mono mt-0.5"><%= s.nomor_wa_ortu %></p>
-                            
-                            <div class="bg-white p-2 rounded-xl border border-slate-200 my-3 shadow-inner">
-                                <img src="<%= s.qrImage %>" alt="QR Code" class="w-32 h-32">
-                            </div>
-                            
-                            <span class="text-[10px] text-slate-400 font-mono mb-3">ID QR: #<%= s.id %></span>
-                            <button onclick="cetakQR('<%= s.nama %>', '<%= s.nama_kelas %>', '<%= s.qrImage %>')" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2 rounded-xl flex items-center justify-center gap-2 transition">
-                                <i class="fa-solid fa-print"></i> Cetak Kartu
-                            </button>
-                        </div>
-                    <% }); %>
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left text-slate-300 min-w-[500px]">
+                    <thead class="bg-slate-800 text-slate-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="p-3 rounded-l-xl">ID User</th>
+                            <th class="p-3">Nama Pengguna (Guru)</th>
+                            <th class="p-3">Username Login</th>
+                            <th class="p-3 rounded-r-xl">Hak Akses (Role)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <% if (users && users.length > 0) { %>
+                            <% users.forEach(u => { %>
+                                <tr class="hover:bg-slate-800/40 transition">
+                                    <td class="p-3 font-mono text-slate-500">#<%= u.id %></td>
+                                    <td class="p-3 font-bold text-white"><%= u.nama %></td>
+                                    <td class="p-3 font-mono text-slate-300"><%= u.username %></td>
+                                    <td class="p-3">
+                                        <% if (u.role === 'ADMIN') { %>
+                                            <span class="bg-amber-950 text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded border border-amber-800/60">
+                                                ADMINISTRATOR
+                                            </span>
+                                        <% } else { %>
+                                            <span class="bg-blue-950 text-blue-300 text-[10px] font-bold px-2.5 py-0.5 rounded border border-blue-800/60">
+                                                WALI KELAS
+                                            </span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="4" class="p-6 text-center text-slate-500 italic">Belum ada akun pengguna.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
             </div>
-
-        </main>
+        </div>
     </div>
 
     <!-- Developer Footer -->
-    <footer class="bg-white border-t border-slate-200/80 py-6 px-6 text-slate-500 text-xs mt-12">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="font-medium text-slate-600">
-                © UPTD SD NEGERI 1 KARYA MULYA SARI
-            </div>
-            <div class="flex flex-wrap items-center justify-center gap-3 text-slate-600 font-medium">
-                <span>Pengembang Aplikasi: <strong>Zeeo</strong></span>
-                <span>•</span>
-                <a href="mailto:vektorzero0@gmail.com" class="hover:text-blue-600 transition"><i class="fa-solid fa-envelope"></i> vektorzero0@gmail.com</a>
-                <span>•</span>
-                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-600 transition"><i class="fa-brands fa-whatsapp"></i> 082371729760</a>
-            </div>
-        </div>
+    <footer class="text-center py-4 text-[11px] text-slate-500 border-t border-slate-900 mt-6">
+        <p>Developer: <strong class="text-slate-300">Zeeo</strong> | <a href="mailto:vektorzero0@gmail.com" class="underline hover:text-slate-300">vektorzero0@gmail.com</a></p>
+        <p class="mt-0.5">WhatsApp CS: <a href="https://wa.me/6282371729760" target="_blank" class="text-emerald-400 hover:underline"><i class="fa-brands fa-whatsapp"></i> 082371729760</a></p>
     </footer>
 
-    <script>
-        function cetakQR(nama, kelas, qrSrc) {
-            const win = window.open('', '', 'width=450,height=550');
-            win.document.write(`
-                <html>
-                <head>
-                    <title>Kartu Presensi - ${nama}</title>
-                    <style>
-                        body { font-family: sans-serif; text-align: center; padding: 20px; }
-                        .card { border: 2px solid #000; padding: 20px; border-radius: 12px; max-width: 300px; margin: auto; }
-                        h2 { margin: 0; font-size: 13px; font-weight: bold; }
-                        h3 { margin: 4px 0 10px 0; font-size: 11px; color: #444; }
-                        img { width: 170px; height: 170px; margin: 10px 0; }
-                    </style>
-                </head>
-                <body onload="window.print(); window.close();">
-                    <div class="card">
-                        <h2>UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
-                        <h3>KARTU PRESENSI DIGITAL SISWA</h3>
-                        <hr>
-                        <img src="${qrSrc}" />
-                        <h4 style="margin: 5px 0 0 0; font-size: 14px;">${nama}</h4>
-                        <p style="margin: 3px 0; font-size: 12px; font-weight: bold;">${kelas}</p>
-                    </div>
-                </body>
-                </html>
-            `);
-            win.document.close();
-        }
-    </script>
 </body>
 </html>
