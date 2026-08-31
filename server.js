@@ -240,10 +240,15 @@ app.get('/wali', async (req, res) => {
     }
 });
 
-// 5. Halaman Scan QR Code
+// 5. Halaman Scan QR Code (Memanggil 'scan.ejs')
 app.get('/scan', (req, res) => {
-    const userId = req.query.userId || 1;
-    res.render('scanner', { userId: userId, error: null });
+    try {
+        const userId = req.query.userId || 1;
+        res.render('scan', { userId: userId, error: null });
+    } catch (err) {
+        console.error("Error /scan:", err.message);
+        res.status(500).send("Error saat memuat halaman scan: " + err.message);
+    }
 });
 
 // ---------------- API ENDPOINTS ---------------- //
