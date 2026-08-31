@@ -3,196 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Presensi - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    <title>Scanner QR Code Presensi</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Library HTML5 QR Code Scanner -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between font-sans">
+<body class="bg-slate-100 min-h-screen flex flex-col justify-between items-center p-4">
 
-    <div>
-        <!-- Header Navbar -->
-        <nav class="bg-blue-900 border-b-4 border-amber-400 p-4 shadow-md">
-            <div class="max-w-md mx-auto flex items-center justify-between">
-                <a href="/wali?userId=<%= userId %>" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg transition font-semibold">
-                    <i class="fa-solid fa-arrow-left mr-1"></i> Kembali
-                </a>
-                <span class="font-bold text-xs tracking-wide">SCANNER PRESENSI DIGITAL</span>
+    <div class="w-full max-w-md bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between mb-4 border border-slate-200">
+        <div class="flex items-center gap-3">
+            <a href="/wali?userId=<%= userId %>" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-200">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="font-bold text-slate-800 text-sm">Scan QR Code Siswa</h1>
+                <p class="text-xs text-slate-500">Arahkan kamera ke QR Code ID Siswa</p>
             </div>
-        </nav>
-
-        <!-- Area Camera Scanner -->
-        <div class="max-w-md mx-auto p-4 space-y-4">
-
-            <!-- Card Pilihan Kamera -->
-            <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 shadow-xl">
-                <label class="block text-xs text-slate-400 mb-2 font-semibold">Pilih Kamera HP / Laptop:</label>
-                <select id="camera-select" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-2.5 text-xs font-semibold text-amber-300 focus:outline-none focus:border-amber-400">
-                    <option value="">-- Meringkas & Memuat Kamera... --</option>
-                </select>
-                
-                <div class="flex gap-2 mt-3">
-                    <button id="btn-start" onclick="startScanner()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-xl transition flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-play"></i> Buka Kamera
-                    </button>
-                    <button id="btn-stop" onclick="stopScanner()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 rounded-xl transition hidden flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-stop"></i> Matikan Kamera
-                    </button>
-                </div>
-            </div>
-
-            <!-- Box Tampilan Kamera Video -->
-            <div class="bg-black rounded-2xl border-2 border-amber-400 overflow-hidden relative shadow-2xl min-h-[280px] flex items-center justify-center">
-                <div id="reader" class="w-full h-full"></div>
-                <div id="loading-cam" class="text-center p-4 text-slate-400 text-xs">
-                    <i class="fa-solid fa-camera text-3xl mb-2 text-slate-600"></i>
-                    <p>Pilih kamera di atas lalu klik **Buka Kamera**</p>
-                </div>
-            </div>
-
-            <!-- Status Hasil Scan -->
-            <div id="scan-result" class="hidden p-4 rounded-xl text-center font-bold text-sm shadow-md"></div>
-
         </div>
     </div>
 
-    <!-- Footer Developer -->
-    <footer class="bg-slate-950 py-3 text-center text-slate-500 text-xs border-t border-slate-800">
-        Dikembangkan oleh <span class="font-bold text-slate-300">Zeeo</span> (082371729760)
-    </footer>
+    <div id="alert-box" class="w-full max-w-md hidden mb-4 p-4 rounded-2xl text-sm font-semibold flex items-center gap-3"></div>
+
+    <div class="w-full max-w-md bg-white p-4 rounded-2xl shadow-md border border-slate-200 flex flex-col items-center">
+        <div id="reader" class="w-full rounded-xl overflow-hidden bg-black min-h-[300px] flex items-center justify-center text-white">
+            <span class="text-xs text-slate-400">Menyiapkan Kamera...</span>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md mt-4 text-center">
+        <p class="text-xs text-slate-400">UPTD SD Negeri 1 Karya Mulya Sari</p>
+    </div>
 
     <script>
         const userId = "<%= userId %>";
-        let html5QrCode = null;
-        let isScanning = false;
+        let isProcessing = false;
 
-        // Inisialisasi Daftar Kamera saat Halaman Dimuat
-        window.onload = function() {
-            html5QrCode = new Html5Qrcode("reader");
+        function showAlert(message, type = 'success') {
+            const alertBox = document.getElementById('alert-box');
+            alertBox.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-700', 'border-emerald-300', 'bg-rose-100', 'text-rose-700', 'border-rose-300');
+            
+            if (type === 'success') {
+                alertBox.classList.add('bg-emerald-100', 'text-emerald-700', 'border', 'border-emerald-300');
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check text-lg"></i> <span>${message}</span>`;
+            } else {
+                alertBox.classList.add('bg-rose-100', 'text-rose-700', 'border', 'border-rose-300');
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-xmark text-lg"></i> <span>${message}</span>`;
+            }
 
-            // Minta Izin Kamera ke Browser
-            Html5Qrcode.getCameras().then(devices => {
-                const select = document.getElementById('camera-select');
-                select.innerHTML = '';
-
-                if (devices && devices.length > 0) {
-                    let backCamIndex = 0;
-
-                    devices.forEach((device, index) => {
-                        const option = document.createElement('option');
-                        option.value = device.id;
-                        // Tandai kamera belakang (environment) di HP Android
-                        const label = device.label || `Kamera ${index + 1}`;
-                        option.text = label;
-                        
-                        if (label.toLowerCase().includes('back') || label.toLowerCase().includes('belakang') || label.toLowerCase().includes('environment')) {
-                            backCamIndex = index;
-                        }
-                        select.appendChild(option);
-                    });
-
-                    // Pilih otomatis kamera belakang di Android jika ada
-                    select.selectedIndex = backCamIndex;
-                    
-                    // Auto Start Kamera
-                    startScanner();
-                } else {
-                    select.innerHTML = '<option value="">Kamera Tidak Ditemukan</option>';
-                    alert('Kamera tidak ditemukan pada perangkat ini.');
-                }
-            }).catch(err => {
-                console.error("Izin Kamera Ditolak:", err);
-                alert("IZIN KAMERA DITOLAK!\n\nHarap izinkan akses kamera pada browser Chrome di HP/Laptop Anda.");
-            });
-        };
-
-        function startScanner() {
-            const selectedCameraId = document.getElementById('camera-select').value;
-            if (!selectedCameraId) return alert('Pilih kamera terlebih dahulu!');
-
-            document.getElementById('loading-cam').classList.add('hidden');
-            document.getElementById('btn-start').classList.add('hidden');
-            document.getElementById('btn-stop').classList.remove('hidden');
-
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 220, height: 220 } 
-            };
-
-            html5QrCode.start(
-                selectedCameraId, 
-                config, 
-                onScanSuccess, 
-                onScanFailure
-            ).then(() => {
-                isScanning = true;
-            }).catch(err => {
-                console.error("Gagal Membuka Kamera:", err);
-                alert("Gagal membuka kamera: " + err);
-                stopScanner();
-            });
+            setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
         }
 
-        function stopScanner() {
-            if (html5QrCode && isScanning) {
-                html5QrCode.stop().then(() => {
-                    isScanning = false;
-                    document.getElementById('loading-cam').classList.remove('hidden');
-                    document.getElementById('btn-start').classList.remove('hidden');
-                    document.getElementById('btn-stop').classList.add('hidden');
+        async function onScanSuccess(decodedText) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ siswa_id: decodedText, scanned_by: userId })
                 });
-            }
-        }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            // Hentikan scan sementara agar tidak ter-scan berkali-kali
-            if (isScanning) {
-                stopScanner();
-                sendAttendance(decodedText);
-            }
-        }
+                const result = await response.json();
 
-        function onScanFailure(error) {
-            // Abaikan eror frame kosong saat mencari QR
-        }
-
-        function sendAttendance(siswaId) {
-            const resultBox = document.getElementById('scan-result');
-            resultBox.className = "p-4 rounded-xl text-center font-bold text-sm bg-blue-600 text-white shadow-md";
-            resultBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Memproses Absensi...';
-            resultBox.classList.remove('hidden');
-
-            fetch('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ siswa_id: siswaId, scanned_by: userId })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    resultBox.className = "p-4 rounded-xl text-center font-bold text-sm bg-emerald-600 text-white shadow-md";
-                    resultBox.innerHTML = `<i class="fa-solid fa-circle-check text-xl mb-1 block"></i> PRESENSI BERHASIL!<br><span class="text-amber-300 font-extrabold text-base">${data.siswa.nama}</span> (${data.siswa.nama_kelas})<br><span class="text-xs font-normal">Pesan WA Notifikasi Terkirim Ke Ortu</span>`;
+                if (result.success) {
+                    showAlert(`✅ Presensi Berhasil: ${result.siswa.nama} (${result.siswa.nama_kelas})`, 'success');
                 } else {
-                    resultBox.className = "p-4 rounded-xl text-center font-bold text-sm bg-rose-600 text-white shadow-md";
-                    resultBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xl mb-1 block"></i> GAGAL PRESENSI<br><span class="text-xs font-normal">${data.message || 'ID Siswa Tidak Ditemukan'}</span>`;
+                    showAlert(`❌ Gagal: ${result.message}`, 'error');
                 }
+            } catch (err) {
+                showAlert('❌ Error Jaringan / Server!', 'error');
+            }
 
-                // Nyalakan kembali scanner otomatis setelah 3 detik
-                setTimeout(() => {
-                    resultBox.classList.add('hidden');
-                    startScanner();
-                }, 3000);
-            })
-            .catch(err => {
-                resultBox.className = "p-4 rounded-xl text-center font-bold text-sm bg-rose-600 text-white shadow-md";
-                resultBox.innerHTML = `<i class="fa-solid fa-xmark text-xl mb-1 block"></i> TERJADI KESALAHAN KONEKSI`;
-                setTimeout(() => {
-                    resultBox.classList.add('hidden');
-                    startScanner();
-                }, 3000);
-            });
+            setTimeout(() => { isProcessing = false; }, 3000);
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof Html5QrcodeScanner !== 'undefined') {
+                const html5QrcodeScanner = new Html5QrcodeScanner(
+                    "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
+                );
+                html5QrcodeScanner.render(onScanSuccess, () => {});
+            } else {
+                document.getElementById('reader').innerHTML = `
+                    <div class="p-4 text-center text-rose-400 text-xs">
+                        Gagal memuat modul kamera. Periksa koneksi internet Anda.
+                    </div>
+                `;
+            }
+        });
     </script>
 </body>
 </html>
