@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Absensi</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: Arial; text-align: center; background: #f4f4f4; padding: 10px; }
+        #reader { width: 100%; max-width: 450px; margin: auto; background: white; }
+        #status { margin-top: 15px; font-size: 1.2rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h3>Scan QR Kartu Siswa</h3>
+    <div id="reader"></div>
+    <div id="status">Arahkan kamera ke QR...</div>
+
+    <script>
+        const waliKelasId = "<%= userId %>";
+        const html5QrCode = new Html5Qrcode("reader");
+
+        function onScanSuccess(decodedText) {
+            document.getElementById('status').innerText = "Memproses...";
+            html5QrCode.pause();
+
+            fetch('/api/absen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ siswaId: decodedText, waliKelasId: waliKelasId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('status').innerHTML = `<span style="color:green">✅ ${data.message}</span>`;
+                } else {
+                    document.getElementById('status').innerHTML = `<span style="color:red">❌ ${data.message}</span>`;
+                }
+                setTimeout(() => { html5QrCode.resume(); }, 2500);
+            })
+            .catch(() => {
+                document.getElementById('status').innerText = "⚠️ Gangguan Koneksi";
+                setTimeout(() => { html5QrCode.resume(); }, 2500);
+            });
+        }
+
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+    </script>
+</body>
+</html>
