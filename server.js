@@ -1,8 +1,12 @@
 const express = require('express');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode');
 const { Pool } = require('pg');
 const path = require('path');
+const qrcode = require('qrcode');
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    DisconnectReason 
+} = require('@whiskeysockets/baileys');
 
 const app = express();
 const port = process.env.PORT || 10000;
@@ -12,74 +16,72 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Database Neon PostgreSQL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-const waClients = {};
+// Penyimpanan Sesi WhatsApp per User
+const waSockets = {};
 const qrCodes = {};
 const waStatus = {};
 
-// Fungsi Inisialisasi WA Ringan (Ultra-Low Memory for Render Free Tier)
-function initWA(userId) {
-    if (waClients[userId]) return;
+// Inisialisasi WA via Baileys (Sangat Ringan & Bebas Chromium)
+async function initWA(userId) {
+    if (waSockets[userId]) return;
 
-    console.log(`[WA] Menyiapkan WhatsApp untuk User ID: ${userId}...`);
     waStatus[userId] = 'MENYIAPKAN';
-    
+    console.log(`[Baileys] Menyiapkan sesi WA untuk User ID: ${userId}...`);
+
     try {
-        const client = new Client({
-            authStrategy: new LocalAuth({ clientId: `session_user_${userId}` }),
-            puppeteer: {
-                headless: true,
-                executablePath: process.env.CHROME_BIN || null,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                    '--disable-gpu',
-                    '--disable-software-rasterizer',
-                    '--disable-extensions'
-                ]
+        const { state, saveCreds } = await useMultiFileAuthState(`baileys_session_user_${userId}`);
+
+        const sock = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            browser: ["Absensi Sekolah", "Chrome", "1.0.0"]
+        });
+
+        sock.ev.on('creds.update', saveCreds);
+
+        sock.ev.on('connection.update', (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr) {
+                qrcode.toDataURL(qr, (err, url) => {
+                    if (!err) {
+                        qrCodes[userId] = url;
+                        waStatus[userId] = 'BELUM_TERHUBUNG';
+                        console.log(`[Baileys] QR Code Siap untuk User ID: ${userId}`);
+                    }
+                });
+            }
+
+            if (connection === 'open') {
+                console.log(`[Baileys] User ID ${userId} BERHASIL TERHUBUNG!`);
+                waStatus[userId] = 'TERHUBUNG';
+                qrCodes[userId] = null;
+            }
+
+            if (connection === 'close') {
+                const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+                console.log(`[Baileys] Koneksi terputus untuk User ID ${userId}. Reconnect: ${shouldReconnect}`);
+                
+                delete waSockets[userId];
+                delete qrCodes[userId];
+                waStatus[userId] = 'BELUM_TERHUBUNG';
+
+                if (shouldReconnect) {
+                    setTimeout(() => initWA(userId), 3000);
+                }
             }
         });
 
-        client.on('qr', (qr) => {
-            qrcode.toDataURL(qr, (err, url) => {
-                if (!err) {
-                    qrCodes[userId] = url;
-                    waStatus[userId] = 'BELUM_TERHUBUNG';
-                    console.log(`[WA] QR Code siap untuk User ID: ${userId}`);
-                }
-            });
-        });
+        waSockets[userId] = sock;
 
-        client.on('ready', () => {
-            console.log(`[WA] User ID ${userId} Berhasil Terhubung!`);
-            waStatus[userId] = 'TERHUBUNG';
-            qrCodes[userId] = null;
-        });
-
-        client.on('disconnected', () => {
-            waStatus[userId] = 'BELUM_TERHUBUNG';
-            delete waClients[userId];
-            delete qrCodes[userId];
-        });
-
-        client.initialize().catch(err => {
-            console.error(`[WA Error] Gagal Puppeteer ID ${userId}:`, err.message);
-            waStatus[userId] = 'BELUM_TERHUBUNG';
-            delete waClients[userId];
-        });
-
-        waClients[userId] = client;
     } catch (err) {
-        console.error(`[WA Error] ID ${userId}:`, err.message);
+        console.error(`[Baileys Error] Gagal inisialisasi User ID ${userId}:`, err.message);
         waStatus[userId] = 'BELUM_TERHUBUNG';
     }
 }
@@ -107,14 +109,12 @@ app.post('/login', async (req, res) => {
         }
 
         const user = result.rows[0];
-
         if (user.role === 'ADMIN_OPS') {
             return res.redirect(`/admin?userId=${user.id}`);
         }
 
         return res.redirect(`/wali?userId=${user.id}`);
     } catch (err) {
-        console.error("Login Error:", err);
         res.render('login', { error: 'Terjadi kesalahan sistem database.' });
     }
 });
@@ -137,7 +137,6 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// Dashboard Wali Kelas (Cepat tanpa hambatan)
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.redirect('/');
@@ -153,29 +152,27 @@ app.get('/wali', async (req, res) => {
         const result = await pool.query(query, [userId]);
         if (result.rows.length === 0) return res.redirect('/');
 
-        const user = result.rows[0];
-
         res.render('walikelas-dashboard', {
-            user: user,
-            userId: user.id,
-            statusWA: waStatus[user.id] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[user.id] || null
+            user: result.rows[0],
+            userId: userId,
+            statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
+            qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
         res.status(500).send("Gagal memuat Dashboard Wali Kelas.");
     }
 });
 
-// Route Khusus Memanggil QR Code WhatsApp
+// Endpoint pemicu pembuatan QR
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId;
     if (userId) {
         initWA(userId);
     }
-    res.json({ status: 'PROSES', message: 'Memulai inisialisasi WA...' });
+    res.json({ status: 'PROSES' });
 });
 
-// Route Cek Status QR Berkelanjutan
+// Endpoint pengecekan status & data QR
 app.get('/api/status-wa', (req, res) => {
     const userId = req.query.userId;
     res.json({
@@ -190,8 +187,10 @@ app.get('/scan', (req, res) => {
     res.render('scan', { userId: userId });
 });
 
+// API Pindaian Absensi & Pengiriman WA instan
 app.post('/api/absen', async (req, res) => {
     const { siswaId, waliKelasId } = req.body;
+
     try {
         const siswaRes = await pool.query(
             `SELECT s.id, s.nama, s.nomor_wa_ortu, k.nama_kelas 
@@ -212,19 +211,19 @@ app.post('/api/absen', async (req, res) => {
             [siswa.id, waliKelasId]
         );
 
-        const clientWA = waClients[waliKelasId];
+        const sock = waSockets[waliKelasId];
         let waTerkirim = false;
 
-        if (clientWA && waStatus[waliKelasId] === 'TERHUBUNG') {
+        if (sock && waStatus[waliKelasId] === 'TERHUBUNG') {
             try {
                 let noWA = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
                 if (noWA.startsWith('0')) noWA = '62' + noWA.slice(1);
-                if (!noWA.endsWith('@c.us')) noWA += '@c.us';
+                const jid = `${noWA}@s.whatsapp.net`;
 
                 const waktuFormat = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                 const pesan = `*NOTIFIKASI ABSENSI SEKOLAH*\n\nYth. Bapak/Ibu Orang Tua/Wali,\n\nKami menginformasikan bahwa siswa:\n*Nama*: ${siswa.nama}\n*Kelas*: ${siswa.nama_kelas}\n*Waktu Masuk*: ${waktuFormat} WIB\n*Status*: HADIR ✅\n\nTerima kasih.`;
 
-                await clientWA.sendMessage(noWA, pesan);
+                await sock.sendMessage(jid, { text: pesan });
                 waTerkirim = true;
             } catch (waErr) {
                 console.error("Gagal kirim WA:", waErr.message);
@@ -233,8 +232,9 @@ app.post('/api/absen', async (req, res) => {
 
         return res.json({
             success: true,
-            message: `Absen Berhasil: ${siswa.nama} (${siswa.nama_kelas}) ${waTerkirim ? '📲 WA Terkirim' : '⚠️ WA Tidak Terkirim'}`
+            message: `Absen Berhasil: ${siswa.nama} (${siswa.nama_kelas}) ${waTerkirim ? '📲 WA Terkirim' : '⚠️ WA Gagal Terkirim'}`
         });
+
     } catch (err) {
         return res.json({ success: false, message: 'Terjadi kesalahan sistem.' });
     }
