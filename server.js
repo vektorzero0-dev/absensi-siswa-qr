@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
 // Setup EJS & Body Parser
 app.set('view engine', 'ejs');
@@ -24,42 +24,66 @@ const waClients = {};
 const qrCodes = {};
 const waStatus = {};
 
-// Fungsi Inisialisasi WhatsApp Web per User (Wali Kelas / Guru Mapel)
+// Fungsi Inisialisasi WhatsApp Web per User (Aman untuk RAM Terbatas di Cloud)
 function initWA(userId) {
     if (waClients[userId]) return;
 
     console.log(`[WA] Menyiapkan koneksi WhatsApp untuk User ID: ${userId}...`);
+    waStatus[userId] = 'MENYIAPKAN';
     
-    const client = new Client({
-        authStrategy: new LocalAuth({ clientId: `session_user_${userId}` }),
-        puppeteer: {
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        }
-    });
-
-    client.on('qr', (qr) => {
-        qrcode.toDataURL(qr, (err, url) => {
-            if (!err) {
-                qrCodes[userId] = url;
-                waStatus[userId] = 'BELUM_TERHUBUNG';
+    try {
+        const client = new Client({
+            authStrategy: new LocalAuth({ clientId: `session_user_${userId}` }),
+            puppeteer: {
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-gpu'
+                ]
             }
         });
-    });
 
-    client.on('ready', () => {
-        console.log(`[WA] User ID ${userId} Berhasil Terhubung!`);
-        waStatus[userId] = 'TERHUBUNG';
-        qrCodes[userId] = null;
-    });
+        client.on('qr', (qr) => {
+            qrcode.toDataURL(qr, (err, url) => {
+                if (!err) {
+                    qrCodes[userId] = url;
+                    waStatus[userId] = 'BELUM_TERHUBUNG';
+                    console.log(`[WA] QR Code siap untuk User ID: ${userId}`);
+                }
+            });
+        });
 
-    client.on('disconnected', () => {
-        console.log(`[WA] User ID ${userId} Terputus!`);
+        client.on('ready', () => {
+            console.log(`[WA] User ID ${userId} Berhasil Terhubung!`);
+            waStatus[userId] = 'TERHUBUNG';
+            qrCodes[userId] = null;
+        });
+
+        client.on('disconnected', (reason) => {
+            console.log(`[WA] User ID ${userId} Terputus! Alasan: ${reason}`);
+            waStatus[userId] = 'BELUM_TERHUBUNG';
+            delete waClients[userId];
+            delete qrCodes[userId];
+        });
+
+        // Mencegah Server Crash (502 Error) jika Puppeteer gagal
+        client.initialize().catch(err => {
+            console.error(`[WA Error] Gagal inisialisasi Puppeteer untuk User ID ${userId}:`, err.message);
+            waStatus[userId] = 'BELUM_TERHUBUNG';
+            delete waClients[userId];
+        });
+
+        waClients[userId] = client;
+    } catch (err) {
+        console.error(`[WA Error] Gagal membuat instance WA untuk User ID ${userId}:`, err.message);
         waStatus[userId] = 'BELUM_TERHUBUNG';
-        delete waClients[userId];
-    });
-
-    client.initialize();
-    waClients[userId] = client;
+    }
 }
 
 // ------------------- ROUTES / HALAMAN -------------------
@@ -116,7 +140,7 @@ app.get('/admin', async (req, res) => {
         `;
         const siswaRes = await pool.query(siswaQuery);
 
-        // Ambil Data Users + Nama Kelas
+        // Ambil Data Users / Guru + Nama Kelas
         const usersQuery = `
             SELECT u.id, u.nama, u.username, u.role, 
                    COALESCE(k.nama_kelas, 'Guru Mapel / Admin') AS nama_kelas
@@ -138,8 +162,8 @@ app.get('/admin', async (req, res) => {
         const absensiRes = await pool.query(absensiQuery);
 
         res.render('admin-dashboard', {
-            siswa: siswaRes.rows,
             users: usersRes.rows,
+            siswa: siswaRes.rows,
             absensi: absensiRes.rows,
             userId: userId
         });
@@ -168,7 +192,7 @@ app.get('/wali', async (req, res) => {
 
         const user = result.rows[0];
 
-        // Jalankan WA jika belum aktif
+        // Pastikan proses WA berjalan tanpa menghentikan rendering halaman
         initWA(user.id);
 
         res.render('walikelas-dashboard', {
@@ -222,15 +246,19 @@ app.post('/api/absen', async (req, res) => {
         let waTerkirim = false;
 
         if (clientWA && waStatus[waliKelasId] === 'TERHUBUNG') {
-            let noWA = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
-            if (noWA.startsWith('0')) noWA = '62' + noWA.slice(1);
-            if (!noWA.endsWith('@c.us')) noWA += '@c.us';
+            try {
+                let noWA = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
+                if (noWA.startsWith('0')) noWA = '62' + noWA.slice(1);
+                if (!noWA.endsWith('@c.us')) noWA += '@c.us';
 
-            const waktuFormat = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            const pesan = `*NOTIFIKASI ABSENSI SEKOLAH*\n\nYth. Bapak/Ibu Orang Tua/Wali,\n\nKami menginformasikan bahwa siswa:\n*Nama*: ${siswa.nama}\n*Kelas*: ${siswa.nama_kelas}\n*Waktu Masuk*: ${waktuFormat} WIB\n*Status*: HADIR ✅\n\nTerima kasih.`;
+                const waktuFormat = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const pesan = `*NOTIFIKASI ABSENSI SEKOLAH*\n\nYth. Bapak/Ibu Orang Tua/Wali,\n\nKami menginformasikan bahwa siswa:\n*Nama*: ${siswa.nama}\n*Kelas*: ${siswa.nama_kelas}\n*Waktu Masuk*: ${waktuFormat} WIB\n*Status*: HADIR ✅\n\nTerima kasih.`;
 
-            await clientWA.sendMessage(noWA, pesan);
-            waTerkirim = true;
+                await clientWA.sendMessage(noWA, pesan);
+                waTerkirim = true;
+            } catch (waErr) {
+                console.error("Gagal mengirim WA:", waErr.message);
+            }
         }
 
         return res.json({
