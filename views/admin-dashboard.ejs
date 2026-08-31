@@ -3,162 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    <title>Panel Administrator - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between p-3 md:p-6 font-sans">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
-    <div class="max-w-6xl mx-auto w-full">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <!-- Header Resmi Sekolah -->
+    <header class="bg-blue-900 text-white shadow-md border-b-4 border-amber-500">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="flex items-center gap-3">
-                <div class="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-400">
-                    <i class="fa-solid fa-user-shield text-xl"></i>
+                <div class="bg-white/10 p-2 rounded-lg border border-white/20">
+                    <i class="fa-solid fa-graduation-cap text-2xl text-amber-400"></i>
                 </div>
                 <div>
-                    <span class="text-[10px] text-amber-400 font-bold bg-amber-950/80 border border-amber-800/80 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                        ADMINISTRATOR
-                    </span>
-                    <h1 class="text-base font-bold text-white mt-1">DASHBOARD UTAMA SISTEM</h1>
-                    <p class="text-xs text-slate-400">UPTD SD NEGERI 1 KARYA MULYA SARI</p>
+                    <h1 class="text-sm md:text-base font-bold tracking-wide uppercase">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                    <p class="text-[11px] text-blue-200">Panel Kelola Administrator Sistem Presensi</p>
                 </div>
             </div>
-            <div class="flex gap-2 w-full sm:w-auto">
-                <a href="/scan?userId=<%= userId %>" class="flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 border border-emerald-500/30 transition">
-                    <i class="fa-solid fa-qrcode text-sm"></i> Buka Scanner Kartu
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <a href="/scan?userId=<%= userId %>" class="flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-qrcode text-sm"></i> Pemindai Presensi (Scanner)
                 </a>
-                <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 flex items-center justify-center transition">
-                    <i class="fa-solid fa-right-from-bracket"></i>
+                <a href="/" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar
                 </a>
             </div>
         </div>
+    </header>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-                <div>
-                    <p class="text-[11px] text-slate-400 font-medium">Total Akun Pengguna</p>
-                    <h3 class="text-xl font-bold text-white mt-0.5"><%= users.length %> <span class="text-xs font-normal text-slate-400">User</span></h3>
+    <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1">
+
+        <!-- Banner Profil -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-100 text-amber-800 p-3 rounded-xl">
+                    <i class="fa-solid fa-user-shield text-xl"></i>
                 </div>
-                <div class="bg-blue-500/10 text-blue-400 border border-blue-500/20 p-3 rounded-xl">
+                <div>
+                    <span class="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded uppercase tracking-wider">Hak Akses: Administrator</span>
+                    <h2 class="text-base font-bold text-slate-900 mt-0.5">Dashboard Pengelolaan Data Terpadu</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Summary -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Total Akun Pengguna Guru</p>
+                    <h3 class="text-xl font-bold text-slate-900 mt-1"><%= users.length %> <span class="text-xs font-normal text-slate-500">Personel</span></h3>
+                </div>
+                <div class="bg-blue-50 text-blue-700 border border-blue-100 p-3 rounded-xl">
                     <i class="fa-solid fa-users text-lg"></i>
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                 <div>
-                    <p class="text-[11px] text-slate-400 font-medium">Total Siswa Terdaftar</p>
-                    <h3 class="text-xl font-bold text-emerald-400 mt-0.5"><%= siswa.length %> <span class="text-xs font-normal text-slate-400">Siswa</span></h3>
+                    <p class="text-xs text-slate-500 font-medium">Total Peserta Didik</p>
+                    <h3 class="text-xl font-bold text-emerald-700 mt-1"><%= siswa.length %> <span class="text-xs font-normal text-slate-500">Siswa</span></h3>
                 </div>
-                <div class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-3 rounded-xl">
-                    <i class="fa-solid fa-graduation-cap text-lg"></i>
+                <div class="bg-emerald-50 text-emerald-700 border border-emerald-100 p-3 rounded-xl">
+                    <i class="fa-solid fa-user-graduate text-lg"></i>
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                 <div>
-                    <p class="text-[11px] text-slate-400 font-medium">Total Rombel Kelas</p>
-                    <h3 class="text-xl font-bold text-purple-400 mt-0.5"><%= kelas.length %> <span class="text-xs font-normal text-slate-400">Kelas</span></h3>
+                    <p class="text-xs text-slate-500 font-medium">Rombongan Belajar (Rombel)</p>
+                    <h3 class="text-xl font-bold text-purple-700 mt-1"><%= kelas.length %> <span class="text-xs font-normal text-slate-500">Kelas</span></h3>
                 </div>
-                <div class="bg-purple-500/10 text-purple-400 border border-purple-500/20 p-3 rounded-xl">
+                <div class="bg-purple-50 text-purple-700 border border-purple-100 p-3 rounded-xl">
                     <i class="fa-solid fa-school text-lg"></i>
                 </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-plus-circle text-purple-400"></i> Tambah Kelas Baru
+        <!-- Form Tambah -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            
+            <!-- Form Rombel -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-plus-circle text-purple-600"></i> Tambah Rombongan Belajar
                 </h3>
                 <form action="/api/kelas/tambah" method="POST" class="flex gap-2">
-                    <input type="text" name="nama_kelas" required placeholder="Contoh: Kelas 1A" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
-                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs px-4 py-2 rounded-xl">Simpan</button>
+                    <input type="text" name="nama_kelas" required placeholder="Contoh: Kelas 1A" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600">
+                    <button type="submit" class="bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition">Simpan Rombel</button>
                 </form>
 
                 <div class="mt-4 flex flex-wrap gap-2">
                     <% kelas.forEach(k => { %>
-                        <span class="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                        <span class="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg">
                             <%= k.nama_kelas %>
                         </span>
                     <% }); %>
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-user-plus text-blue-400"></i> Tambah Pengguna / Wali Kelas
+            <!-- Form Guru -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-user-plus text-blue-600"></i> Registrasi Akun Wali Kelas / Guru
                 </h3>
-                <form action="/api/guru/tambah" method="POST" class="space-y-2">
+                <form action="/api/guru/tambah" method="POST" class="space-y-3">
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" name="nama" required placeholder="Nama Guru (Tanpa Gelar)" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                        <input type="text" name="username" required placeholder="Username" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                        <input type="text" name="nama" required placeholder="Nama Lengkap Tenaga Pendidik" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <input type="text" name="username" required placeholder="Nama Pengguna (Username)" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="password" name="password" required placeholder="Password" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                        <select name="kelas_id" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300">
-                            <option value="">-- Pilih Kelas --</option>
+                        <input type="password" name="password" required placeholder="Kata Sandi" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <select name="kelas_id" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <option value="">-- Penugasan Rombel --</option>
                             <% kelas.forEach(k => { %>
                                 <option value="<%= k.id %>"><%= k.nama_kelas %></option>
                             <% }); %>
                         </select>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs py-2 rounded-xl transition">
-                        Daftarkan Guru Wali Kelas
+                    <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs py-2.5 rounded-xl transition">
+                        Daftarkan Pengguna Baru
                     </button>
                 </form>
             </div>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl mb-6">
-            <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                <i class="fa-solid fa-user-graduate text-emerald-400"></i> Tambah Siswa Baru (Global Admin)
+        <!-- Form Tambah Siswa Global -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+                <i class="fa-solid fa-address-card text-emerald-600"></i> Registrasi Peserta Didik Baru
             </h3>
             <form action="/api/siswa/tambah" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <input type="text" name="nama" required placeholder="Nama Siswa" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                <input type="text" name="nomor_wa_ortu" placeholder="No WA Ortu (Contoh: 082371729760)" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <input type="text" name="nama" required placeholder="Nama Lengkap Siswa" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                <input type="text" name="nomor_wa_ortu" placeholder="No. WhatsApp Orang Tua (Contoh: 082371729760)" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
                 <div class="flex gap-2">
-                    <select name="kelas_id" required class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300">
-                        <option value="">-- Pilih Kelas --</option>
+                    <select name="kelas_id" required class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                        <option value="">-- Pilih Rombel Kelas --</option>
                         <% kelas.forEach(k => { %>
                             <option value="<%= k.id %>"><%= k.nama_kelas %></option>
                         <% }); %>
                     </select>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-xl">Simpan</button>
+                    <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition">Simpan Siswa</button>
                 </div>
             </form>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl mb-6">
-            <h2 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                <i class="fa-solid fa-users-gear text-blue-400"></i> Akun Pengguna Guru & Wali Kelas
-            </h2>
+        <!-- Tabel Akun Pengguna -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+                <i class="fa-solid fa-users-gear text-blue-600"></i> Direktori Akun Tenaga Pendidik
+            </h3>
             <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-slate-300 min-w-[500px]">
-                    <thead class="bg-slate-800 text-slate-400 uppercase text-[10px]">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
                         <tr>
-                            <th class="p-3 rounded-l-xl">Nama Guru</th>
+                            <th class="p-3">Nama Pengguna</th>
                             <th class="p-3">Username</th>
-                            <th class="p-3">Role</th>
-                            <th class="p-3">Wali Kelas</th>
-                            <th class="p-3 rounded-r-xl text-center">Aksi</th>
+                            <th class="p-3">Peran / Hak Akses</th>
+                            <th class="p-3">Penugasan Rombel</th>
+                            <th class="p-3 text-center">Tindakan</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-800">
+                    <tbody class="divide-y divide-slate-100">
                         <% users.forEach(u => { %>
-                            <tr class="hover:bg-slate-800/40">
-                                <td class="p-3 font-bold text-white"><%= u.nama %></td>
-                                <td class="p-3 font-mono text-slate-400"><%= u.username %></td>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-semibold text-slate-900"><%= u.nama %></td>
+                                <td class="p-3 font-mono text-slate-600"><%= u.username %></td>
                                 <td class="p-3">
-                                    <span class="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded border border-slate-700">
+                                    <span class="bg-slate-100 text-slate-700 text-[10px] px-2 py-0.5 rounded border border-slate-200 font-medium">
                                         <%= u.role %>
                                     </span>
                                 </td>
-                                <td class="p-3 text-emerald-400 font-semibold"><%= u.nama_kelas %></td>
+                                <td class="p-3 text-blue-700 font-medium"><%= u.nama_kelas %></td>
                                 <td class="p-3 text-center">
                                     <% if (u.role !== 'ADMIN') { %>
-                                        <form action="/api/guru/hapus/<%= u.id %>" method="POST" onsubmit="return confirm('Hapus user guru ini?');" class="inline">
-                                            <button type="submit" class="text-rose-400 hover:text-rose-300 text-xs">
-                                                <i class="fa-solid fa-trash"></i> Hapus
+                                        <form action="/api/guru/hapus/<%= u.id %>" method="POST" onsubmit="return confirm('Hapus pengguna ini?');" class="inline">
+                                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium">
+                                                <i class="fa-solid fa-trash mr-1"></i> Hapus
                                             </button>
                                         </form>
                                     <% } %>
@@ -170,53 +191,54 @@
             </div>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+        <!-- Tabel Siswa & QR Code -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
                 <div>
-                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-address-card text-emerald-400"></i> Data Kartu Presensi Siswa & QR Code
-                    </h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Daftar QR ID kartu siswa yang digunakan untuk scan otomatis notifikasi WA.</p>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-emerald-600"></i> Direktori Peserta Didik & Kode QR Kartu
+                    </h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Daftar kartu identitas digital siswa yang valid untuk presensi kehadiran.</p>
                 </div>
-                <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 font-medium transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-print"></i> Cetak QR Kartu
+                <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-slate-300 font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> Cetak Kartu Identitas
                 </button>
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-slate-300 min-w-[600px]">
-                    <thead class="bg-slate-800 text-slate-400 uppercase text-[10px]">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
                         <tr>
-                            <th class="p-3 rounded-l-xl">ID Kartu</th>
-                            <th class="p-3">QR Code</th>
-                            <th class="p-3">Nama Siswa</th>
-                            <th class="p-3">Kelas</th>
-                            <th class="p-3">No. WhatsApp Ortu</th>
-                            <th class="p-3 rounded-r-xl text-center">Aksi</th>
+                            <th class="p-3">ID Siswa</th>
+                            <th class="p-3">Kode QR</th>
+                            <th class="p-3">Nama Lengkap Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3">No. WhatsApp Orang Tua</th>
+                            <th class="p-3 text-center">Tindakan</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-800">
+                    <tbody class="divide-y divide-slate-100">
                         <% siswa.forEach(s => { %>
-                            <tr class="hover:bg-slate-800/40">
-                                <td class="p-3 font-mono font-bold text-emerald-400">#<%= s.id %></td>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-mono font-bold text-emerald-700">#<%= s.id %></td>
                                 <td class="p-3">
-                                    <div class="bg-white p-1 rounded-lg inline-block border border-slate-700">
+                                    <div class="bg-white p-1 rounded-lg inline-block border border-slate-300 shadow-sm">
                                         <img src="<%= s.qrImage %>" alt="QR <%= s.nama %>" class="w-12 h-12">
                                     </div>
                                 </td>
-                                <td class="p-3 font-bold text-white"><%= s.nama %></td>
+                                <td class="p-3 font-semibold text-slate-900"><%= s.nama %></td>
                                 <td class="p-3">
-                                    <span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-md border border-slate-700">
+                                    <span class="bg-slate-100 text-slate-700 text-[10px] font-medium px-2.5 py-1 rounded border border-slate-200">
                                         <%= s.nama_kelas %>
                                     </span>
                                 </td>
-                                <td class="p-3 font-mono text-slate-300">
-                                    <i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
+                                <td class="p-3 font-mono text-slate-700">
+                                    <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
                                 </td>
                                 <td class="p-3 text-center">
-                                    <form action="/api/siswa/hapus/<%= s.id %>" method="POST" onsubmit="return confirm('Hapus siswa ini?');" class="inline">
-                                        <button type="submit" class="text-rose-400 hover:text-rose-300 text-xs">
-                                            <i class="fa-solid fa-trash"></i> Hapus
+                                    <form action="/api/siswa/hapus/<%= s.id %>" method="POST" onsubmit="return confirm('Hapus data siswa ini?');" class="inline">
+                                        <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium">
+                                            <i class="fa-solid fa-trash mr-1"></i> Hapus
                                         </button>
                                     </form>
                                 </td>
@@ -227,11 +249,11 @@
             </div>
         </div>
 
-    </div>
+    </main>
 
-    <footer class="text-center py-4 text-[11px] text-slate-500 border-t border-slate-900 mt-6">
-        <p>Developer: <strong class="text-slate-300">Zeeo</strong> | <a href="mailto:vektorzero0@gmail.com" class="underline hover:text-slate-300">vektorzero0@gmail.com</a></p>
-        <p class="mt-0.5">WhatsApp CS: <a href="https://wa.me/6282371729760" target="_blank" class="text-emerald-400 hover:underline"><i class="fa-brands fa-whatsapp"></i> 082371729760</a></p>
+    <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
+        <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
+        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-600">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-blue-700 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
 
 </body>
