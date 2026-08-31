@@ -10,13 +10,11 @@ const pool = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Sessions directory
+// Sesi WhatsApp folder setup
 const sessionsDir = path.join(__dirname, 'wa_sessions');
-if (!fs.existsSync(sessionsDir)) {
-    fs.mkdirSync(sessionsDir, { recursive: true });
-}
+if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
 
-// Middleware setup
+// Middleware Setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
@@ -27,24 +25,18 @@ const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 
-// WhatsApp Engine Integration
+// WhatsApp Connection Engine
 async function connectToWhatsApp(userId) {
     try {
         const authFolder = path.join(sessionsDir, `user_${userId}`);
         const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-
-        const sock = makeWASocket({
-            logger: pino({ level: 'silent' }),
-            auth: state,
-            printQRInTerminal: false
-        });
+        const sock = makeWASocket({ logger: pino({ level: 'silent' }), auth: state, printQRInTerminal: false });
 
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
-
             if (qr) {
                 qrCodes[userId] = await QRCode.toDataURL(qr);
                 waStatus[userId] = 'MENUNGGU_SCAN';
@@ -67,16 +59,16 @@ async function connectToWhatsApp(userId) {
 
 // ---------------- VIEWS ROUTES ---------------- //
 
-app.get('/', (req, res) => {
-    res.render('login', { error: null });
-});
+// Halaman Login
+app.get('/', (req, res) => res.render('login', { error: null }));
 
+// Proses Login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
         const result = await pool.query(
-            'SELECT * FROM users WHERE username = $1 AND password = $2',
-            [username, password]
+            'SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND password = $2',
+            [username.trim(), password.trim()]
         );
 
         if (result.rows.length === 0) {
@@ -94,10 +86,15 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// Dashboard Admin
 app.get('/admin', async (req, res) => {
     const userId = req.query.userId || 1;
     try {
-        const usersRes = await pool.query(`SELECT u.id, u.nama, u.username, u.role, k.nama_kelas FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id`);
+        const usersRes = await pool.query(`
+            SELECT u.id, u.nama, u.username, u.role, COALESCE(k.nama_kelas, 'Guru Mapel (PAI / PJOK)') AS nama_kelas 
+            FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id 
+            ORDER BY u.id ASC
+        `);
         const siswaRes = await pool.query(`SELECT s.id, s.nama, s.nomor_wa_ortu, k.nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.id ASC`);
         const kelasRes = await pool.query(`SELECT * FROM kelas ORDER BY id ASC`);
 
@@ -112,26 +109,30 @@ app.get('/admin', async (req, res) => {
     }
 });
 
+// Dashboard Wali Kelas / Guru Mapel
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId || 2;
     try {
         const userRes = await pool.query(`
-            SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Kelas 1A') AS nama_kelas 
+            SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Semua Kelas') AS nama_kelas 
             FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id WHERE u.id = $1
         `, [userId]);
 
-        const user = userRes.rows[0] || { id: userId, nama: 'Guru Kelas', role: 'WALI_KELAS', nama_kelas: 'Kelas 1A' };
-        const targetKelasId = user.kelas_id || 1;
+        const user = userRes.rows[0] || { id: userId, nama: 'Guru', role: 'WALI_KELAS', nama_kelas: 'Kelas 1A' };
+        const targetKelasId = user.kelas_id;
 
-        const siswaKelasRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Kelas 1A') AS nama_kelas 
-            FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id WHERE s.kelas_id = $1 ORDER BY s.nama ASC
-        `, [targetKelasId]);
+        let siswaQuery = `SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id`;
+        let absensiQuery = `SELECT a.waktu, s.nama FROM absensi a JOIN siswa s ON a.siswa_id = s.id WHERE DATE(a.waktu) = CURRENT_DATE`;
 
-        const absensiRes = await pool.query(`
-            SELECT a.waktu, s.nama FROM absensi a JOIN siswa s ON a.siswa_id = s.id 
-            WHERE s.kelas_id = $1 AND DATE(a.waktu) = CURRENT_DATE ORDER BY a.waktu DESC
-        `, [targetKelasId]);
+        if (targetKelasId) {
+            siswaQuery += ` WHERE s.kelas_id = ${targetKelasId}`;
+            absensiQuery += ` AND s.kelas_id = ${targetKelasId}`;
+        }
+        siswaQuery += ` ORDER BY s.nama ASC`;
+        absensiQuery += ` ORDER BY a.waktu DESC`;
+
+        const siswaKelasRes = await pool.query(siswaQuery);
+        const absensiRes = await pool.query(absensiQuery);
 
         res.render('walikelas-dashboard', {
             user: user,
@@ -146,7 +147,7 @@ app.get('/wali', async (req, res) => {
     }
 });
 
-// Alias fleksibel untuk scanner agar tidak mengganggu route scan.ejs / scanner.ejs
+// Route Scanner QR
 app.get(['/scan', '/scanner'], (req, res) => {
     const userId = req.query.userId || 1;
     res.render('scan', { userId: userId });
@@ -162,15 +163,11 @@ app.get('/api/start-wa', (req, res) => {
 
 app.get('/api/status-wa', (req, res) => {
     const userId = req.query.userId || 1;
-    res.json({
-        status: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qr: qrCodes[userId] || null
-    });
+    res.json({ status: waStatus[userId] || 'BELUM_TERHUBUNG', qr: qrCodes[userId] || null });
 });
 
 app.post('/api/scan', async (req, res) => {
     const { siswa_id, scanned_by } = req.body;
-
     if (!siswa_id) return res.status(400).json({ success: false, message: "ID Siswa kosong." });
 
     try {
@@ -193,14 +190,15 @@ app.post('/api/scan', async (req, res) => {
             if (!phone.endsWith('@s.whatsapp.net')) phone += '@s.whatsapp.net';
 
             const jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-            const message = `*PRESENSI HARIAN SISWA*\n` +
+            const message = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
                             `--------------------------------------------------\n` +
-                            `Halo Bapak/Ibu, siswa atas nama:\n` +
+                            `*NOTIFIKASI PRESENSI KEHADIRAN SISWA*\n\n` +
+                            `Halo Bapak/Ibu Wali Murid dari:\n` +
                             `• Nama: *${siswa.nama}*\n` +
                             `• Kelas: *${siswa.nama_kelas}*\n` +
-                            `• Jam: *${jam}*\n` +
+                            `• Jam Masuk: *${jam}*\n` +
                             `• Status: *HADIR ✅*\n\n` +
-                            `Telah hadir di sekolah. Terima kasih.`;
+                            `Ananda telah tiba di sekolah dengan selamat. Terima kasih.`;
 
             waClient.sendMessage(phone, { text: message }).catch(e => console.error("WA Send Error:", e));
         }
@@ -215,4 +213,4 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server berjalan di port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server aktif di port ${PORT}`));
