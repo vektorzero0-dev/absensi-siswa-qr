@@ -1,21 +1,144 @@
 <!DOCTYPE html>
-<html>
-<head><title>Dashboard Ops Sekolah</title></head>
-<body style="font-family: Arial; padding: 20px;">
-    <h2>Dashboard Operator Sekolah</h2>
-    <h3>Data Siswa</h3>
-    <table border="1" cellpadding="8" cellspacing="0">
-        <tr><th>ID (QR Payload)</th><th>Nama Siswa</th><th>Kelas</th><th>WA Ortu</th></tr>
-        <% siswa.forEach(s => { %>
-            <tr><td><b><%= s.id %></b></td><td><%= s.nama %></td><td><%= s.nama_kelas %></td><td><%= s.nomor_wa_ortu %></td></tr>
-        <% }) %>
-    </table>
-    <h3>Log Absensi Terbaru</h3>
-    <table border="1" cellpadding="8" cellspacing="0">
-        <tr><th>Waktu</th><th>Nama Siswa</th><th>Kelas</th></tr>
-        <% absensi.forEach(a => { %>
-            <tr><td><%= new Date(a.waktu).toLocaleString('id-ID') %></td><td><%= a.nama %></td><td><%= a.nama_kelas %></td></tr>
-        <% }) %>
-    </table>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Sistem Absensi Sekolah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 pb-12">
+    <!-- Navbar Top -->
+    <nav class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold leading-tight">Panel Administrator</h2>
+                    <p class="text-xs text-slate-400">Pengelolaan Data Siswa & Rekap Absensi</p>
+                </div>
+            </div>
+            <a href="/" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-rose-400 px-4 py-2 rounded-xl border border-slate-700 transition">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 mt-8 space-y-8">
+        <!-- Rangkuman Stat Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Siswa Terdaftar</p>
+                    <h3 class="text-3xl font-extrabold text-slate-800 mt-1"><%= siswa.length %></h3>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Absensi Masuk Hari Ini</p>
+                    <h3 class="text-3xl font-extrabold text-emerald-600 mt-1"><%= absensi.length %></h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-clipboard-user"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status Database</p>
+                    <h3 class="text-xl font-bold text-slate-800 mt-1">Neon PostgreSQL</h3>
+                </div>
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-database"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabel Log Absensi Terbaru -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Log Absensi Terbaru</h3>
+                    <p class="text-xs text-slate-500">20 Riwayat pemindaian QR siswa terakhir</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600">
+                    <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
+                        <tr>
+                            <th class="p-4">Waktu</th>
+                            <th class="p-4">ID Siswa</th>
+                            <th class="p-4">Nama Siswa</th>
+                            <th class="p-4">Kelas</th>
+                            <th class="p-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% if (absensi.length === 0) { %>
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400">Belum ada data absensi yang tercatat hari ini.</td>
+                            </tr>
+                        <% } else { %>
+                            <% absensi.forEach(log => { %>
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="p-4 font-mono text-xs text-slate-500"><%= new Date(log.waktu).toLocaleString('id-ID') %></td>
+                                    <td class="p-4 font-mono font-bold text-slate-700"><%= log.siswa_id %></td>
+                                    <td class="p-4 font-semibold text-slate-800"><%= log.nama %></td>
+                                    <td class="p-4"><span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium"><%= log.nama_kelas %></span></td>
+                                    <td class="p-4">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                                            Hadir
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabel Daftar Siswa Terdaftar -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="font-bold text-slate-800 text-lg">Daftar Siswa Terdaftar</h3>
+                <p class="text-xs text-slate-500">Data seluruh murid dan nomor WhatsApp Orang Tua</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600">
+                    <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
+                        <tr>
+                            <th class="p-4">ID / Kartu</th>
+                            <th class="p-4">Nama Lengkap</th>
+                            <th class="p-4">Kelas</th>
+                            <th class="p-4">No. WA Orang Tua</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% if (siswa.length === 0) { %>
+                            <tr>
+                                <td colspan="4" class="p-8 text-center text-slate-400">Belum ada data siswa terdaftar di database.</td>
+                            </tr>
+                        <% } else { %>
+                            <% siswa.forEach(s => { %>
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="p-4 font-mono font-bold text-blue-600"><%= s.id %></td>
+                                    <td class="p-4 font-semibold text-slate-800"><%= s.nama %></td>
+                                    <td class="p-4"><%= s.nama_kelas %></td>
+                                    <td class="p-4 font-mono text-xs text-slate-600"><%= s.nomor_wa_ortu %></td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
