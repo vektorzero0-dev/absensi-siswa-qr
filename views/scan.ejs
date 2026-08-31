@@ -11,22 +11,39 @@
 <body class="bg-blue-950 text-white min-h-screen flex flex-col justify-between p-4">
 
     <div>
-        <div class="max-w-md mx-auto flex justify-between items-center mb-6 pt-2">
+        <!-- Top Nav -->
+        <div class="max-w-md mx-auto flex justify-between items-center mb-4 pt-2">
             <div>
                 <h1 class="text-sm font-bold flex items-center gap-2 text-white">
                     <i class="fa-solid fa-qrcode text-emerald-400"></i> SCANNER PRESENSI
                 </h1>
                 <p class="text-[10px] text-blue-300">UPTD SD NEGERI 1 KARYA MULYA SARI</p>
             </div>
-            <a href="javascript:history.back()" class="bg-blue-900 border border-blue-800 text-xs px-3 py-1.5 rounded-lg text-blue-200 hover:bg-slate-800">Kembali</a>
+            <a href="javascript:history.back()" class="bg-blue-900 border border-blue-800 text-xs px-3 py-1.5 rounded-lg text-blue-200 hover:bg-slate-800">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Kembali
+            </a>
         </div>
 
+        <!-- Box Scanner Utama -->
         <div class="max-w-md mx-auto bg-slate-900 rounded-2xl p-4 shadow-2xl border border-slate-800">
-            <div id="reader" class="overflow-hidden rounded-xl border border-slate-800 bg-black"></div>
+            
+            <!-- Area Kamera Video -->
+            <div class="relative overflow-hidden rounded-xl border border-slate-800 bg-black">
+                <div id="reader"></div>
+            </div>
 
+            <!-- Tombol Switch Kamera & Senter -->
+            <div class="flex gap-2 mt-3">
+                <button onclick="switchCamera()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-blue-300 font-semibold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 transition">
+                    <i class="fa-solid fa-camera-rotate"></i> Ganti Kamera (Depan/Belakang)
+                </button>
+            </div>
+
+            <!-- Notifikasi Hasil Scan -->
             <div id="result-box" class="hidden mt-4 p-4 rounded-xl text-center font-medium text-xs"></div>
 
-            <div class="mt-6 pt-4 border-t border-slate-800">
+            <!-- Form Manual -->
+            <div class="mt-5 pt-4 border-t border-slate-800">
                 <label class="block text-slate-400 text-xs mb-2">Input Manual ID Siswa (Jika Tanpa Kamera):</label>
                 <div class="flex gap-2">
                     <input type="number" id="manual_id" placeholder="Masukkan ID Siswa (Contoh: 1)" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white">
@@ -44,6 +61,40 @@
     <script>
         const scannedBy = <%= userId %>;
         let isProcessing = false;
+        let html5QrCode;
+        let currentFacingMode = "environment"; // Prioritas utama: "environment" (Kamera Belakang)
+
+        async function startScanner(facingMode) {
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                } catch (e) {}
+            }
+
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            html5QrCode.start(
+                { facingMode: facingMode }, 
+                config, 
+                (decodedText) => { prosesScan(decodedText); }
+            ).catch(err => {
+                console.warn("Gagal membuka kamera mode exact, mencoba fallback device...", err);
+                // Fallback jika kamera belakang default tidak terbaca
+                Html5Qrcode.getCameras().then(cameras => {
+                    if (cameras && cameras.length > 0) {
+                        // Pilih kamera terakhir (biasanya kamera belakang)
+                        const backCam = cameras[cameras.length - 1];
+                        html5QrCode.start(backCam.id, config, (decodedText) => { prosesScan(decodedText); });
+                    }
+                });
+            });
+        }
+
+        async function switchCamera() {
+            currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+            await startScanner(currentFacingMode);
+        }
 
         async function prosesScan(siswaId) {
             if (isProcessing) return;
@@ -86,9 +137,9 @@
             if (val) prosesScan(val);
         }
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render((decodedText) => {
-            prosesScan(decodedText);
+        // Jalankan scanner otomatis dengan Kamera Belakang saat halaman dimuat
+        window.addEventListener('DOMContentLoaded', () => {
+            startScanner("environment");
         });
     </script>
 </body>
