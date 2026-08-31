@@ -8,7 +8,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 pb-12">
-    <!-- Navbar Top -->
     <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -27,45 +26,38 @@
     </nav>
 
     <div class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
-        <!-- Status WhatsApp Card -->
         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center space-x-3">
                     <i class="fa-brands fa-whatsapp text-3xl text-emerald-500"></i>
                     <div>
                         <h3 class="font-bold text-slate-800">Status Gateway WhatsApp</h3>
-                        <p class="text-xs text-slate-500">Koneksi nomor HP Anda untuk notifikasi ke orang tua</p>
+                        <p class="text-xs text-slate-500">Koneksi nomor HP Anda untuk notifikasi ortu</p>
                     </div>
                 </div>
-                <% if (statusWA === 'TERHUBUNG') { %>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Terhubung
-                    </span>
-                <% } else { %>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                        <span class="w-2 h-2 mr-1.5 bg-amber-500 rounded-full"></span> Belum Terhubung
-                    </span>
-                <% } %>
+                <span id="wa-badge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                    Belum Terhubung
+                </span>
             </div>
 
-            <% if (statusWA !== 'TERHUBUNG') { %>
-                <div class="mt-4 pt-4 border-t border-slate-100 text-center">
-                    <% if (qrCodeWA) { %>
-                        <p class="text-sm font-medium text-slate-600 mb-3">Scan QR Code di bawah pakai WhatsApp HP Anda:</p>
-                        <div class="inline-block bg-white p-3 rounded-2xl border border-slate-300 shadow-inner">
-                            <img src="<%= qrCodeWA %>" alt="QR WhatsApp" class="w-56 h-56 mx-auto">
+            <div class="mt-4 pt-4 border-t border-slate-100 text-center">
+                <button id="btn-qr" onclick="generateQR()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow transition">
+                    <i class="fa-solid fa-qrcode mr-2"></i> Tampilkan QR Code WhatsApp
+                </button>
+                
+                <div id="qr-container" class="mt-4 hidden">
+                    <p id="qr-status-text" class="text-sm font-medium text-slate-600 mb-3">Menyiapkan QR Code...</p>
+                    <div class="inline-block bg-white p-3 rounded-2xl border border-slate-300 shadow-inner">
+                        <img id="qr-img" src="" alt="QR WhatsApp" class="w-56 h-56 mx-auto hidden">
+                        <div id="qr-loading" class="py-10 px-12 text-slate-400">
+                            <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-emerald-600"></i>
+                            <p class="text-xs">Sedang memuat browser WhatsApp... (Mohon tunggu 10-20 detik)</p>
                         </div>
-                    <% } else { %>
-                        <div class="py-6 text-slate-400">
-                            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
-                            <p class="text-sm">Menyiapkan QR Code WhatsApp... (Segarkan halaman jika lama)</p>
-                        </div>
-                    <% } %>
+                    </div>
                 </div>
-            <% } %>
+            </div>
         </div>
 
-        <!-- Tombol Quick Action -->
         <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-blue-500/20 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
                 <h3 class="text-xl font-bold">Mulai Absensi Siswa</h3>
@@ -77,5 +69,45 @@
             </a>
         </div>
     </div>
+
+    <script>
+        const userId = "<%= userId %>";
+        let pollInterval = null;
+
+        function generateQR() {
+            document.getElementById('btn-qr').classList.add('hidden');
+            document.getElementById('qr-container').classList.remove('hidden');
+
+            fetch(`/api/start-wa?userId=${userId}`)
+                .then(res => res.json())
+                .then(data => {
+                    checkStatus();
+                    pollInterval = setInterval(checkStatus, 3000);
+                });
+        }
+
+        function checkStatus() {
+            fetch(`/api/status-wa?userId=${userId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const badge = document.getElementById('wa-badge');
+                    const qrImg = document.getElementById('qr-img');
+                    const qrLoading = document.getElementById('qr-loading');
+                    const statusText = document.getElementById('qr-status-text');
+
+                    if (data.status === 'TERHUBUNG') {
+                        badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
+                        badge.innerHTML = `<span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Terhubung`;
+                        document.getElementById('qr-container').innerHTML = `<p class="text-emerald-600 font-bold text-sm"><i class="fa-solid fa-circle-check text-xl mr-1"></i> WhatsApp Berhasil Terhubung!</p>`;
+                        clearInterval(pollInterval);
+                    } else if (data.qr) {
+                        qrLoading.classList.add('hidden');
+                        qrImg.classList.remove('hidden');
+                        qrImg.src = data.qr;
+                        statusText.innerText = "Scan QR Code di bawah pakai WhatsApp HP Anda:";
+                    }
+                });
+        }
+    </script>
 </body>
 </html>
