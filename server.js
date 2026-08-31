@@ -53,7 +53,7 @@ async function connectToWhatsApp(userId) {
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ WA Client User #${userId} TERHUBUNG`);
+                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung`);
             }
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
@@ -74,14 +74,14 @@ app.get('/', (req, res) => res.render('login', { error: null }));
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        if (!username || !password) return res.render('login', { error: 'Isi username dan password!' });
+        if (!username || !password) return res.render('login', { error: 'Username dan kata sandi wajib diisi.' });
 
         const result = await pool.query(
             'SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND password = $2',
             [username.trim(), password.trim()]
         );
 
-        if (result.rows.length === 0) return res.render('login', { error: 'Username atau password salah.' });
+        if (result.rows.length === 0) return res.render('login', { error: 'Username atau kata sandi tidak valid.' });
 
         const user = result.rows[0];
         if (user.role === 'ADMIN') {
@@ -90,7 +90,7 @@ app.post('/login', async (req, res) => {
             return res.redirect(`/wali?userId=${user.id}`);
         }
     } catch (err) {
-        return res.render('login', { error: 'Error DB: ' + err.message });
+        return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message });
     }
 });
 
@@ -98,7 +98,7 @@ app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || 1;
     try {
         const usersRes = await pool.query(`
-            SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
+            SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
             FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id ORDER BY u.id ASC
         `);
         const siswaRes = await pool.query(`
@@ -120,7 +120,7 @@ app.get('/admin', async (req, res) => {
             userId: userId
         });
     } catch (err) {
-        res.status(500).send("Database Error: " + err.message);
+        res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
 
@@ -128,10 +128,10 @@ app.get('/wali', async (req, res) => {
     const userId = parseInt(req.query.userId) || 1;
     try {
         const userRes = await pool.query(`SELECT id, nama, role, kelas_id FROM users WHERE id = $1`, [userId]);
-        const userRaw = userRes.rows[0] || { id: userId, nama: 'Guru', role: 'WALI_KELAS', kelas_id: null };
+        const userRaw = userRes.rows[0] || { id: userId, nama: 'Tenaga Pendidik', role: 'WALI_KELAS', kelas_id: null };
         userRaw.nama = bersihkanGelar(userRaw.nama);
 
-        let namaKelas = 'Semua Kelas';
+        let namaKelas = 'Seluruh Rombongan Belajar';
         if (userRaw.kelas_id) {
             const kRes = await pool.query(`SELECT nama_kelas FROM kelas WHERE id = $1`, [userRaw.kelas_id]);
             if (kRes.rows.length > 0) namaKelas = kRes.rows[0].nama_kelas;
@@ -180,7 +180,7 @@ app.get('/wali', async (req, res) => {
             qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
-        res.status(500).send("Database Error: " + err.message);
+        res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
 
@@ -197,7 +197,7 @@ app.post('/api/kelas/tambah', async (req, res) => {
         await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1)', [nama_kelas]);
         res.redirect('back');
     } catch (err) {
-        res.status(500).send("Gagal Tambah Kelas: " + err.message);
+        res.status(500).send("Gagal Menambahkan Rombel Kelas: " + err.message);
     }
 });
 
@@ -212,7 +212,7 @@ app.post('/api/guru/tambah', async (req, res) => {
         );
         res.redirect('back');
     } catch (err) {
-        res.status(500).send("Gagal Tambah Guru: " + err.message);
+        res.status(500).send("Gagal Menambahkan Pengguna Tenaga Pendidik: " + err.message);
     }
 });
 
@@ -221,7 +221,7 @@ app.post('/api/guru/hapus/:id', async (req, res) => {
         await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
         res.redirect('back');
     } catch (err) {
-        res.status(500).send("Gagal Hapus Guru: " + err.message);
+        res.status(500).send("Gagal Menghapus Akun Pengguna: " + err.message);
     }
 });
 
@@ -229,7 +229,7 @@ app.post('/api/siswa/tambah', async (req, res) => {
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
     try {
         if (!nama || !kelas_id) {
-            return res.status(400).send("Nama dan Kelas wajib diisi!");
+            return res.status(400).send("Nama Siswa dan Rombongan Belajar wajib diisi!");
         }
 
         let noWa = nomor_wa_ortu ? nomor_wa_ortu.trim().replace(/[^0-9]/g, '') : '';
@@ -242,7 +242,7 @@ app.post('/api/siswa/tambah', async (req, res) => {
 
         res.redirect('back');
     } catch (err) {
-        res.status(500).send("Gagal Tambah Siswa: " + err.message);
+        res.status(500).send("Gagal Menambahkan Data Siswa: " + err.message);
     }
 });
 
@@ -251,7 +251,7 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
         await pool.query('DELETE FROM siswa WHERE id = $1', [req.params.id]);
         res.redirect('back');
     } catch (err) {
-        res.status(500).send("Gagal Hapus Siswa: " + err.message);
+        res.status(500).send("Gagal Menghapus Data Siswa: " + err.message);
     }
 });
 
@@ -260,12 +260,12 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
 app.get('/api/start-wa', (req, res) => {
     const userId = parseInt(req.query.userId) || 1;
     connectToWhatsApp(userId);
-    res.json({ success: true, message: 'Memulai koneksi WhatsApp...' });
+    res.json({ success: true, message: 'Menginisialisasi WhatsApp Gateway...' });
 });
 
 app.post('/api/scan', async (req, res) => {
     const { siswa_id, scanned_by } = req.body;
-    if (!siswa_id) return res.status(400).json({ success: false, message: "QR ID Siswa tidak terbaca!" });
+    if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR / Identitas Siswa tidak terdeteksi." });
 
     try {
         const parsedSiswaId = parseInt(siswa_id);
@@ -277,7 +277,7 @@ app.post('/api/scan', async (req, res) => {
         `, [parsedSiswaId]);
 
         if (siswaRes.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Kartu Siswa (ID: ${siswa_id}) Tidak Terdaftar!` });
+            return res.status(404).json({ success: false, message: `Kartu Identitas Siswa (ID: ${siswa_id}) Tidak Terdaftar!` });
         }
 
         const siswa = siswaRes.rows[0];
@@ -293,7 +293,7 @@ app.post('/api/scan', async (req, res) => {
             if (keys.length > 0) waClient = waSessions[keys[0]];
         }
 
-        let statusWA = "WA Tidak Terkirim (Sesi WA Belum Aktif)";
+        let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
         if (waClient && siswa.nomor_wa_ortu) {
             let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
@@ -305,18 +305,20 @@ app.post('/api/scan', async (req, res) => {
             const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
             const pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
-                          `--------------------------------------------------\n` +
-                          `*NOTIFIKASI PRESENSI KARTU SISWA*\n\n` +
-                          `Pemberitahuan bahwa siswa berikut telah hadir di sekolah:\n\n` +
-                          `• Nama: *${siswa.nama}*\n` +
-                          `• Kelas: *${siswa.nama_kelas}*\n` +
-                          `• Hari, Tgl: *${tglWib}*\n` +
-                          `• Jam Scan: *${jamWib}*\n` +
-                          `• Status: *HADIR (Scan Kartu) ✅*\n\n` +
-                          `_Pesan otomatis dikirim oleh Sistem Scanner Sekolah._`;
+                          `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
+                          `_________________________________________\n\n` +
+                          `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                          `Diberitahukan bahwa putra/putri Anda telah tiba di sekolah dan melakukan presensi kehadiran:\n\n` +
+                          `• Nama Siswa : *${siswa.nama}*\n` +
+                          `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                          `• Waktu Scan : *${jamWib}*\n` +
+                          `• Tanggal : *${tglWib}*\n` +
+                          `• Status Kehadiran : *HADIR (Scan Kartu) ✅*\n\n` +
+                          `Terima kasih atas perhatian dan kerja samanya.\n\n` +
+                          `_Pesan otomatis ini dikirim oleh Sistem Presensi Terpadu UPTD SD Negeri 1 Karya Mulya Sari._`;
 
-            waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error("Gagal send WA:", e.message));
-            statusWA = "Pesan WA Terkirim ke Wali Murid ✅";
+            waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error("Gagal Mengirim Notifikasi WA:", e.message));
+            statusWA = "Notifikasi WhatsApp Berhasil Dikirimkan ke Wali Murid ✅";
         }
 
         return res.json({
@@ -331,9 +333,9 @@ app.post('/api/scan', async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Scan Error:", err);
-        return res.status(500).json({ success: false, message: "Terjadi kesalahan sistem: " + err.message });
+        console.error("Kesalahan Scan:", err);
+        return res.status(500).json({ success: false, message: "Terjadi Kendala Sistem: " + err.message });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server Scanner Aktif di Port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server Sistem Presensi Terpadu Aktif di Port ${PORT}`));
