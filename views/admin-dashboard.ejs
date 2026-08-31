@@ -3,178 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    <title>Dashboard Admin Pro - UPTD SD Negeri 1 Karyamulyasari</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 flex flex-col justify-between">
 
     <div>
-        <!-- Navbar Administrator Sekolah -->
-        <nav class="bg-blue-900 text-white border-b-4 border-amber-400 sticky top-0 z-50 shadow-md">
-            <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white text-blue-900 rounded-lg flex items-center justify-center font-black text-lg">
-                        <i class="fa-solid fa-school"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-bold text-sm tracking-wide leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                        <p class="text-[11px] text-blue-200">Panel Kontrol Administrator Sekolah</p>
-                    </div>
+        <!-- Top Header -->
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 backdrop-blur-md shadow-2xl">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center text-2xl">
+                    <i class="fa-solid fa-user-shield"></i>
                 </div>
-                <a href="/" class="text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
-                    <i class="fa-solid fa-power-off mr-1"></i> Keluar
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-white">Panel Administrator</h1>
+                    <p class="text-xs text-slate-400 mt-1">UPTD SD Negeri 1 Karya Mulya Sari</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/scan?userId=<%= userId %>" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-qrcode"></i> Buka Scanner
+                </a>
+                <a href="/" class="px-4 py-2.5 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-400 text-slate-300 rounded-xl text-xs font-semibold transition border border-slate-700/50">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar
                 </a>
             </div>
-        </nav>
+        </div>
 
-        <div class="max-w-6xl mx-auto px-4 mt-6 space-y-6">
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto space-y-8">
 
-            <!-- Stat Ringkasan Sekolah -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-500">TOTAL GURU & STAF</p>
-                        <h3 class="text-2xl font-black text-blue-900 mt-1"><%= users.length %></h3>
+            <!-- Daftar Guru & Pengguna -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-chalkboard-user text-indigo-400 text-lg"></i>
+                        <h2 class="text-base font-bold text-white">Daftar Guru & Pengampu Kelas</h2>
                     </div>
-                    <div class="w-10 h-10 bg-blue-50 text-blue-900 rounded-lg flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                    </div>
+                    <span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1 rounded-full font-mono">
+                        Total: <%= users.length %> Pengguna
+                    </span>
                 </div>
 
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-500">TOTAL KELAS</p>
-                        <h3 class="text-2xl font-black text-blue-900 mt-1"><%= kelas.length %></h3>
-                    </div>
-                    <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-door-open"></i>
-                    </div>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-slate-500">TOTAL SISWA</p>
-                        <h3 class="text-2xl font-black text-blue-900 mt-1"><%= siswa.length %></h3>
-                    </div>
-                    <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabel Guru & Kelas -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <!-- Daftar Guru -->
-                <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
-                        <i class="fa-solid fa-users text-amber-500"></i> Daftar Guru & Pengguna System
-                    </h3>
-                    <div class="overflow-x-auto text-xs">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-100 text-slate-600">
-                                <tr>
-                                    <th class="p-2">ID</th>
-                                    <th class="p-2">Nama Guru</th>
-                                    <th class="p-2">Username</th>
-                                    <th class="p-2">Tugas / Kelas</th>
-                                    <th class="p-2">Role</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <% users.forEach(u => { %>
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-2 text-slate-400 font-mono">#<%= u.id %></td>
-                                        <td class="p-2 font-semibold text-slate-800"><%= u.nama %></td>
-                                        <td class="p-2 text-blue-800 font-mono"><%= u.username %></td>
-                                        <td class="p-2"><%= u.nama_kelas %></td>
-                                        <td class="p-2">
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold <%= u.role === 'ADMIN_OPS' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>">
-                                                <%= u.role %>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <% }) %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Daftar Kelas -->
-                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
-                        <i class="fa-solid fa-school text-amber-500"></i> Daftar Kelas
-                    </h3>
-                    <div class="overflow-x-auto text-xs">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-100 text-slate-600">
-                                <tr>
-                                    <th class="p-2">ID</th>
-                                    <th class="p-2">Nama Kelas</th>
-                                    <th class="p-2 text-right">Siswa</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <% kelas.forEach(k => { %>
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-2 text-slate-400 font-mono">#<%= k.id %></td>
-                                        <td class="p-2 font-semibold text-slate-800"><%= k.nama_kelas %></td>
-                                        <td class="p-2 text-right font-bold text-emerald-700"><%= k.jumlah_siswa %></td>
-                                    </tr>
-                                <% }) %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Log Absensi Hari Ini -->
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-                <h3 class="font-bold text-sm text-blue-900 mb-3 flex items-center gap-2 border-b pb-2">
-                    <i class="fa-solid fa-list-check text-amber-500"></i> Rekap Presensi Masuk Hari Ini
-                </h3>
-                <div class="overflow-x-auto text-xs">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-100 text-slate-600">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                             <tr>
-                                <th class="p-2">Waktu Masuk</th>
-                                <th class="p-2">Nama Siswa</th>
-                                <th class="p-2">Kelas</th>
-                                <th class="p-2">Status</th>
+                                <th class="p-4 rounded-l-xl">ID</th>
+                                <th class="p-4">Nama Guru / Pengguna</th>
+                                <th class="p-4">Username Login</th>
+                                <th class="p-4">Role System</th>
+                                <th class="p-4 rounded-r-xl">Tugas / Kelas Diampu</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <% if (absensi.length === 0) { %>
-                                <tr><td colspan="4" class="p-3 text-center text-slate-400">Belum ada data absensi hari ini.</td></tr>
-                            <% } else { %>
-                                <% absensi.forEach(a => { %>
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-2 font-mono text-slate-600"><%= new Date(a.waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) %> WIB</td>
-                                        <td class="p-2 font-semibold text-slate-800"><%= a.nama %></td>
-                                        <td class="p-2"><%= a.nama_kelas %></td>
-                                        <td class="p-2"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">HADIR</span></td>
+                        <tbody class="divide-y divide-slate-800/60">
+                            <% if (users && users.length > 0) { %>
+                                <% users.forEach(u => { %>
+                                    <tr class="hover:bg-slate-800/40 transition">
+                                        <td class="p-4 font-mono text-slate-500">#<%= u.id %></td>
+                                        <td class="p-4 font-semibold text-white"><%= u.nama %></td>
+                                        <td class="p-4 font-mono text-indigo-300"><%= u.username %></td>
+                                        <td class="p-4">
+                                            <% if (u.role === 'ADMIN') { %>
+                                                <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-md text-[10px] font-bold">ADMINISTRATOR</span>
+                                            <% } else if (u.role === 'GURU_MAPEL') { %>
+                                                <span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-md text-[10px] font-bold">GURU MAPEL</span>
+                                            <% } else { %>
+                                                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-md text-[10px] font-bold">WALI KELAS</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="p-4 font-medium text-slate-300"><%= u.nama_kelas %></td>
                                     </tr>
-                                <% }) %>
+                                <% }); %>
                             <% } %>
                         </tbody>
                     </table>
                 </div>
             </div>
 
+            <!-- Data Siswa & Kelas -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-graduation-cap text-emerald-400 text-lg"></i>
+                            <h2 class="text-base font-bold text-white">Data Siswa (Uji Coba Presensi)</h2>
+                        </div>
+                        <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">
+                            Total: <%= siswa.length %> Siswa
+                        </span>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[300px] overflow-y-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0">
+                                <tr>
+                                    <th class="p-3">ID QR</th>
+                                    <th class="p-3">Nama Siswa</th>
+                                    <th class="p-3">Kelas</th>
+                                    <th class="p-3">No. WA Ortu (Tes Developer)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/60">
+                                <% if (siswa && siswa.length > 0) { %>
+                                    <% siswa.forEach(s => { %>
+                                        <tr class="hover:bg-slate-800/40 transition">
+                                            <td class="p-3 font-mono text-emerald-400 font-bold">#<%= s.id %></td>
+                                            <td class="p-3 font-semibold text-white"><%= s.nama %></td>
+                                            <td class="p-3 text-slate-400"><%= s.nama_kelas || '-' %></td>
+                                            <td class="p-3 font-mono text-emerald-400 font-semibold"><%= s.nomor_wa_ortu %></td>
+                                        </tr>
+                                    <% }); %>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-6">
+                            <i class="fa-solid fa-school text-sky-400 text-lg"></i>
+                            <h2 class="text-base font-bold text-white">Daftar Kelas (10 Kelas)</h2>
+                        </div>
+
+                        <div class="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                            <% if (kelas && kelas.length > 0) { %>
+                                <% kelas.forEach(k => { %>
+                                    <div class="p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl flex justify-between items-center">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-7 h-7 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs">
+                                                <%= k.id %>
+                                            </div>
+                                            <span class="font-semibold text-xs text-white"><%= k.nama_kelas %></span>
+                                        </div>
+                                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md font-mono">Aktif</span>
+                                    </div>
+                                <% }); %>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- Footer Developer -->
-    <footer class="bg-white border-t border-slate-200 py-3 text-slate-600 text-xs mt-8">
-        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p class="font-medium">Dikembangkan oleh <span class="font-bold text-blue-900">Zeeo</span></p>
-            <div class="flex items-center gap-4 text-slate-500">
-                <a href="mailto:vektorzero0@gmail.com" class="hover:text-blue-700"><i class="fa-regular fa-envelope text-blue-800 mr-1"></i>vektorzero0@gmail.com</a>
-                <span>|</span>
-                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-600"><i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i>082371729760</a>
-            </div>
+    <!-- Developer Footer -->
+    <footer class="mt-12 max-w-7xl mx-auto w-full pt-6 border-t border-slate-800/80 text-center text-xs text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div>
+            © Presensi SD Negeri 1 Karya Mulya Sari
+        </div>
+        <div class="flex items-center gap-4 text-[11px]">
+            <span>Developer: <strong class="text-slate-200">Zeeo</strong></span>
+            <span>•</span>
+            <a href="mailto:vektorzero0@gmail.com" class="hover:text-indigo-400 transition"><i class="fa-solid fa-envelope"></i> vektorzero0@gmail.com</a>
+            <span>•</span>
+            <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-400 transition"><i class="fa-brands fa-whatsapp"></i> 082371729760</a>
         </div>
     </footer>
 
