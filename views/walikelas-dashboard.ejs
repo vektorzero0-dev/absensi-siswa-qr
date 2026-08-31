@@ -32,7 +32,7 @@
                     <i class="fa-brands fa-whatsapp text-3xl text-emerald-500"></i>
                     <div>
                         <h3 class="font-bold text-slate-800">Status Gateway WhatsApp</h3>
-                        <p class="text-xs text-slate-500">Koneksi nomor HP Anda untuk notifikasi ortu</p>
+                        <p class="text-xs text-slate-500">Koneksi nomor HP Anda untuk notifikasi ortu (Baileys Engine)</p>
                     </div>
                 </div>
                 <span id="wa-badge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
@@ -49,9 +49,9 @@
                     <p id="qr-status-text" class="text-sm font-medium text-slate-600 mb-3">Menyiapkan QR Code...</p>
                     <div class="inline-block bg-white p-3 rounded-2xl border border-slate-300 shadow-inner">
                         <img id="qr-img" src="" alt="QR WhatsApp" class="w-56 h-56 mx-auto hidden">
-                        <div id="qr-loading" class="py-10 px-12 text-slate-400">
-                            <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-emerald-600"></i>
-                            <p class="text-xs">Sedang memuat browser WhatsApp... (Mohon tunggu 10-20 detik)</p>
+                        <div id="qr-loading" class="py-6 px-8 text-slate-400">
+                            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-600"></i>
+                            <p class="text-xs">Memuat socket WhatsApp... (Hanya butuh 2-3 detik)</p>
                         </div>
                     </div>
                 </div>
@@ -80,9 +80,9 @@
 
             fetch(`/api/start-wa?userId=${userId}`)
                 .then(res => res.json())
-                .then(data => {
+                .then(() => {
                     checkStatus();
-                    pollInterval = setInterval(checkStatus, 3000);
+                    pollInterval = setInterval(checkStatus, 2000);
                 });
         }
 
@@ -98,13 +98,13 @@
                     if (data.status === 'TERHUBUNG') {
                         badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
                         badge.innerHTML = `<span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Terhubung`;
-                        document.getElementById('qr-container').innerHTML = `<p class="text-emerald-600 font-bold text-sm"><i class="fa-solid fa-circle-check text-xl mr-1"></i> WhatsApp Berhasil Terhubung!</p>`;
+                        document.getElementById('qr-container').innerHTML = `<p class="text-emerald-600 font-bold text-sm py-2"><i class="fa-solid fa-circle-check text-xl mr-1"></i> WhatsApp Berhasil Terhubung!</p>`;
                         clearInterval(pollInterval);
                     } else if (data.qr) {
                         qrLoading.classList.add('hidden');
                         qrImg.classList.remove('hidden');
                         qrImg.src = data.qr;
-                        statusText.innerText = "Scan QR Code di bawah pakai WhatsApp HP Anda:";
+                        statusText.innerText = "Scan QR Code di bawah dengan WhatsApp HP Anda:";
                     }
                 });
         }
