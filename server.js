@@ -10,13 +10,13 @@ const QRCode = require('qrcode');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Buat folder wa_sessions otomatis jika belum ada
+// 1. Buat folder wa_sessions secara aman
 const sessionsDir = path.join(__dirname, 'wa_sessions');
 if (!fs.existsSync(sessionsDir)) {
     fs.mkdirSync(sessionsDir, { recursive: true });
 }
 
-// 2. Middleware Parsing
+// 2. Middleware Parsing Body Data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,30 +32,34 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-    console.error('❌ Database error:', err.message);
+    console.error('❌ Database Pool Error:', err.message);
 });
 
 const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 
-// 4. OTOMATISASI MEMBUAT SEMUA TABEL DATABASE (TERMASUK USERS)
+// 4. Inisialisasi Tabel Database dengan Urutan SQL yang Benar
 async function initDB() {
     if (!process.env.DATABASE_URL) {
-        console.log("⚠️ DATABASE_URL belum diset di Render!");
+        console.error("⚠️ DATABASE_URL belum diset di Environment Variables Render!");
         return;
     }
+
+    const client = await pool.connect();
     try {
-        // Tabel Kelas
-        await pool.query(`
+        await client.query('BEGIN');
+
+        // Step A: Buat Tabel Kelas Utama
+        await client.query(`
             CREATE TABLE IF NOT EXISTS kelas (
                 id SERIAL PRIMARY KEY,
                 nama_kelas VARCHAR(50) NOT NULL
             );
         `);
 
-        // Tabel Users (Admin & Wali Kelas)
-        await pool.query(`
+        // Step B: Buat Tabel Users
+        await client.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 nama VARCHAR(100) NOT NULL,
@@ -66,8 +70,8 @@ async function initDB() {
             );
         `);
 
-        // Tabel Siswa
-        await pool.query(`
+        // Step C: Buat Tabel Siswa
+        await client.query(`
             CREATE TABLE IF NOT EXISTS siswa (
                 id SERIAL PRIMARY KEY,
                 nama VARCHAR(100) NOT NULL,
@@ -76,8 +80,8 @@ async function initDB() {
             );
         `);
 
-        // Tabel Absensi
-        await pool.query(`
+        // Step D: Buat Tabel Absensi
+        await client.query(`
             CREATE TABLE IF NOT EXISTS absensi (
                 id SERIAL PRIMARY KEY,
                 siswa_id INT REFERENCES siswa(id) ON DELETE CASCADE,
@@ -87,8 +91,8 @@ async function initDB() {
             );
         `);
 
-        // Insert Default Data jika kosong
-        await pool.query(`
+        // Step E: Masukkan Data Awal (Default Data)
+        await client.query(`
             INSERT INTO kelas (id, nama_kelas) VALUES (1, 'Kelas 1A') ON CONFLICT (id) DO NOTHING;
             INSERT INTO users (id, nama, username, password, role, kelas_id) 
             VALUES (1, 'Admin Sekolah', 'admin', 'admin123', 'ADMIN', NULL),
@@ -96,9 +100,13 @@ async function initDB() {
             ON CONFLICT (id) DO NOTHING;
         `);
 
-        console.log("✅ Berhasil! Semua tabel database & user default siap.");
+        await client.query('COMMIT');
+        console.log("✅ Database Postgres & Tabel Berhasil Disiapkan.");
     } catch (err) {
-        console.error("❌ Gagal inisialisasi tabel:", err.message);
+        await client.query('ROLLBACK');
+        console.error("❌ Gagal Inisialisasi Database:", err.message);
+    } finally {
+        client.release();
     }
 }
 initDB();
@@ -144,7 +152,7 @@ async function connectToWhatsApp(userId) {
     }
 }
 
-// 6. Routes Halaman Web
+// 6. Web Routes
 app.get('/', (req, res) => res.render('login'));
 
 app.get('/admin', async (req, res) => {
@@ -162,7 +170,7 @@ app.get('/admin', async (req, res) => {
         });
     } catch (err) {
         console.error("Error /admin:", err.message);
-        res.status(500).send("Gagal memuat halaman Admin: " + err.message);
+        res.status(500).send("Database Error di Halaman Admin: " + err.message);
     }
 });
 
@@ -202,7 +210,7 @@ app.get('/wali', async (req, res) => {
         });
     } catch (err) {
         console.error("Error /wali:", err.message);
-        res.status(500).send("Gagal memuat halaman Wali Kelas: " + err.message);
+        res.status(500).send("Database Error di Halaman Wali Kelas: " + err.message);
     }
 });
 
@@ -211,7 +219,7 @@ app.get('/scan', (req, res) => {
     res.render('scanner', { userId: userId });
 });
 
-// 7. API Endpoints
+// 7. API Scanner & WA
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId || 1;
     connectToWhatsApp(userId);
@@ -244,19 +252,17 @@ app.post('/api/scan', async (req, res) => {
         if (siswaRes.rows.length === 0) {
             return res.status(404).json({ 
                 success: false, 
-                message: `Siswa ID #${siswa_id} Tidak Ditemukan!` 
+                message: `Siswa ID #${siswa_id} Tidak Ditemukan di Database!` 
             });
         }
 
         const siswa = siswaRes.rows[0];
 
-        // Catat Absensi
         await pool.query(`
             INSERT INTO absensi (siswa_id, status, scanned_by) 
             VALUES ($1, 'HADIR', $2)
         `, [siswa.id, scanned_by || 1]);
 
-        // Kirim Pesan WA
         const waClient = waSessions[scanned_by || 1];
         if (waClient && siswa.nomor_wa_ortu) {
             let formattedPhone = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
