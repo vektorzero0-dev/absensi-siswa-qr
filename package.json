@@ -4,7 +4,7 @@
   "description": "Sistem Absensi QR Code dan Notifikasi WA",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "server.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.0",
