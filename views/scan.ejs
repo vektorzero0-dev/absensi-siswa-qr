@@ -32,7 +32,7 @@
 
         <!-- Area Kamera Scanner -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
-            <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3">
+            <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3 min-h-[250px] flex items-center justify-center">
                 <div id="reader" class="w-full"></div>
             </div>
             <p class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
@@ -93,7 +93,6 @@
     </footer>
 
     <script>
-        // Mengambil userId dari URL parameter atau fallback ke variabel template
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('userId') || <%= userId %>;
         let isProcessing = false;
@@ -147,14 +146,39 @@
             });
         }
 
-        // Inisialisasi Scanner Kamera Belakang
-        const scannerConfig = {
-            fps: 10,
-            qrbox: { width: 220, height: 220 }
-        };
+        // Inisialisasi Memaksa Penggunaan Kamera Belakang (environment mode)
+        const html5QrCode = new Html5Qrcode("reader");
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", scannerConfig, false);
-        html5QrcodeScanner.render(onScanSuccess);
+        html5QrCode.start(
+            { facingMode: "environment" }, // Paksa Kamera Belakang
+            {
+                fps: 10,
+                qrbox: { width: 220, height: 220 }
+            },
+            onScanSuccess
+        ).catch(err => {
+            console.warn("Gagal memulai dengan facingMode environment, mencoba pemindaian fallback ID kamera...", err);
+            
+            // Fallback jika browser HP membutuhkan pemilihan ID Kamera secara eksplisit
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    // Cari kamera yang memiliki kata 'back', 'rear', atau ambil kamera terakhir dalam list
+                    let backCamera = devices.find(device => 
+                        device.label.toLowerCase().includes('back') || 
+                        device.label.toLowerCase().includes('rear') ||
+                        device.label.toLowerCase().includes('belakang')
+                    );
+                    
+                    const selectedCamId = backCamera ? backCamera.id : devices[devices.length - 1].id;
+                    
+                    html5QrCode.start(
+                        selectedCamId,
+                        { fps: 10, qrbox: { width: 220, height: 220 } },
+                        onScanSuccess
+                    );
+                }
+            }).catch(e => console.error("Kamera tidak dapat diakses:", e));
+        });
     </script>
 </body>
 </html>
