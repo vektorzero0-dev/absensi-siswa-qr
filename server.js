@@ -67,6 +67,26 @@ async function connectToWhatsApp(userId) {
     }
 }
 
+// Otomatis mengubungkan kembali sesi WA yang tersimpan di folder saat server dinyalakan
+function autoConnectSavedSessions() {
+    try {
+        if (fs.existsSync(sessionsDir)) {
+            const folders = fs.readdirSync(sessionsDir);
+            folders.forEach(folder => {
+                if (folder.startsWith('user_')) {
+                    const uId = parseInt(folder.replace('user_', ''));
+                    if (!isNaN(uId)) {
+                        console.log(`🔄 Mengaktifkan kembali sesi WhatsApp untuk User #${uId}...`);
+                        connectToWhatsApp(uId);
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Gagal memuat sesi tersimpan:", err.message);
+    }
+}
+
 // ---------------- ROUTES HALAMAN ---------------- //
 
 app.get('/', (req, res) => res.render('login', { error: null }));
@@ -257,6 +277,15 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
 
 // ---------------- API SCANNER & WA GATEWAY ---------------- //
 
+app.get('/api/wa-status', (req, res) => {
+    const userId = parseInt(req.query.userId) || 1;
+    res.json({
+        userId: userId,
+        status: waStatus[userId] || 'BELUM_TERHUBUNG',
+        qrCode: qrCodes[userId] || null
+    });
+});
+
 app.get('/api/start-wa', (req, res) => {
     const userId = parseInt(req.query.userId) || 1;
     connectToWhatsApp(userId);
@@ -337,5 +366,8 @@ app.post('/api/scan', async (req, res) => {
         return res.status(500).json({ success: false, message: "Terjadi Kendala Sistem: " + err.message });
     }
 });
+
+// Mengaktifkan sesi tersimpan saat server berjalan
+autoConnectSavedSessions();
 
 app.listen(PORT, () => console.log(`🚀 Server Sistem Presensi Terpadu Aktif di Port ${PORT}`));
