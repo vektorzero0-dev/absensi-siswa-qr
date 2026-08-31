@@ -7,7 +7,7 @@ const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/bai
 const QRCode = require('qrcode');
 const pool = require('./db');
 
-// Set Timezone Server Node.js ke WIB (Asia/Jakarta)
+// Set Timezone global Node.js ke WIB
 process.env.TZ = 'Asia/Jakarta';
 
 const app = express();
@@ -48,13 +48,12 @@ async function connectToWhatsApp(userId) {
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ WhatsApp User ID #${userId} TERHUBUNG`);
+                console.log(`✅ WA User #${userId} TERHUBUNG`);
             }
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
-                console.log(`⚠️ WA User ID #${userId} TERPUTUS. Reconnect: ${shouldReconnect}`);
                 if (shouldReconnect) connectToWhatsApp(userId);
             }
         });
@@ -63,25 +62,21 @@ async function connectToWhatsApp(userId) {
     }
 }
 
-// ---------------- ROUTES SYSTEM ---------------- //
+// ---------------- ROUTES ---------------- //
 
 app.get('/', (req, res) => res.render('login', { error: null }));
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        if (!username || !password) {
-            return res.render('login', { error: 'Username dan password wajib diisi!' });
-        }
+        if (!username || !password) return res.render('login', { error: 'Username dan password wajib diisi!' });
 
         const result = await pool.query(
             'SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND password = $2',
             [username.trim(), password.trim()]
         );
 
-        if (result.rows.length === 0) {
-            return res.render('login', { error: 'Username atau password salah.' });
-        }
+        if (result.rows.length === 0) return res.render('login', { error: 'Username atau password salah.' });
 
         const user = result.rows[0];
         if (user.role === 'ADMIN') {
@@ -90,7 +85,7 @@ app.post('/login', async (req, res) => {
             return res.redirect(`/wali?userId=${user.id}`);
         }
     } catch (err) {
-        return res.render('login', { error: 'Gangguan Database: ' + err.message });
+        return res.render('login', { error: 'Database Error: ' + err.message });
     }
 });
 
@@ -136,11 +131,12 @@ app.get('/wali', async (req, res) => {
 
         let siswaQuery = `SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id`;
         
-        // Menggunakan waktu Asia/Jakarta pada Query PostgreSQL
+        // Memastikan Tanggal Hari Ini Menggunakan Zona Waktu WIB (Asia/Jakarta)
         let absensiQuery = `
-            SELECT (a.waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta') AS waktu, s.nama 
+            SELECT a.id, a.waktu, s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
             WHERE DATE(a.waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
         `;
 
@@ -154,6 +150,22 @@ app.get('/wali', async (req, res) => {
         const siswaKelasRes = await pool.query(siswaQuery);
         const absensiRes = await pool.query(absensiQuery);
 
+        // Format waktu absensi ke format Jam:Menit WIB
+        const absensiFormatted = absensiRes.rows.map(row => {
+            const dateObj = new Date(row.waktu);
+            const waktuWIB = dateObj.toLocaleTimeString('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }) + ' WIB';
+
+            return {
+                ...row,
+                waktu_formatted: waktuWIB
+            };
+        });
+
         const siswaData = await Promise.all(siswaKelasRes.rows.map(async (s) => {
             const qrImage = await QRCode.toDataURL(s.id.toString());
             return { ...s, qrImage };
@@ -162,7 +174,7 @@ app.get('/wali', async (req, res) => {
         res.render('walikelas-dashboard', {
             user: user,
             siswaList: siswaData || [],
-            absensiHariIni: absensiRes.rows || [],
+            absensiHariIni: absensiFormatted || [],
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null
@@ -183,10 +195,10 @@ app.get('/api/start-wa', (req, res) => {
     res.json({ success: true, message: 'Menghubungkan WhatsApp...' });
 });
 
-// API PROCESS SCAN PRESENSI
+// API SCAN QR CODE / INPUT MANUAL
 app.post('/api/scan', async (req, res) => {
     const { siswa_id, scanned_by } = req.body;
-    if (!siswa_id) return res.status(400).json({ success: false, message: "ID Siswa tidak ditemukan." });
+    if (!siswa_id) return res.status(400).json({ success: false, message: "ID Siswa wajib diisi!" });
 
     try {
         const parsedSiswaId = parseInt(siswa_id);
@@ -203,72 +215,61 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
-        // Simpan Presensi ke DB
-        await pool.query(`INSERT INTO absensi (siswa_id, status, scanned_by) VALUES ($1, 'HADIR', $2)`, [siswa.id, parsedScannedBy]);
+        // 1. Simpan Ke Database (Gunakan NOW() server)
+        await pool.query(
+            `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW())`, 
+            [siswa.id, parsedScannedBy]
+        );
 
-        // Cari WhatsApp Client Aktif (Cek ID pengguna yang scan, atau gunakan session aktif pertama jika ada)
+        // 2. Ambil WhatsApp Session yang Aktif
         let waClient = waSessions[parsedScannedBy];
         if (!waClient) {
-            const activeSessionKeys = Object.keys(waSessions);
-            if (activeSessionKeys.length > 0) {
-                waClient = waSessions[activeSessionKeys[0]];
-            }
+            const keys = Object.keys(waSessions);
+            if (keys.length > 0) waClient = waSessions[keys[0]];
         }
 
-        let waStatusResult = "WA Tidak Terkirim (WhatsApp Belum Terhubung)";
+        let waNote = "WA Tidak Terkirim (Belum Konek)";
 
+        // 3. Kirim WhatsApp Jika Ada Koneksi & Nomor HP Ortu
         if (waClient && siswa.nomor_wa_ortu) {
-            try {
-                // Pembersihan nomor WA
-                let rawPhone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
-                if (rawPhone.startsWith('0')) {
-                    rawPhone = '62' + rawPhone.slice(1);
-                }
-                const formattedPhone = rawPhone + '@s.whatsapp.net';
+            let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+            if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+            const targetJid = phone + '@s.whatsapp.net';
 
-                // Format Waktu Indonesia Barat (WIB)
-                const jamWib = new Date().toLocaleTimeString('id-ID', {
-                    timeZone: 'Asia/Jakarta',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                }) + ' WIB';
+            const now = new Date();
+            const jamStr = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+            const tglStr = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-                const tanggalWib = new Date().toLocaleDateString('id-ID', {
-                    timeZone: 'Asia/Jakarta',
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
+            const msg = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
+                        `----------------------------------------\n` +
+                        `*PRESENSI SISWA BERHASIL*\n\n` +
+                        `Nama: *${siswa.nama}*\n` +
+                        `Kelas: *${siswa.nama_kelas}*\n` +
+                        `Hari/Tgl: *${tglStr}*\n` +
+                        `Jam: *${jamStr}*\n` +
+                        `Status: *HADIR ✅*\n\n` +
+                        `_Pesan otomatis dari Sistem Presensi Sekolah._`;
 
-                const message = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
-                                `--------------------------------------------------\n` +
-                                `*NOTIFIKASI KEHADIRAN SISWA*\n\n` +
-                                `Yth. Orang Tua / Wali Murid dari:\n` +
-                                `• Nama Siswa: *${siswa.nama}*\n` +
-                                `• Kelas: *${siswa.nama_kelas}*\n` +
-                                `• Tanggal: *${tanggalWib}*\n` +
-                                `• Waktu Scan: *${jamWib}*\n` +
-                                `• Status: *HADIR DI SEKOLAH ✅*\n\n` +
-                                `Terima kasih. Pesan ini dikirim secara otomatis oleh Sistem Presensi Digital UPTD SD Negeri 1 Karya Mulya Sari.`;
+            // Fire and forget / handle error tanpa menggagalkan respon scanner
+            waClient.sendMessage(targetJid, { text: msg }).then(() => {
+                console.log(`✅ Pesan WA terkirim ke ${phone}`);
+            }).catch(e => {
+                console.error(`❌ Gagal kirim WA:`, e.message);
+            });
 
-                await waClient.sendMessage(formattedPhone, { text: message });
-                waStatusResult = "WA Berhasil Terkirim ✅";
-            } catch (waErr) {
-                console.error("❌ Gagal Mengirim Pesan WA:", waErr.message);
-                waStatusResult = "Gagal Mengirim WA: " + waErr.message;
-            }
+            waNote = "WA Terkirim ✅";
         }
 
         return res.json({
             success: true,
-            message: `Presensi Berhasil! (${waStatusResult})`,
+            message: `Presensi Berhasil! (${waNote})`,
             siswa: { id: siswa.id, nama: siswa.nama, nama_kelas: siswa.nama_kelas }
         });
+
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Server Error: " + err.message });
+        console.error("Scan Error:", err);
+        return res.status(500).json({ success: false, message: "Terjadi kesalahan: " + err.message });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server Berjalan di Port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server berjalan pada port ${PORT}`));
