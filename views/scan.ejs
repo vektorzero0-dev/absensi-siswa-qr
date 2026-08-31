@@ -36,7 +36,7 @@
                 <div id="reader" class="w-full"></div>
             </div>
             <p class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
-                <i class="fa-solid fa-camera text-blue-900"></i> Posisikan Kode QR Kartu Siswa di Depan Kamera
+                <i class="fa-solid fa-camera text-blue-900"></i> Posisikan Kode QR Kartu Siswa di Depan Kamera Belakang
             </p>
         </div>
 
@@ -48,7 +48,7 @@
                         <i class="fa-solid fa-circle-check text-2xl"></i>
                     </div>
                     <div>
-                        <span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">Presensi Berhasil Recorded</span>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">Presensi Berhasil Terdaftar</span>
                         <h2 id="resNama" class="text-base font-bold text-slate-900 mt-1">-</h2>
                     </div>
                 </div>
@@ -130,10 +130,30 @@
             });
         }
 
-        const html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader", { fps: 10, qrbox: { width: 220, height: 220 } }, false
-        );
-        html5QrcodeScanner.render(onScanSuccess);
+        // Inisialisasi Html5QrcodeScanner dengan orientasi ke kamera belakang
+        const scannerConfig = {
+            fps: 10,
+            qrbox: { width: 220, height: 220 },
+            videoConstraints: {
+                facingMode: { exact: "environment" }
+            }
+        };
+
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", scannerConfig, false);
+
+        html5QrcodeScanner.render(onScanSuccess).catch(err => {
+            console.warn("Perangkat tidak mendukung constraint exact, mengaktifkan mode kamera belakang alternatif...");
+            
+            // Fallback untuk perangkat atau browser tertentu
+            const fallbackConfig = {
+                fps: 10,
+                qrbox: { width: 220, height: 220 },
+                videoConstraints: { facingMode: "environment" }
+            };
+            
+            const fallbackScanner = new Html5QrcodeScanner("reader", fallbackConfig, false);
+            fallbackScanner.render(onScanSuccess);
+        });
     </script>
 
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
