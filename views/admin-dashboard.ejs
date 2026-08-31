@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Dashboard Ops Sekolah</title></head>
+<body style="font-family: Arial; padding: 20px;">
+    <h2>Dashboard Operator Sekolah</h2>
+    <h3>Data Siswa</h3>
+    <table border="1" cellpadding="8" cellspacing="0">
+        <tr><th>ID (QR Payload)</th><th>Nama Siswa</th><th>Kelas</th><th>WA Ortu</th></tr>
+        <% siswa.forEach(s => { %>
+            <tr><td><b><%= s.id %></b></td><td><%= s.nama %></td><td><%= s.nama_kelas %></td><td><%= s.nomor_wa_ortu %></td></tr>
+        <% }) %>
+    </table>
+    <h3>Log Absensi Terbaru</h3>
+    <table border="1" cellpadding="8" cellspacing="0">
+        <tr><th>Waktu</th><th>Nama Siswa</th><th>Kelas</th></tr>
+        <% absensi.forEach(a => { %>
+            <tr><td><%= new Date(a.waktu).toLocaleString('id-ID') %></td><td><%= a.nama %></td><td><%= a.nama_kelas %></td></tr>
+        <% }) %>
+    </table>
+</body>
+</html>
