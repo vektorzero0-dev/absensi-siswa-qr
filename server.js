@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * SISTEM ABSENSI SEKOLAH AUTOMATION ENGINE
+ * Developed by : Zeeo
+ * Email        : vektorzero0@gmail.com
+ * WhatsApp     : 082371729760
+ * ============================================================================
+ */
+
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
@@ -11,28 +20,32 @@ const {
 const app = express();
 const port = process.env.PORT || 10000;
 
+// Setup Template Engine & Parser
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Database Neon PostgreSQL
+// Database Connection (PostgreSQL / Neon.tech)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// Penyimpanan Sesi WhatsApp per User
+// Cache Penyimpanan Sesi WhatsApp Multi-User (Baileys)
 const waSockets = {};
 const qrCodes = {};
 const waStatus = {};
 
-// Inisialisasi WA via Baileys (Sangat Ringan & Bebas Chromium)
+/**
+ * Functions: Inisialisasi WhatsApp Gateway via Baileys WebSocket
+ * Bebas Browser Chromium -> Ringan RAM, Super Cepat & Tanpa Crash di Render
+ */
 async function initWA(userId) {
     if (waSockets[userId]) return;
 
     waStatus[userId] = 'MENYIAPKAN';
-    console.log(`[Baileys] Menyiapkan sesi WA untuk User ID: ${userId}...`);
+    console.log(`[Zeeo Engine] Menyiapkan Socket WhatsApp untuk User ID: ${userId}...`);
 
     try {
         const { state, saveCreds } = await useMultiFileAuthState(`baileys_session_user_${userId}`);
@@ -40,7 +53,7 @@ async function initWA(userId) {
         const sock = makeWASocket({
             auth: state,
             printQRInTerminal: false,
-            browser: ["Absensi Sekolah", "Chrome", "1.0.0"]
+            browser: ["Zeeo Absensi System", "Chrome", "1.0.0"]
         });
 
         sock.ev.on('creds.update', saveCreds);
@@ -53,20 +66,22 @@ async function initWA(userId) {
                     if (!err) {
                         qrCodes[userId] = url;
                         waStatus[userId] = 'BELUM_TERHUBUNG';
-                        console.log(`[Baileys] QR Code Siap untuk User ID: ${userId}`);
+                        console.log(`[Zeeo Engine] QR Code Terbuat untuk User ID: ${userId}`);
                     }
                 });
             }
 
             if (connection === 'open') {
-                console.log(`[Baileys] User ID ${userId} BERHASIL TERHUBUNG!`);
+                console.log(`[Zeeo Engine] WA User ID ${userId} BERHASIL TERHUBUNG!`);
                 waStatus[userId] = 'TERHUBUNG';
                 qrCodes[userId] = null;
             }
 
             if (connection === 'close') {
-                const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-                console.log(`[Baileys] Koneksi terputus untuk User ID ${userId}. Reconnect: ${shouldReconnect}`);
+                const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+                
+                console.log(`[Zeeo Engine] WA Terputus (User ID: ${userId}). Reconnect: ${shouldReconnect}`);
                 
                 delete waSockets[userId];
                 delete qrCodes[userId];
@@ -81,17 +96,19 @@ async function initWA(userId) {
         waSockets[userId] = sock;
 
     } catch (err) {
-        console.error(`[Baileys Error] Gagal inisialisasi User ID ${userId}:`, err.message);
+        console.error(`[Zeeo Engine Error] Gagal Inisialisasi User ID ${userId}:`, err.message);
         waStatus[userId] = 'BELUM_TERHUBUNG';
     }
 }
 
-// ------------------- ROUTES -------------------
+// ==================== ROUTES & APIS ====================
 
+// 1. Halaman Login Utama
 app.get('/', (req, res) => {
     res.render('login', { error: null });
 });
 
+// 2. Auth Login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -115,10 +132,12 @@ app.post('/login', async (req, res) => {
 
         return res.redirect(`/wali?userId=${user.id}`);
     } catch (err) {
+        console.error("Login Error:", err);
         res.render('login', { error: 'Terjadi kesalahan sistem database.' });
     }
 });
 
+// 3. Dashboard Admin Ops
 app.get('/admin', async (req, res) => {
     const userId = req.query.userId;
     try {
@@ -137,6 +156,7 @@ app.get('/admin', async (req, res) => {
     }
 });
 
+// 4. Dashboard Wali Kelas / Guru
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.redirect('/');
@@ -163,7 +183,7 @@ app.get('/wali', async (req, res) => {
     }
 });
 
-// Endpoint pemicu pembuatan QR
+// 5. API Trigger Inisialisasi Socket WA
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId;
     if (userId) {
@@ -172,7 +192,7 @@ app.get('/api/start-wa', (req, res) => {
     res.json({ status: 'PROSES' });
 });
 
-// Endpoint pengecekan status & data QR
+// 6. API Polling Status Koneksi & Data QR Code
 app.get('/api/status-wa', (req, res) => {
     const userId = req.query.userId;
     res.json({
@@ -181,13 +201,14 @@ app.get('/api/status-wa', (req, res) => {
     });
 });
 
+// 7. Halaman Kamera Scanner QR Siswa
 app.get('/scan', (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.redirect('/');
     res.render('scan', { userId: userId });
 });
 
-// API Pindaian Absensi & Pengiriman WA instan
+// 8. API Pindaian QR Siswa & Pengiriman Pesan WA Instan
 app.post('/api/absen', async (req, res) => {
     const { siswaId, waliKelasId } = req.body;
 
@@ -206,11 +227,13 @@ app.post('/api/absen', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
+        // Simpan log absensi ke database
         await pool.query(
             `INSERT INTO absensi (siswa_id, scanned_by) VALUES ($1, $2)`, 
             [siswa.id, waliKelasId]
         );
 
+        // Kirim Notifikasi via Baileys Engine
         const sock = waSockets[waliKelasId];
         let waTerkirim = false;
 
@@ -226,7 +249,7 @@ app.post('/api/absen', async (req, res) => {
                 await sock.sendMessage(jid, { text: pesan });
                 waTerkirim = true;
             } catch (waErr) {
-                console.error("Gagal kirim WA:", waErr.message);
+                console.error("[Zeeo Engine] Gagal Mengirim WA:", waErr.message);
             }
         }
 
@@ -236,10 +259,16 @@ app.post('/api/absen', async (req, res) => {
         });
 
     } catch (err) {
+        console.error("API Absen Error:", err);
         return res.json({ success: false, message: 'Terjadi kesalahan sistem.' });
     }
 });
 
+// Jalankan Express Server
 app.listen(port, () => {
-    console.log(`Server Absensi aktif di port ${port}`);
+    console.log(`=======================================================`);
+    console.log(` System Active on Port : ${port}`);
+    console.log(` Engine Core           : Baileys WebSocket (Fast & Light)`);
+    console.log(` Developer             : Zeeo (vektorzero0@gmail.com)`);
+    console.log(`=======================================================`);
 });
