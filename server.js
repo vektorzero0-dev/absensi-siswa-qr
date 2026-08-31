@@ -7,17 +7,17 @@ const makeWASocket = require('@whiskeysockets/baileys').default;
 const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 
-// 1. INSIALISASI EXPRESS (Wajib sebelum app.get / app.post)
+// Inisialisasi Express & Port
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 2. Buat folder wa_sessions jika belum ada
+// Pastikan folder sesi WA ada
 const sessionsDir = path.join(__dirname, 'wa_sessions');
 if (!fs.existsSync(sessionsDir)) {
     fs.mkdirSync(sessionsDir, { recursive: true });
 }
 
-// 3. Middleware Body Parser & Asset Static
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -25,7 +25,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 4. Koneksi PostgreSQL (Neon.tech)
+// PostgreSQL Connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -39,7 +39,7 @@ const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 
-// 5. Otomatisasi Tabel Database
+// Auto Init Database Tables & Seed Data
 async function initDB() {
     if (!process.env.DATABASE_URL) return;
 
@@ -106,7 +106,7 @@ async function initDB() {
 }
 initDB();
 
-// 6. Integrasi WhatsApp Engine
+// WhatsApp Engine
 async function connectToWhatsApp(userId) {
     try {
         const authFolder = path.join(sessionsDir, `user_${userId}`);
@@ -147,17 +147,16 @@ async function connectToWhatsApp(userId) {
     }
 }
 
-// 7. ROUTE HALAMAN WEB & AKSI LOGIN
+// ---------------- ROUTES ---------------- //
 
-// Tampilan Login
+// 1. Halaman Login
 app.get('/', (req, res) => {
     res.render('login', { error: null });
 });
 
-// Proses Form Login
+// 2. Aksinya (POST Login)
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-
     try {
         const result = await pool.query(
             'SELECT * FROM users WHERE username = $1 AND password = $2',
@@ -169,20 +168,18 @@ app.post('/login', async (req, res) => {
         }
 
         const user = result.rows[0];
-
         if (user.role === 'ADMIN') {
             return res.redirect(`/admin?userId=${user.id}`);
         } else {
             return res.redirect(`/wali?userId=${user.id}`);
         }
-
     } catch (err) {
-        console.error("Error pada saat login:", err.message);
+        console.error("Error Login:", err.message);
         return res.render('login', { error: 'Terjadi kesalahan sistem saat login.' });
     }
 });
 
-// Admin Dashboard
+// 3. Admin Dashboard
 app.get('/admin', async (req, res) => {
     const userId = req.query.userId || 1;
     try {
@@ -202,7 +199,7 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// Wali Kelas Dashboard
+// 4. Wali Kelas Dashboard
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId || 2;
     try {
@@ -243,13 +240,14 @@ app.get('/wali', async (req, res) => {
     }
 });
 
-// Scanner Page
+// 5. Halaman Scan QR Code
 app.get('/scan', (req, res) => {
     const userId = req.query.userId || 1;
-    res.render('scanner', { userId: userId });
+    res.render('scanner', { userId: userId, error: null });
 });
 
-// 8. API Endpoints
+// ---------------- API ENDPOINTS ---------------- //
+
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId || 1;
     connectToWhatsApp(userId);
@@ -325,5 +323,4 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
-// 9. Jalankan Server
 app.listen(PORT, () => console.log(`🚀 Server aktif di port ${PORT}`));
