@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
@@ -9,13 +10,18 @@ const QRCode = require('qrcode');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Pastikan Folder Penyimpanan WA Sessions Tersedia
+const sessionsDir = path.join(__dirname, 'wa_sessions');
+if (!fs.existsSync(sessionsDir)) {
+    fs.mkdirSync(sessionsDir, { recursive: true });
+}
+
 // ==========================================
-// 1. MIDDLEWARE PARSING (PENTING AGAR API SCAN JALAN)
+// 1. MIDDLEWARE PARSING
 // ==========================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Setup View Engine & Folder Statis
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -25,16 +31,24 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Penyimpanan Sesi WhatsApp Multi-User
+// Tangkap Eror Koneksi Database Agar Server Tidak Crash
+pool.on('error', (err) => {
+    console.error('❌ Error tak terduga pada PostgreSQL Client:', err);
+});
+
 const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 
 // Inisialisasi Otomatis Tabel Database
 async function initDB() {
+    if (!process.env.DATABASE_URL) {
+        console.error("⚠️ WARNING: DATABASE_URL belum diatur di Environment Variables Render!");
+        return;
+    }
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS kelas (
@@ -68,54 +82,56 @@ initDB();
 // 3. INTEGRASI WHATSAPP ENGINE (BAILEYS)
 // ==========================================
 async function connectToWhatsApp(userId) {
-    const authFolder = path.join(__dirname, 'wa_sessions', `user_${userId}`);
-    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+    try {
+        const authFolder = path.join(sessionsDir, `user_${userId}`);
+        const { state, saveCreds } = await useMultiFileAuthState(authFolder);
 
-    const sock = makeWASocket({
-        logger: pino({ level: 'silent' }),
-        auth: state,
-        printQRInTerminal: false
-    });
+        const sock = makeWASocket({
+            logger: pino({ level: 'silent' }),
+            auth: state,
+            printQRInTerminal: false
+        });
 
-    waSessions[userId] = sock;
+        waSessions[userId] = sock;
 
-    sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-            qrCodes[userId] = await QRCode.toDataURL(qr);
-            waStatus[userId] = 'MENUNGGU_SCAN';
-        }
-
-        if (connection === 'open') {
-            waStatus[userId] = 'TERHUBUNG';
-            delete qrCodes[userId];
-            console.log(`✅ WA User ID ${userId} berhasil terhubung.`);
-        }
-
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
-            waStatus[userId] = 'TERPUTUS';
-            delete waSessions[userId];
-            if (shouldReconnect) {
-                connectToWhatsApp(userId);
+            if (qr) {
+                qrCodes[userId] = await QRCode.toDataURL(qr);
+                waStatus[userId] = 'MENUNGGU_SCAN';
             }
-        }
-    });
+
+            if (connection === 'open') {
+                waStatus[userId] = 'TERHUBUNG';
+                delete qrCodes[userId];
+                console.log(`✅ WA User ID ${userId} berhasil terhubung.`);
+            }
+
+            if (connection === 'close') {
+                const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
+                waStatus[userId] = 'TERPUTUS';
+                delete waSessions[userId];
+                if (shouldReconnect) {
+                    connectToWhatsApp(userId);
+                }
+            }
+        });
+    } catch (err) {
+        console.error(`❌ Gagal menyambungkan WA untuk User ${userId}:`, err);
+    }
 }
 
 // ==========================================
 // 4. ROUTE HALAMAN WEB
 // ==========================================
 
-// Halaman Login
 app.get('/', (req, res) => {
     res.render('login');
 });
 
-// Halaman Dashboard Admin
 app.get('/admin', async (req, res) => {
     const userId = req.query.userId;
     try {
@@ -135,7 +151,6 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// Halaman Dashboard Wali Kelas
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.redirect('/');
@@ -179,7 +194,6 @@ app.get('/wali', async (req, res) => {
     }
 });
 
-// Halaman Scanner QR Presensi
 app.get('/scan', (req, res) => {
     const userId = req.query.userId || 1;
     res.render('scanner', { userId: userId });
@@ -189,7 +203,6 @@ app.get('/scan', (req, res) => {
 // 5. API ENDPOINTS (WA & SCANNER)
 // ==========================================
 
-// API Mulai Sesi WA
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.json({ success: false, message: 'User ID diperlukan' });
@@ -198,7 +211,6 @@ app.get('/api/start-wa', (req, res) => {
     res.json({ success: true, message: 'Socket WA sedang dinyalakan.' });
 });
 
-// API Cek Status WA
 app.get('/api/status-wa', (req, res) => {
     const userId = req.query.userId;
     res.json({
@@ -207,7 +219,6 @@ app.get('/api/status-wa', (req, res) => {
     });
 });
 
-// API PROSES SCAN PRESENSI SISWA (ROUTER UTAMA)
 app.post('/api/scan', async (req, res) => {
     const { siswa_id, scanned_by } = req.body;
 
@@ -216,7 +227,6 @@ app.post('/api/scan', async (req, res) => {
     }
 
     try {
-        // 1. Cari siswa di database
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM siswa s 
@@ -227,19 +237,17 @@ app.post('/api/scan', async (req, res) => {
         if (siswaRes.rows.length === 0) {
             return res.status(404).json({ 
                 success: false, 
-                message: `ID Siswa #${siswa_id} Tidak Ditemukan di Database!` 
+                message: `ID Siswa #${siswa_id} Tidak Ditemukan!` 
             });
         }
 
         const siswa = siswaRes.rows[0];
 
-        // 2. Simpan catatan absensi
         await pool.query(`
             INSERT INTO absensi (siswa_id, status, scanned_by) 
             VALUES ($1, 'HADIR', $2)
         `, [siswa.id, scanned_by || null]);
 
-        // 3. Kirim WhatsApp ke Orang Tua jika WA Guru Aktif
         const waClient = waSessions[scanned_by];
         if (waClient && siswa.nomor_wa_ortu) {
             let formattedPhone = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
@@ -266,7 +274,6 @@ app.post('/api/scan', async (req, res) => {
             });
         }
 
-        // 4. Balasan ke Tampilan Scanner Web
         return res.json({
             success: true,
             message: "Presensi berhasil dicatat.",
