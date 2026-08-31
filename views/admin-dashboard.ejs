@@ -17,7 +17,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold leading-tight">Panel Administrator</h2>
-                    <p class="text-xs text-slate-400">Pengelolaan Data Pengguna, Siswa & Absensi</p>
+                    <p class="text-xs text-slate-400">Pengelolaan Data Pengguna, Guru & Absensi</p>
                 </div>
             </div>
             <a href="/" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-rose-400 px-4 py-2 rounded-xl border border-slate-700 transition">
@@ -31,7 +31,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total User & Guru</p>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Guru & Akun</p>
                     <h3 class="text-3xl font-extrabold text-slate-800 mt-1"><%= users.length %></h3>
                 </div>
                 <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl">
@@ -63,8 +63,8 @@
         <!-- Tabel Daftar Akun Pengguna / Guru -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-6 border-b border-slate-100">
-                <h3 class="font-bold text-slate-800 text-lg">Daftar Akun Pengguna & Guru</h3>
-                <p class="text-xs text-slate-500">Menampilkan Nama Pengguna, Username, Peran, serta Nama Kelas diampunya</p>
+                <h3 class="font-bold text-slate-800 text-lg">Daftar Guru & Akses Pengguna</h3>
+                <p class="text-xs text-slate-500">Menampilkan Nama Pengguna, Username, Peran, serta Tugas Kelas yang Diampu</p>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-slate-600">
@@ -73,28 +73,34 @@
                             <th class="p-4">ID</th>
                             <th class="p-4">Nama Lengkap</th>
                             <th class="p-4">Username</th>
-                            <th class="p-4">Role</th>
-                            <th class="p-4">Kelas Diampu</th>
+                            <th class="p-4">Peran (Role)</th>
+                            <th class="p-4">Tugas / Kelas</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <% users.forEach(u => { %>
-                            <tr class="hover:bg-slate-50/80 transition">
-                                <td class="p-4 font-mono text-xs text-slate-400"><%= u.id %></td>
-                                <td class="p-4 font-bold text-slate-800"><%= u.nama %></td>
-                                <td class="p-4 font-mono text-blue-600"><%= u.username %></td>
-                                <td class="p-4">
-                                    <% if (u.role === 'ADMIN_OPS') { %>
-                                        <span class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold">Admin</span>
-                                    <% } else if (u.role === 'WALI_KELAS') { %>
-                                        <span class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">Wali Kelas</span>
-                                    <% } else { %>
-                                        <span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold">Guru Mapel</span>
-                                    <% } %>
-                                </td>
-                                <td class="p-4 font-semibold text-slate-700"><%= u.nama_kelas %></td>
+                        <% if (users.length === 0) { %>
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400">Belum ada data guru/pengguna terdaftar.</td>
                             </tr>
-                        <% }) %>
+                        <% } else { %>
+                            <% users.forEach(u => { %>
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="p-4 font-mono text-xs text-slate-400"><%= u.id %></td>
+                                    <td class="p-4 font-bold text-slate-800"><%= u.nama %></td>
+                                    <td class="p-4 font-mono text-blue-600"><%= u.username %></td>
+                                    <td class="p-4">
+                                        <% if (u.role === 'ADMIN_OPS') { %>
+                                            <span class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold">Admin</span>
+                                        <% } else if (u.role === 'WALI_KELAS') { %>
+                                            <span class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">Wali Kelas</span>
+                                        <% } else { %>
+                                            <span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold">Guru Mapel</span>
+                                        <% } %>
+                                    </td>
+                                    <td class="p-4 font-semibold text-slate-700"><%= u.nama_kelas %></td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
                     </tbody>
                 </table>
             </div>
