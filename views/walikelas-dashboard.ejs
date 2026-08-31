@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Dashboard Wali Kelas</title></head>
+<body style="font-family: Arial; padding: 20px;">
+    <h2>Selamat Datang, <%= user.nama %> (<%= user.nama_kelas %>)</h2>
+    <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px;">
+        <h3>Status WA: <span style="color: <%= statusWA === 'TERHUBUNG' ? 'green' : 'red' %>;"><%= statusWA %></span></h3>
+        <% if (statusWA !== 'TERHUBUNG') { %>
+            <p>Scan QR WhatsApp Web di bawah menggunakan aplikasi WA di HP Anda:</p>
+            <% if (qrCodeWA) { %>
+                <img src="<%= qrCodeWA %>" width="250">
+            <% } else { %>
+                <p><i>Memuat QR Code... Segarkan halaman (refresh) berkala.</i></p>
+            <% } %>
+        <% } else { %>
+            <p>✅ WhatsApp Aktif.</p>
+        <% } %>
+    </div>
+    <% if (statusWA === 'TERHUBUNG') { %>
+        <a href="/scan?userId=<%= userId %>" style="padding: 15px 25px; background: green; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            📷 Buka Kamera Scanner
+        </a>
+    <% } %>
+</body>
+</html>
