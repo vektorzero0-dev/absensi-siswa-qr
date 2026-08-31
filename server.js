@@ -10,22 +10,22 @@ const QRCode = require('qrcode');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Buat folder wa_sessions secara aman
+// 1. Buat folder wa_sessions secara aman jika belum ada
 const sessionsDir = path.join(__dirname, 'wa_sessions');
 if (!fs.existsSync(sessionsDir)) {
     fs.mkdirSync(sessionsDir, { recursive: true });
 }
 
-// 2. Middleware Parsing Body Data
+// 2. Middleware Parsing Body & Static Assets
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Setup View Engine
+// Setup View Engine EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 3. Database Connection
+// 3. Database Connection (PostgreSQL / Neon.tech)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -39,10 +39,10 @@ const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 
-// 4. Inisialisasi Tabel Database dengan Urutan SQL yang Benar
+// 4. Inisialisasi Otomatis Tabel Database
 async function initDB() {
     if (!process.env.DATABASE_URL) {
-        console.error("⚠️ DATABASE_URL belum diset di Environment Variables Render!");
+        console.error("⚠️ DATABASE_URL belum diatur pada Environment Variables Render!");
         return;
     }
 
@@ -50,7 +50,7 @@ async function initDB() {
     try {
         await client.query('BEGIN');
 
-        // Step A: Buat Tabel Kelas Utama
+        // Step A: Buat Tabel Kelas
         await client.query(`
             CREATE TABLE IF NOT EXISTS kelas (
                 id SERIAL PRIMARY KEY,
@@ -58,7 +58,7 @@ async function initDB() {
             );
         `);
 
-        // Step B: Buat Tabel Users
+        // Step B: Buat Tabel Users (Admin & Wali Kelas)
         await client.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -91,12 +91,17 @@ async function initDB() {
             );
         `);
 
-        // Step E: Masukkan Data Awal (Default Data)
+        // Step E: Masukkan Data Bawaan / Uji Coba jika kosong
         await client.query(`
             INSERT INTO kelas (id, nama_kelas) VALUES (1, 'Kelas 1A') ON CONFLICT (id) DO NOTHING;
+            
             INSERT INTO users (id, nama, username, password, role, kelas_id) 
             VALUES (1, 'Admin Sekolah', 'admin', 'admin123', 'ADMIN', NULL),
                    (2, 'Guru Kelas 1A', 'wali1', 'wali123', 'WALI_KELAS', 1) 
+            ON CONFLICT (id) DO NOTHING;
+
+            INSERT INTO siswa (id, nama, kelas_id, nomor_wa_ortu)
+            VALUES (1, 'Budi Santoso', 1, '081234567890')
             ON CONFLICT (id) DO NOTHING;
         `);
 
@@ -152,9 +157,14 @@ async function connectToWhatsApp(userId) {
     }
 }
 
-// 6. Web Routes
-app.get('/', (req, res) => res.render('login'));
+// 6. Routes Halaman Web
 
+// Route Login (Sudah Diperbaiki Mengirimkan error: null)
+app.get('/', (req, res) => {
+    res.render('login', { error: null });
+});
+
+// Route Admin Dashboard
 app.get('/admin', async (req, res) => {
     const userId = req.query.userId || 1;
     try {
@@ -174,6 +184,7 @@ app.get('/admin', async (req, res) => {
     }
 });
 
+// Route Dashboard Wali Kelas
 app.get('/wali', async (req, res) => {
     const userId = req.query.userId || 2;
     try {
@@ -214,12 +225,13 @@ app.get('/wali', async (req, res) => {
     }
 });
 
+// Route Scanner QR Code
 app.get('/scan', (req, res) => {
     const userId = req.query.userId || 1;
     res.render('scanner', { userId: userId });
 });
 
-// 7. API Scanner & WA
+// 7. API Endpoints (Scanner & WA)
 app.get('/api/start-wa', (req, res) => {
     const userId = req.query.userId || 1;
     connectToWhatsApp(userId);
@@ -258,11 +270,13 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
+        // Catat Absensi Ke Database
         await pool.query(`
             INSERT INTO absensi (siswa_id, status, scanned_by) 
             VALUES ($1, 'HADIR', $2)
         `, [siswa.id, scanned_by || 1]);
 
+        // Kirim Notifikasi WhatsApp ke Orang Tua
         const waClient = waSessions[scanned_by || 1];
         if (waClient && siswa.nomor_wa_ortu) {
             let formattedPhone = siswa.nomor_wa_ortu.replace(/[^0-9]/g, '');
@@ -295,4 +309,5 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// 8. Menjalankan Express Server
 app.listen(PORT, () => console.log(`🚀 Server aktif di port ${PORT}`));
