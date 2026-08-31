@@ -1,74 +1,71 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistem Absensi Sekolah</title>
+    <title>Login - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        @keyframes pulseGlowBlue {
-            0%, 100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.2); }
-            50% { box-shadow: 0 0 40px rgba(6, 182, 212, 0.6); }
-        }
-        .glow-card { animation: pulseGlowBlue 4s infinite ease-in-out; }
-    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-black">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans">
 
     <div class="flex-grow flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-slate-900/90 rounded-3xl p-8 border border-slate-800 shadow-2xl backdrop-blur-xl relative glow-card">
+        <div class="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
             
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/30 text-white text-2xl">
-                    <i class="fa-solid fa-qrcode"></i>
+            <!-- Header Sekolah -->
+            <div class="bg-blue-900 text-white p-6 text-center border-b-4 border-amber-400">
+                <div class="w-16 h-16 bg-white text-blue-900 rounded-full flex items-center justify-center mx-auto mb-3 shadow-md text-2xl font-black">
+                    <i class="fa-solid fa-school"></i>
                 </div>
-                <h1 class="text-2xl font-black text-white tracking-wide">ABSENSI DIGITAL</h1>
-                <p class="text-xs text-cyan-400 font-mono mt-1">Sistem Presensi Real-Time Sekolah</p>
+                <h1 class="text-base font-extrabold tracking-wide uppercase leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                <p class="text-xs text-blue-200 mt-1">Sistem Absensi Digital & Gateway WhatsApp</p>
             </div>
 
-            <% if (error) { %>
-                <div class="mb-6 bg-rose-950/60 border border-rose-800/80 text-rose-300 px-4 py-3 rounded-xl text-xs flex items-center gap-2 font-mono">
-                    <i class="fa-solid fa-triangle-exclamation text-rose-400 text-sm"></i>
-                    <span><%= error %></span>
-                </div>
-            <% } %>
-
-            <form action="/login" method="POST" class="space-y-5">
-                <div>
-                    <label class="block text-xs font-mono text-slate-400 mb-2 uppercase">Username</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-slate-500 text-sm"></i>
-                        <input type="text" name="username" required placeholder="Masukkan username" 
-                               class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
+            <div class="p-6">
+                <% if (error) { %>
+                    <div class="mb-4 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation text-rose-500"></i>
+                        <span><%= error %></span>
                     </div>
-                </div>
+                <% } %>
 
-                <div>
-                    <label class="block text-xs font-mono text-slate-400 mb-2 uppercase">Password</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-500 text-sm"></i>
-                        <input type="password" name="password" required placeholder="Masukkan password" 
-                               class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
+                <form action="/login" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Username / NIP</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-user absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                            <input type="text" name="username" required placeholder="Masukkan Username" 
+                                   class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-800 focus:outline-none focus:border-blue-700 focus:bg-white transition">
+                        </div>
                     </div>
-                </div>
 
-                <button type="submit" 
-                        class="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black py-3.5 rounded-xl shadow-lg shadow-cyan-500/25 transition duration-300 transform active:scale-95 text-sm uppercase tracking-wider">
-                    Masuk ke Sistem <i class="fa-solid fa-arrow-right-to-bracket ml-2"></i>
-                </button>
-            </form>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-lock absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                            <input type="password" name="password" required placeholder="Masukkan Password" 
+                                   class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-800 focus:outline-none focus:border-blue-700 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 text-sm flex items-center justify-center gap-2">
+                        <span>Masuk ke Dashboard</span>
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Footer Developer Zeeo -->
-    <footer class="border-t border-slate-800/80 bg-slate-950/90 py-4">
-        <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono text-slate-500">
-            <p>Dikembangkan oleh <span class="text-cyan-400 font-bold">Zeeo</span></p>
-            <div class="flex items-center gap-4">
-                <a href="mailto:vektorzero0@gmail.com" class="hover:text-cyan-400"><i class="fa-regular fa-envelope text-cyan-500"></i> vektorzero0@gmail.com</a>
+    <!-- Footer Developer -->
+    <footer class="bg-white border-t border-slate-200 py-3 text-slate-600 text-xs">
+        <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="font-medium">Dikembangkan oleh <span class="font-bold text-blue-900">Zeeo</span></p>
+            <div class="flex items-center gap-4 text-slate-500">
+                <a href="mailto:vektorzero0@gmail.com" class="hover:text-blue-700"><i class="fa-regular fa-envelope text-blue-800 mr-1"></i>vektorzero0@gmail.com</a>
                 <span>|</span>
-                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-400"><i class="fa-brands fa-whatsapp text-emerald-500"></i> 082371729760</a>
+                <a href="https://wa.me/6282371729760" target="_blank" class="hover:text-emerald-600"><i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i>082371729760</a>
             </div>
         </div>
     </footer>
