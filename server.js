@@ -39,7 +39,7 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
-// ----------------- POSTGRES AUTH STATE (WA SESI) ----------------- //
+// ----------------- POSTGRES AUTH STATE ----------------- //
 
 async function usePostgresAuthState(pool, userId) {
     const keyPrefix = `user_${userId}:`;
@@ -144,10 +144,11 @@ async function connectToWhatsApp(userId) {
             logger: pino({ level: 'silent' }),
             auth: state,
             printQRInTerminal: false,
-            browser: ["Ubuntu", "Chrome", "120.0.0.0"],
+            browser: ["Mac OS", "Chrome", "121.0.0.0"],
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
-            keepAliveIntervalMs: 25000
+            keepAliveIntervalMs: 30000,
+            qrTimeout: 40000
         });
 
         waSessions[userId] = sock;
@@ -160,23 +161,21 @@ async function connectToWhatsApp(userId) {
                 try {
                     qrCodes[userId] = await QRCode.toDataURL(qr);
                     waStatus[userId] = 'MENUNGGU_SCAN';
-                    console.log(`✅ [User #${userId}] QR Code Berhasil Di-generate!`);
+                    console.log(`✅ [User #${userId}] QR Code Berhasil Dibuat!`);
                 } catch (qrErr) {
-                    console.error("Gagal convert QR ke DataURL:", qrErr);
+                    console.error("Gagal buat QR DataURL:", qrErr);
                 }
             }
 
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ [User #${userId}] WhatsApp Terhubung & Aktif!`);
+                console.log(`✅ [User #${userId}] WhatsApp Terhubung!`);
             }
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
-
-                console.log(`⚠️ [User #${userId}] WA Terputus (Status Code: ${statusCode}). Reconnect: ${shouldReconnect}`);
 
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
@@ -190,7 +189,7 @@ async function connectToWhatsApp(userId) {
             }
         });
     } catch (err) {
-        console.error(`❌ WA Connect Fatal Error User #${userId}:`, err.message);
+        console.error(`❌ WA Connect Error User #${userId}:`, err.message);
         waStatus[userId] = 'ERROR';
     }
 }
@@ -328,11 +327,10 @@ app.get(['/scan', '/scanner'], (req, res) => {
     res.render('scan', { userId: userId });
 });
 
-// ---------------- API WA GATEWAY ---------------- //
+// ---------------- API WA GATEWAY REAL-TIME ---------------- //
 
 app.get('/api/start-wa', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
-    console.log(`🚀 Menerima permintaan awal koneksi WA User #${userId}`);
     connectToWhatsApp(userId);
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
@@ -479,7 +477,6 @@ app.get('/api/absensi/export', async (req, res) => {
         const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][parseInt(bulan) - 1];
         const judul = `REKAP PRESENSI SISWA - ${namaBulan.toUpperCase()} ${tahun}`;
 
-        // EXCEL (.xlsx)
         if (format === 'excel') {
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('Rekap Absensi');
@@ -513,7 +510,6 @@ app.get('/api/absensi/export', async (req, res) => {
             return workbook.xlsx.write(res).then(() => res.end());
         }
 
-        // WORD (.docx)
         if (format === 'word') {
             const tableRows = [
                 new TableRow({
@@ -551,7 +547,6 @@ app.get('/api/absensi/export', async (req, res) => {
             return res.send(buffer);
         }
 
-        // PDF (.pdf)
         if (format === 'pdf') {
             const doc = new PDFDocument({ margin: 40, size: 'A4' });
             res.setHeader('Content-Type', 'application/pdf');
