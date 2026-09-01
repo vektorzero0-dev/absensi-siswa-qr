@@ -34,13 +34,12 @@ const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 
-// Pembersih Gelar Guru
 function bersihkanGelar(nama) {
     if (!nama) return '';
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
-// ----------------- POSTGRES AUTH STATE (SIMPAN WA DI NEON DB) ----------------- //
+// ----------------- POSTGRES AUTH STATE ----------------- //
 
 async function usePostgresAuthState(pool, userId) {
     const keyPrefix = `user_${userId}:`;
@@ -124,7 +123,8 @@ async function connectToWhatsApp(userId) {
         const sock = makeWASocket({ 
             logger: pino({ level: 'silent' }), 
             auth: state, 
-            printQRInTerminal: false 
+            printQRInTerminal: false,
+            browser: ["SDN 1 KMS Presensi", "Chrome", "1.0.0"]
         });
 
         waSessions[userId] = sock;
@@ -132,21 +132,26 @@ async function connectToWhatsApp(userId) {
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
+            
             if (qr) {
                 qrCodes[userId] = await QRCode.toDataURL(qr);
                 waStatus[userId] = 'MENUNGGU_SCAN';
+                console.log(`📱 QR Code dibuat untuk User #${userId}`);
             }
+            
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung & Tersimpan di DB`);
+                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung`);
             }
+            
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
                 
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
+                delete qrCodes[userId];
                 
                 if (shouldReconnect) {
                     connectToWhatsApp(userId);
@@ -160,7 +165,7 @@ async function connectToWhatsApp(userId) {
     }
 }
 
-// Auto Load Sesi WA saat Server Restart
+// Auto Load Saved Session
 async function autoLoadSavedSessions() {
     try {
         const res = await pool.query(`SELECT DISTINCT key FROM wa_sessions`);
@@ -290,11 +295,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...s, qrImage };
         }));
 
-        // OTOMATIS PICU KONEKSI WA JIKA BELUM TERHUBUNG & BELUM ADA QR
-        if (!waSessions[userId] && (!waStatus[userId] || waStatus[userId] === 'BELUM_TERHUBUNG')) {
-            connectToWhatsApp(userId);
-        }
-
         res.render('walikelas-dashboard', {
             user: userRaw,
             siswaList: siswaData,
@@ -342,12 +342,24 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
     }
 });
 
-// ---------------- API SCANNER & WA GATEWAY ---------------- //
+// ---------------- API SCANNER & WA GATEWAY REAL-TIME ---------------- //
 
-app.get('/api/start-wa', (req, res) => {
+app.get('/api/start-wa', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
-    connectToWhatsApp(userId);
+    if (!waSessions[userId]) {
+        await connectToWhatsApp(userId);
+    }
     res.json({ success: true, message: 'Menginisialisasi WhatsApp Gateway...' });
+});
+
+// Endpoint Polling QR Code Real-Time
+app.get('/api/wa-status', (req, res) => {
+    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    res.json({
+        success: true,
+        statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
+        qrCodeWA: qrCodes[userId] || null
+    });
 });
 
 app.post('/api/scan', async (req, res) => {
@@ -555,7 +567,7 @@ app.get('/api/absensi/export', async (req, res) => {
             return res.send(buffer);
         }
 
-        // PDF (.pdf) - Pengolahan PDFKit Aman & Teruji
+        // PDF (.pdf)
         if (format === 'pdf') {
             const doc = new PDFDocument({ margin: 40, size: 'A4' });
             res.setHeader('Content-Type', 'application/pdf');
