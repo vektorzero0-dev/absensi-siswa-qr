@@ -336,7 +336,15 @@
                     }, 2000);
                 });
         }
-
+function resetWA() {
+    if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp?')) return;
+    fetch(`/api/reset-wa?userId=${currentUserId}`)
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            cekStatusWA();
+        });
+}
         // Cek otomatis setiap 2 detik secara teratur tanpa refresh halaman
         setInterval(cekStatusWA, 2000);
         cekStatusWA();
