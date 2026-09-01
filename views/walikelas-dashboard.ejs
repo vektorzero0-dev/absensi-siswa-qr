@@ -47,7 +47,7 @@
             </div>
         </div>
 
-        <!-- WA Gateway Panel Dynamic -->
+        <!-- WA Gateway Panel Dynamic (Dukungan Dual-Mode: Scan QR & Kode Tautan Nomor WA) -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
@@ -62,17 +62,20 @@
             </div>
 
             <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <!-- Penampung Gambar QR Code -->
                 <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
                     <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
                     <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
                 </div>
 
+                <!-- Penampung Kode Tautan Nomor HP -->
                 <div id="pairingContainer" class="hidden bg-blue-50 p-3 rounded-xl border border-blue-200 text-center min-w-[200px]">
                     <span class="text-[10px] text-blue-800 font-medium block">Kode Tautan WhatsApp Anda:</span>
                     <strong id="pairingCodeText" class="text-xl font-mono text-blue-900 tracking-widest my-1 block">-</strong>
                     <span class="text-[9px] text-blue-700 block">Masukkan di WA HP (Tautkan dg nomor)</span>
                 </div>
 
+                <!-- Tombol Aksi Gateway -->
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
                     <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5">
                         <i class="fa-solid fa-qrcode"></i> Scan QR
@@ -249,7 +252,7 @@
                                     </td>
                                     <td class="p-3 text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <!-- PENGGUNAAN DATA ATTRIBUTE UNTUK MENCEGAH SANITASI ERROR -->
+                                            <!-- Tombol Edit dengan Proteksi Karakter Spesial -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
@@ -259,6 +262,7 @@
                                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                                             </button>
 
+                                            <!-- Tombol Hapus dengan Proteksi Karakter Spesial -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
@@ -280,7 +284,7 @@
             </div>
         </div>
 
-        <!-- Form Tersembunyi untuk Hapus Siswa -->
+        <!-- Form Tersembunyi untuk Proses Hapus Siswa -->
         <form id="formHapusSiswa" action="" method="POST" class="hidden"></form>
 
         <!-- Tabel Log Absensi Hari Ini -->
@@ -322,7 +326,7 @@
 
     </main>
 
-    <!-- MODAL EDIT DATA SISWA -->
+    <!-- MODAL POP-UP EDIT DATA SISWA -->
     <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
@@ -442,10 +446,11 @@
                 });
         }
 
+        // Cek otomatis setiap 2 detik secara teratur tanpa refresh halaman
         setInterval(cekStatusWA, 2000);
         cekStatusWA();
 
-        // DECODE DATA PADA MODAL EDIT AGAR AMAN DARI PETIK
+        // Buka Modal Edit Siswa dengan Aman
         function bukaModalEditSiswa(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -461,7 +466,7 @@
             document.getElementById('modalEditSiswa').classList.add('hidden');
         }
 
-        // DECODE DATA PADA FUNGSI HAPUS SISWA
+        // Hapus Siswa dengan Aman
         function hapusSiswa(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
