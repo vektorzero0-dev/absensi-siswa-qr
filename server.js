@@ -146,17 +146,19 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
-
+                
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
 
-                if (shouldReconnect) {
-                    console.log(`🔄 Sambung ulang User #${userId}...`);
+                // PERBAIKAN: Hanya hapus folder sesi jika DIBUTUHKAN / Di-logout manual dari HP (Status 401 eksplisit)
+                const isExplicitLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
+
+                if (!isExplicitLoggedOut) {
+                    console.log(`🔄 Menyambung ulang WhatsApp secara otomatis tanpa Scan QR untuk User #${userId}...`);
                     setTimeout(() => connectToWhatsApp(userId), 3000);
                 } else {
-                    console.log(`🚪 User #${userId} Logged Out. Hapus Sesi Folder...`);
+                    console.log(`🚪 User #${userId} secara resmi di-logout dari HP. Menghapus folder sesi...`);
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
                     const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
@@ -165,7 +167,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                     }
                 }
             }
-        });
     } catch (err) {
         console.error(`❌ WA Connect Error User #${userId}:`, err.message);
         waStatus[userId] = 'ERROR';
