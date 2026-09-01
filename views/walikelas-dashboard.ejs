@@ -252,7 +252,7 @@
                                     </td>
                                     <td class="p-3 text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <!-- Tombol Edit Aman -->
+                                            <!-- Tombol Edit dengan Proteksi Karakter Spesial -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
@@ -262,7 +262,7 @@
                                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                                             </button>
 
-                                            <!-- Tombol Hapus Aman -->
+                                            <!-- Tombol Hapus dengan Proteksi Karakter Spesial -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
@@ -284,7 +284,7 @@
             </div>
         </div>
 
-        <!-- Form Tersembunyi untuk Hapus Siswa -->
+        <!-- Form Tersembunyi untuk Proses Hapus Siswa -->
         <form id="formHapusSiswa" action="" method="POST" class="hidden"></form>
 
         <!-- Tabel Log Absensi Hari Ini -->
@@ -326,7 +326,7 @@
 
     </main>
 
-    <!-- MODAL EDIT DATA SISWA -->
+    <!-- MODAL POP-UP EDIT DATA SISWA -->
     <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
@@ -450,6 +450,7 @@
         setInterval(cekStatusWA, 2000);
         cekStatusWA();
 
+        // Buka Modal Edit Siswa dengan Aman
         function bukaModalEditSiswa(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -465,6 +466,7 @@
             document.getElementById('modalEditSiswa').classList.add('hidden');
         }
 
+        // Hapus Siswa dengan Aman
         function hapusSiswa(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
