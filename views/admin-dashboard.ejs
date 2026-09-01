@@ -80,6 +80,27 @@
             </div>
         </div>
 
+        <!-- Panel Impor Massal Data Siswa Dapodik -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+            <div class="flex items-center gap-3 mb-3 border-b border-slate-100 pb-2">
+                <div class="bg-emerald-50 text-emerald-700 p-2.5 rounded-xl border border-emerald-200">
+                    <i class="fa-solid fa-file-excel text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Impor Massal Data Siswa (Format Dapodik/Excel)</h3>
+                    <p class="text-[11px] text-slate-500">Unggah berkas rekap Excel (.xlsx / .csv) dari Dapodik untuk menambahkan siswa & rombel secara otomatis.</p>
+                </div>
+            </div>
+
+            <form id="formImportExcel" onsubmit="prosesImportExcel(event)" class="flex flex-col sm:flex-row items-center gap-3">
+                <input type="file" id="fileExcelInput" accept=".xlsx, .xls, .csv" required class="flex-1 text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-300 rounded-xl p-1 w-full bg-slate-50">
+                
+                <button type="submit" id="btnImportExcel" class="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-800 whitespace-nowrap">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data
+                </button>
+            </form>
+        </div>
+
         <!-- Form Tambah -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
@@ -128,7 +149,7 @@
             </div>
         </div>
 
-        <!-- Form Tambah Siswa Global -->
+        <!-- Form Tambah Siswa Manual -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <i class="fa-solid fa-address-card text-emerald-600"></i> Registrasi Peserta Didik Baru
@@ -175,10 +196,15 @@
                                     </span>
                                 </td>
                                 <td class="p-3 text-blue-700 font-medium"><%= u.nama_kelas %></td>
-                                <td class="p-3 text-center">
+                                <td class="p-3 text-center flex justify-center gap-2">
+                                    <!-- Tombol Edit Guru -->
+                                    <button type="button" onclick="bukaModalEditGuru('<%= u.id %>', '<%= u.nama %>', '<%= u.username %>', '<%= u.kelas_id || '' %>')" class="text-blue-600 hover:text-blue-800 text-xs font-medium bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg transition">
+                                        <i class="fa-solid fa-pen-to-square mr-1"></i> Edit / Password
+                                    </button>
+
                                     <% if (u.role !== 'ADMIN') { %>
                                         <form action="/api/guru/hapus/<%= u.id %>" method="POST" onsubmit="return confirm('Hapus pengguna ini?');" class="inline">
-                                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium">
+                                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition">
                                                 <i class="fa-solid fa-trash mr-1"></i> Hapus
                                             </button>
                                         </form>
@@ -250,6 +276,105 @@
         </div>
 
     </main>
+
+    <!-- MODAL EDIT DATA GURU & UBAH PASSWORD -->
+    <div id="modalEditGuru" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-blue-600"></i> Edit Profil / Ubah Password Guru
+                </h3>
+                <button onclick="tutupModalEditGuru()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="formEditGuru" action="" method="POST" class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Nama Lengkap Guru</label>
+                    <input type="text" id="editNamaGuru" name="nama" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Username (Nama Pengguna)</label>
+                    <input type="text" id="editUsernameGuru" name="username" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                        Password Baru <span class="text-slate-400 font-normal">(Kosongkan jika tidak ingin diubah)</span>
+                    </label>
+                    <input type="password" id="editPasswordGuru" name="password" placeholder="Masukkan password baru" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Penugasan Rombel</label>
+                    <select id="editKelasGuru" name="kelas_id" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <option value="">-- Tanpa Penugasan --</option>
+                        <% kelas.forEach(k => { %>
+                            <option value="<%= k.id %>"><%= k.nama_kelas %></option>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="tutupModalEditGuru()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl border border-slate-300 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2.5 rounded-xl border border-blue-900 transition">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function prosesImportExcel(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileExcelInput');
+            const btn = document.getElementById('btnImportExcel');
+
+            if (!fileInput.files.length) return alert("Pilih berkas Excel terlebih dahulu!");
+
+            const formData = new FormData();
+            formData.append('file_excel', fileInput.files[0]);
+
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+            btn.disabled = true;
+
+            fetch('/api/siswa/import-excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data`;
+                btn.disabled = false;
+                if (data.success) location.reload();
+            })
+            .catch(err => {
+                console.error("Error Import:", err);
+                alert("Terjadi kesalahan saat mengunggah berkas.");
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data`;
+                btn.disabled = false;
+            });
+        }
+
+        function bukaModalEditGuru(id, nama, username, kelasId) {
+            document.getElementById('formEditGuru').action = `/api/guru/edit/${id}`;
+            document.getElementById('editNamaGuru').value = nama;
+            document.getElementById('editUsernameGuru').value = username;
+            document.getElementById('editPasswordGuru').value = '';
+            document.getElementById('editKelasGuru').value = kelasId;
+            document.getElementById('modalEditGuru').classList.remove('hidden');
+        }
+
+        function tutupModalEditGuru() {
+            document.getElementById('modalEditGuru').classList.add('hidden');
+        }
+    </script>
 
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
         <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
