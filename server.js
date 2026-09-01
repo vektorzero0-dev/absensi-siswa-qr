@@ -228,6 +228,7 @@ app.get('/admin', async (req, res) => {
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     const userId = parseInt(req.query.userId) || 1;
     try {
+        // 1. Ambil Data Guru / Wali Kelas
         const userRes = await pool.query(`SELECT id, nama, role, kelas_id FROM users WHERE id = $1`, [userId]);
         const userRaw = userRes.rows[0] || { id: userId, nama: 'Tenaga Pendidik', role: 'WALI_KELAS', kelas_id: null };
         userRaw.nama = bersihkanGelar(userRaw.nama);
@@ -239,23 +240,33 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         }
         userRaw.nama_kelas = namaKelas;
 
+        // 2. Ambil Data Siswa Sesuai Kelas (Aman dari SQL Injection)
         let siswaQuery = `SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id`;
-        if (userRaw.kelas_id) siswaQuery += ` WHERE s.kelas_id = ${parseInt(userRaw.kelas_id)}`;
+        const queryParamsSiswa = [];
+        if (userRaw.kelas_id) {
+            siswaQuery += ` WHERE s.kelas_id = $1`;
+            queryParamsSiswa.push(parseInt(userRaw.kelas_id));
+        }
         siswaQuery += ` ORDER BY s.nama ASC`;
-        const siswaRes = await pool.query(siswaQuery);
+        const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // PERBAIKAN SQL: Menghapus SELECT Ganda
+        // 3. Ambil Log Absensi Hari Ini (Dibersihkan dari SELECT Ganda)
         let absensiQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE DATE(a.waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            WHERE DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
         `;
-        if (userRaw.kelas_id) absensiQuery += ` AND s.kelas_id = ${parseInt(userRaw.kelas_id)}`;
+        const queryParamsAbsensi = [];
+        if (userRaw.kelas_id) {
+            absensiQuery += ` AND s.kelas_id = $1`;
+            queryParamsAbsensi.push(parseInt(userRaw.kelas_id));
+        }
         absensiQuery += ` ORDER BY a.waktu DESC`;
-        const absensiRes = await pool.query(absensiQuery);
+        const absensiRes = await pool.query(absensiQuery, queryParamsAbsensi);
 
+        // 4. Formatter Waktu WIB
         const absensiFormatted = absensiRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
             const waktuWIB = dateObj.toLocaleTimeString('id-ID', {
@@ -263,16 +274,18 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit'
-            }) + ' WIB';
+            }).replace(/\./g, ':') + ' WIB';
 
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        // 5. Generate QR Code Siswa
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await QRCode.toDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
 
+        // 6. Render ke walikelas-dashboard.ejs
         res.render('walikelas-dashboard', {
             user: userRaw,
             siswaList: siswaData,
@@ -282,7 +295,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
-        console.error("Dashboard Error:", err);
+        console.error("Dashboard Error User #" + userId + ":", err);
         res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
