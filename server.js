@@ -66,16 +66,21 @@ async function connectToWhatsApp(userId) {
 
         console.log(`⚡ [User #${userId}] Menginisialisasi WA Socket (Baileys v${version.join('.')})...`);
 
-        const sock = makeWASocket({
-            logger: pino({ level: 'silent' }),
-            auth: state,
-            printQRInTerminal: false,
-            browser: ["Mac OS", "Chrome", "121.0.0.0"],
-            connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 60000,
-            keepAliveIntervalMs: 25000,
-            qrTimeout: 40000
-        });
+        // Ganti opsi browser dan tambahkan opsi syncFullHistory: false
+const sock = makeWASocket({
+    logger: pino({ level: 'silent' }),
+    auth: state,
+    printQRInTerminal: false,
+    // Gunakan signature Ubuntu / Chrome yang lebih stabil untuk Baileys
+    browser: ["Ubuntu", "Chrome", "120.0.6099.109"],
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    keepAliveIntervalMs: 30000,
+    qrTimeout: 40000,
+    // Tambahkan 2 baris ini untuk mencegah timeout penautan di Render
+    syncFullHistory: false,
+    markOnlineOnConnect: false
+});
 
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
