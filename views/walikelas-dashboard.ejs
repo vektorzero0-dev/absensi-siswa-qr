@@ -226,12 +226,13 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
                     <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
                         <tr>
                             <th class="p-3">ID Siswa</th>
                             <th class="p-3">Kode QR</th>
                             <th class="p-3">Nama Lengkap Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
                             <th class="p-3">No. WA Orang Tua / Wali</th>
                             <th class="p-3 text-center">Tindakan</th>
                         </tr>
@@ -247,6 +248,11 @@
                                         </div>
                                     </td>
                                     <td class="p-3 font-semibold text-slate-900"><%= s.nama %></td>
+                                    <td class="p-3">
+                                        <span class="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded">
+                                            <%= s.nama_kelas || '-' %>
+                                        </span>
+                                    </td>
                                     <td class="p-3 font-mono text-slate-700">
                                         <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
                                     </td>
@@ -276,7 +282,7 @@
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="5" class="p-6 text-center text-slate-400 italic">Belum ada peserta didik terdaftar pada rombel ini.</td>
+                                <td colspan="6" class="p-6 text-center text-slate-400 italic">Belum ada peserta didik terdaftar pada rombel ini.</td>
                             </tr>
                         <% } %>
                     </tbody>
