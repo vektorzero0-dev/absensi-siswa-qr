@@ -49,7 +49,7 @@
             </div>
         </div>
 
-        <!-- PANEL INTEGRASI WHATSAPP GATEWAY -->
+        <!-- PANEL WHATSAPP GATEWAY -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3 mb-4">
                 <div>
@@ -59,7 +59,7 @@
                     <p class="text-[11px] text-slate-500 mt-0.5">Hubungkan akun WhatsApp pribadi/sekolah Anda untuk mengirim pesan kehadiran otomatis ke orang tua.</p>
                 </div>
 
-                <div id="waBadgeStatus">
+                <div>
                     <% if (statusWA === 'TERHUBUNG') { %>
                         <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-3 py-1 rounded-xl font-bold flex items-center gap-1.5">
                             <i class="fa-solid fa-circle-check text-emerald-600"></i> Terhubung & Aktif
@@ -72,7 +72,7 @@
                 </div>
             </div>
 
-            <div id="waControlPanel">
+            <div>
                 <% if (statusWA === 'TERHUBUNG') { %>
                     <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div class="text-xs text-slate-700">
@@ -86,12 +86,12 @@
                 <% } else { %>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         
-                        <!-- Opsi 1: Tautkan Menggunakan Kode Pairing Nomor HP -->
+                        <!-- Opsi 1: Tautkan via Nomor HP -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
                             <h4 class="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
                                 <i class="fa-solid fa-mobile-screen-button text-blue-600"></i> Tautkan via Kode Tautan (Nomor HP)
                             </h4>
-                            <p class="text-[11px] text-slate-500 mb-3">Masukkan nomor WA Anda untuk menerima 8 digit kode tautan langsung di HP.</p>
+                            <p class="text-[11px] text-slate-500 mb-3">Masukkan nomor WA Anda untuk menerima 8 digit kode tautan.</p>
 
                             <div class="flex gap-2 mb-3">
                                 <input type="text" id="phoneWaInput" placeholder="Contoh: 082371729760" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
@@ -100,10 +100,10 @@
                                 </button>
                             </div>
 
-                            <div id="boxPairingCode" class="hidden bg-blue-900 text-white rounded-xl p-3 text-center border-2 border-blue-700">
+                            <div id="boxPairingCode" class="hidden bg-blue-900 text-white rounded-xl p-4 text-center border-2 border-blue-700">
                                 <p class="text-[10px] text-blue-200 uppercase tracking-wider font-semibold">Kode Tautan WhatsApp Anda:</p>
                                 <div id="displayPairingCode" class="text-2xl font-mono font-bold tracking-widest text-amber-400 my-2">
-                                    MEMUAT...
+                                    MEMPROSES...
                                 </div>
                                 <p class="text-[10px] text-blue-200">Buka WA di HP > Perangkat Tertaut > Tautkan dengan nomor telepon saja.</p>
                             </div>
@@ -130,7 +130,7 @@
             </div>
         </div>
 
-        <!-- Tabel Siswa & QR Presensi -->
+        <!-- Tabel Siswa -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -188,8 +188,8 @@
         let timerCekStatus = null;
 
         function mintaKodePairing() {
-            const inputEl = document.getElementById('phoneWaInput');
-            const phone = inputEl ? inputEl.value.trim() : '';
+            const inputHp = document.getElementById('phoneWaInput');
+            const phone = inputHp ? inputHp.value.trim() : '';
 
             if (!phone) {
                 alert("Masukkan nomor WhatsApp terlebih dahulu!");
@@ -202,10 +202,8 @@
 
             const box = document.getElementById('boxPairingCode');
             const disp = document.getElementById('displayPairingCode');
-            if (box && disp) {
-                box.classList.remove('hidden');
-                disp.innerText = "MENUNGGU KODE...";
-            }
+            box.classList.remove('hidden');
+            disp.innerText = "MENUNGGU KODE...";
 
             fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(phone)}`)
                 .then(res => res.json())
@@ -215,7 +213,7 @@
                     mulaiCekStatus();
                 })
                 .catch(err => {
-                    alert("Gagal terhubung ke server.");
+                    alert("Terjadi kendala koneksi server.");
                     btn.innerHTML = `<i class="fa-solid fa-key"></i> Minta Kode`;
                     btn.disabled = false;
                 });
@@ -223,20 +221,15 @@
 
         function mulaiWA() {
             const btn = document.getElementById('btnStartWA');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat...`;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat QR...`;
             btn.disabled = true;
 
             fetch(`/api/start-wa?userId=${currentUserId}`)
                 .then(res => res.json())
-                .then(data => {
+                .then(() => {
                     btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Tampilkan QR Code WA`;
                     btn.disabled = false;
                     mulaiCekStatus();
-                })
-                .catch(err => {
-                    alert("Gagal memulai WhatsApp.");
-                    btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Tampilkan QR Code WA`;
-                    btn.disabled = false;
                 });
         }
 
@@ -250,40 +243,26 @@
                         if (data.statusWA === 'TERHUBUNG') {
                             clearInterval(timerCekStatus);
                             location.reload();
-                        } 
-                        
-                        if (data.pairingCode) {
-                            const box = document.getElementById('boxPairingCode');
-                            const disp = document.getElementById('displayPairingCode');
-                            if (box && disp) {
-                                box.classList.remove('hidden');
-                                disp.innerText = data.pairingCode;
-                            }
-                        } 
-                        
-                        if (data.qrCodeWA) {
-                            const boxQR = document.getElementById('boxQRCode');
-                            const imgQR = document.getElementById('imgQRCodeWA');
-                            if (boxQR && imgQR) {
-                                boxQR.classList.remove('hidden');
-                                imgQR.src = data.qrCodeWA;
-                            }
                         }
-                    })
-                    .catch(e => console.error("Status Check Error:", e));
+
+                        if (data.pairingCode) {
+                            document.getElementById('boxPairingCode').classList.remove('hidden');
+                            document.getElementById('displayPairingCode').innerText = data.pairingCode;
+                        }
+
+                        if (data.qrCodeWA) {
+                            document.getElementById('boxQRCode').classList.remove('hidden');
+                            document.getElementById('imgQRCodeWA').src = data.qrCodeWA;
+                        }
+                    });
             }, 2000);
         }
 
         function resetWA() {
-            if (!confirm('Apakah Anda yakin ingin memutuskan tautan WhatsApp?')) return;
-
+            if (!confirm('Putuskan tautan WhatsApp?')) return;
             fetch(`/api/reset-wa?userId=${currentUserId}`)
                 .then(res => res.json())
-                .then(data => {
-                    alert(data.message || "Sesi berhasil direset.");
-                    location.reload();
-                })
-                .catch(err => alert("Gagal mereset sesi WhatsApp."));
+                .then(data => location.reload());
         }
     </script>
 
