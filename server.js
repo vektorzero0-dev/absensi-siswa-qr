@@ -6,7 +6,7 @@ const { DisconnectReason, initAuthCreds, proto } = require('@whiskeysockets/bail
 const QRCode = require('qrcode');
 const pool = require('./db');
 
-// Library Ekspor Rekap Presensi
+// Package Ekspor Laporan
 const ExcelJS = require('exceljs');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType } = require('docx');
 const PDFDocument = require('pdfkit');
@@ -32,7 +32,7 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
-// ----------------- POSTGRES AUTH STATE (WA DI DATABASE) ----------------- //
+// ----------------- POSTGRES AUTH STATE (WA SESI DI NEON) ----------------- //
 
 async function usePostgresAuthState(pool, userId) {
     const keyPrefix = `user_${userId}:`;
@@ -152,7 +152,7 @@ async function connectToWhatsApp(userId) {
     }
 }
 
-// Auto-Load WhatsApp dari DB saat server restart
+// Auto Load Sesi WA saat Server Restart
 async function autoLoadSavedSessions() {
     try {
         const res = await pool.query(`SELECT DISTINCT key FROM wa_sessions`);
@@ -244,6 +244,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery);
 
+        // PERBAIKAN SQL: Menghapus SELECT Ganda
         let absensiQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
@@ -281,6 +282,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
+        console.error("Dashboard Error:", err);
         res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
@@ -401,7 +403,7 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
-// ---------------- FITUR PRATINJAU & EXPORT REKAP BULANAN ---------------- //
+// ---------------- FITUR REKAP BULANAN (PREVIEW & EXPORT) ---------------- //
 
 app.get('/api/absensi/preview', async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
@@ -531,7 +533,7 @@ app.get('/api/absensi/export', async (req, res) => {
             return res.send(buffer);
         }
 
-        // PDF (.pdf) - Menggunakan pdfkit bawaan yang stabil
+        // PDF (.pdf) - Pengolahan PDFKit Aman & Teruji
         if (format === 'pdf') {
             const doc = new PDFDocument({ margin: 40, size: 'A4' });
             res.setHeader('Content-Type', 'application/pdf');
