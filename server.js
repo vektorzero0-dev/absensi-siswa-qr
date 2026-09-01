@@ -293,7 +293,7 @@ app.get(['/scan', '/scanner'], (req, res) => {
     res.render('scan', { userId: userId });
 });
 
-// ---------------- API TAMBAH, EDIT, & HAPUS DATA ---------------- //
+// ---------------- API KELOLA KELAS & ROMBEL ---------------- //
 
 app.post('/api/kelas/tambah', async (req, res) => {
     const { nama_kelas } = req.body;
@@ -305,6 +305,32 @@ app.post('/api/kelas/tambah', async (req, res) => {
         return res.status(500).send("Gagal menambah kelas: " + err.message);
     }
 });
+
+app.post('/api/kelas/hapus/:id', async (req, res) => {
+    const kelasId = parseInt(req.params.id);
+    try {
+        await pool.query('UPDATE users SET kelas_id = NULL WHERE kelas_id = $1', [kelasId]);
+        await pool.query('UPDATE siswa SET kelas_id = NULL WHERE kelas_id = $1', [kelasId]);
+        await pool.query('DELETE FROM kelas WHERE id = $1', [kelasId]);
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menghapus rombel: " + err.message);
+    }
+});
+
+app.post('/api/kelas/hapus-semua', async (req, res) => {
+    try {
+        await pool.query('UPDATE users SET kelas_id = NULL');
+        await pool.query('UPDATE siswa SET kelas_id = NULL');
+        await pool.query('DELETE FROM kelas');
+        await pool.query("ALTER SEQUENCE kelas_id_seq RESTART WITH 1");
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menghapus semua rombel: " + err.message);
+    }
+});
+
+// ---------------- API GURU & SISWA ---------------- //
 
 app.post('/api/guru/tambah', async (req, res) => {
     const { nama, username, password, kelas_id } = req.body;
@@ -398,22 +424,19 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
     }
 });
 
-// 🟢 API HAPUS SEMUA SISWA & RESET ID KE NOMOR 1
 app.post('/api/siswa/hapus-semua', async (req, res) => {
     try {
-        // 1. Hapus semua riwayat absensi agar tidak melanggar foreign key
         await pool.query('DELETE FROM absensi');
-        
-        // 2. Hapus semua siswa
         await pool.query('DELETE FROM siswa');
-        
-        // 3. Reset urutan ID tabel siswa kembali ke nomor 1
+        await pool.query('UPDATE users SET kelas_id = NULL');
+        await pool.query('DELETE FROM kelas');
         await pool.query("ALTER SEQUENCE siswa_id_seq RESTART WITH 1");
+        await pool.query("ALTER SEQUENCE kelas_id_seq RESTART WITH 1");
 
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
-        console.error("Gagal reset siswa:", err);
-        return res.status(500).send("Gagal menghapus seluruh siswa: " + err.message);
+        console.error("Gagal reset data:", err);
+        return res.status(500).send("Gagal melakukan reset total: " + err.message);
     }
 });
 
@@ -444,15 +467,12 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
                 const cleanKey = key.toString().toLowerCase().trim();
                 const val = row[key] ? row[key].toString().trim() : "";
 
-                // Deteksi Kolom Nama
                 if (cleanKey.includes('nama') || cleanKey.includes('peserta didik') || cleanKey.includes('siswa')) {
                     if (!namaSiswa && val) namaSiswa = val;
                 }
-                // Deteksi Kolom Nomor HP/WA
                 if (cleanKey.includes('hp') || cleanKey.includes('wa') || cleanKey.includes('telepon') || cleanKey.includes('seluler') || cleanKey.includes('kontak')) {
                     if (!nomorWa && val) nomorWa = val;
                 }
-                // Deteksi Kolom Rombel/Kelas
                 if (cleanKey.includes('rombel') || cleanKey.includes('kelas') || cleanKey.includes('rombongan') || cleanKey.includes('tingkat')) {
                     if (!namaKelas && val) namaKelas = val;
                 }
@@ -462,8 +482,8 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
                 let kelasId = null;
 
                 if (namaKelas) {
-                    const cleanNamaKelas = namaKelas.toString().trim();
-                    let kRes = await pool.query('SELECT id FROM kelas WHERE LOWER(nama_kelas) = LOWER($1)', [cleanNamaKelas]);
+                    const cleanNamaKelas = namaKelas.toString().replace(/\s+/g, ' ').trim();
+                    let kRes = await pool.query('SELECT id FROM kelas WHERE LOWER(TRIM(nama_kelas)) = LOWER($1)', [cleanNamaKelas]);
                     
                     if (kRes.rows.length > 0) {
                         kelasId = kRes.rows[0].id;
