@@ -1,9 +1,8 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { DisconnectReason, initAuthCreds, proto } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const pool = require('./db');
 
@@ -11,9 +10,6 @@ process.env.TZ = 'Asia/Jakarta';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-const sessionsDir = path.join(__dirname, 'wa_sessions');
-if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -31,10 +27,87 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
+// ----------------- POSTGRES AUTH STATE (SIMPAN WA DI DB) ----------------- //
+
+async function usePostgresAuthState(pool, userId) {
+    const keyPrefix = `user_${userId}:`;
+
+    const writeData = async (data, id, key) => {
+        const fullKey = keyPrefix + key;
+        const jsonStr = JSON.stringify(data, (k, v) => (typeof v === 'bigint' ? v.toString() + 'n' : v));
+        await pool.query(
+            `INSERT INTO wa_sessions (key, id, data) VALUES ($1, $2, $3)
+             ON CONFLICT (key, id) DO UPDATE SET data = EXCLUDED.data`,
+            [fullKey, id, jsonStr]
+        );
+    };
+
+    const readData = async (id, key) => {
+        const fullKey = keyPrefix + key;
+        const res = await pool.query(`SELECT data FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
+        if (res.rows.length > 0) {
+            return JSON.parse(res.rows[0].data, (k, v) => {
+                if (typeof v === 'string' && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
+                return v;
+            });
+        }
+        return null;
+    };
+
+    const removeData = async (id, key) => {
+        const fullKey = keyPrefix + key;
+        await pool.query(`DELETE FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
+    };
+
+    let creds = await readData('creds', 'main');
+    if (!creds) {
+        creds = initAuthCreds();
+        await writeData(creds, 'creds', 'main');
+    }
+
+    return {
+        state: {
+            creds,
+            keys: {
+                get: async (type, ids) => {
+                    const data = {};
+                    await Promise.all(
+                        ids.map(async (id) => {
+                            let value = await readData(id, type);
+                            if (type === 'app-state-sync-key' && value) {
+                                value = proto.Message.AppStateSyncKeyData.fromObject(value);
+                            }
+                            data[id] = value;
+                        })
+                    );
+                    return data;
+                },
+                set: async (data) => {
+                    const tasks = [];
+                    for (const category in data) {
+                        for (const id in data[category]) {
+                            const value = data[category][id];
+                            if (value) {
+                                tasks.push(writeData(value, id, category));
+                            } else {
+                                tasks.push(removeData(id, category));
+                            }
+                        }
+                    }
+                    await Promise.all(tasks);
+                }
+            }
+        },
+        saveCreds: async () => {
+            await writeData(creds, 'creds', 'main');
+        }
+    };
+}
+
 async function connectToWhatsApp(userId) {
     try {
-        const authFolder = path.join(sessionsDir, `user_${userId}`);
-        const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+        const { state, saveCreds } = await usePostgresAuthState(pool, userId);
+
         const sock = makeWASocket({ 
             logger: pino({ level: 'silent' }), 
             auth: state, 
@@ -53,39 +126,53 @@ async function connectToWhatsApp(userId) {
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung`);
+                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung & Tersimpan di DB`);
             }
             if (connection === 'close') {
-                const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
+                
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
-                if (shouldReconnect) connectToWhatsApp(userId);
+                
+                if (shouldReconnect) {
+                    console.log(`🔄 Menyambungkan ulang WA User #${userId}...`);
+                    connectToWhatsApp(userId);
+                } else {
+                    await pool.query(`DELETE FROM wa_sessions WHERE key LIKE $1`, [`user_${userId}:%`]);
+                    console.log(`🗑️ Sesi User #${userId} dihapus dari Database (Logged Out).`);
+                }
             }
         });
     } catch (err) {
-        console.error(`❌ WA Connect Error:`, err.message);
+        console.error(`❌ WA Connect Error User #${userId}:`, err.message);
     }
 }
 
-// Otomatis mengubungkan kembali sesi WA yang tersimpan di folder saat server dinyalakan
-function autoConnectSavedSessions() {
+// Otomatis Muat Sesi WA dari Database Saat Server Booting
+async function autoLoadSavedSessions() {
     try {
-        if (fs.existsSync(sessionsDir)) {
-            const folders = fs.readdirSync(sessionsDir);
-            folders.forEach(folder => {
-                if (folder.startsWith('user_')) {
-                    const uId = parseInt(folder.replace('user_', ''));
-                    if (!isNaN(uId)) {
-                        console.log(`🔄 Mengaktifkan kembali sesi WhatsApp untuk User #${uId}...`);
-                        connectToWhatsApp(uId);
-                    }
-                }
-            });
-        }
+        const res = await pool.query(`SELECT DISTINCT key FROM wa_sessions`);
+        const userIds = new Set();
+        
+        res.rows.forEach(row => {
+            const match = row.key.match(/^user_(\d+):/);
+            if (match) userIds.add(match[1]);
+        });
+
+        userIds.forEach(id => {
+            console.log(`⚙️ Mengembalikan koneksi WA terdaftar untuk User #${id}...`);
+            connectToWhatsApp(id);
+        });
     } catch (err) {
-        console.error("Gagal memuat sesi tersimpan:", err.message);
+        console.error("Gagal auto-load sesi WA:", err.message);
     }
 }
+
+// Inisialisasi auto-load sesi setelah server siap
+setTimeout(() => {
+    autoLoadSavedSessions();
+}, 2000);
 
 // ---------------- ROUTES HALAMAN ---------------- //
 
@@ -277,15 +364,6 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
 
 // ---------------- API SCANNER & WA GATEWAY ---------------- //
 
-app.get('/api/wa-status', (req, res) => {
-    const userId = parseInt(req.query.userId) || 1;
-    res.json({
-        userId: userId,
-        status: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qrCode: qrCodes[userId] || null
-    });
-});
-
 app.get('/api/start-wa', (req, res) => {
     const userId = parseInt(req.query.userId) || 1;
     connectToWhatsApp(userId);
@@ -316,10 +394,13 @@ app.post('/api/scan', async (req, res) => {
             [siswa.id, parsedScannedBy]
         );
 
+        // Cari koneksi WA milik Guru yang scan, jika kosong fallback ke sesi WA aktif lain (misal Admin)
         let waClient = waSessions[parsedScannedBy];
         if (!waClient) {
-            const keys = Object.keys(waSessions);
-            if (keys.length > 0) waClient = waSessions[keys[0]];
+            const activeUserIds = Object.keys(waSessions);
+            if (activeUserIds.length > 0) {
+                waClient = waSessions[activeUserIds[0]];
+            }
         }
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
@@ -366,8 +447,5 @@ app.post('/api/scan', async (req, res) => {
         return res.status(500).json({ success: false, message: "Terjadi Kendala Sistem: " + err.message });
     }
 });
-
-// Mengaktifkan sesi tersimpan saat server berjalan
-autoConnectSavedSessions();
 
 app.listen(PORT, () => console.log(`🚀 Server Sistem Presensi Terpadu Aktif di Port ${PORT}`));
