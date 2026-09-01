@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Wali Kelas - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Pengganti CDN Tailwind Play agar tidak error di Production -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
@@ -74,7 +75,7 @@
 
             <div id="waControlPanel">
                 <% if (statusWA === 'TERHUBUNG') { %>
-                    <div class="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div class="text-xs text-slate-700">
                             <p class="font-bold text-emerald-900">Layanan Notifikasi Berhasil Terhubung!</p>
                             <p class="text-[11px] text-slate-500 mt-0.5">Setiap presensi siswa di kelas ini akan otomatis mengirim pesan WA ke orang tua.</p>
