@@ -75,7 +75,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
             delete waSessions[userId];
         }
 
-        waStatus[userId] = 'PROSES_INIT';
+        waStatus[userId] = phoneNumber ? 'MENUNGGU_PAIRING_CODE' : 'PROSES_INIT';
         delete qrCodes[userId];
         delete pairingCodes[userId];
 
@@ -99,17 +99,18 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
+        // MINTA KODE PAIRING (JIKA DIPANGGUL DENGAN NOMOR HP)
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
-                    let cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+                    let cleanPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
                     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
                     
-                    console.log(`📱 Meringkas request pairing untuk nomor: ${cleanPhone}`);
+                    console.log(`📱 Meminta Pairing Code WA untuk nomor: ${cleanPhone}`);
                     const code = await sock.requestPairingCode(cleanPhone);
                     pairingCodes[userId] = code;
                     waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
-                    console.log(`🔑 [User #${userId}] Pairing Code WA: ${code}`);
+                    console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${code}`);
                 } catch (pErr) {
                     console.error("Gagal Request Pairing Code:", pErr.message);
                     waStatus[userId] = 'ERROR_PAIRING';
@@ -537,6 +538,7 @@ app.get('/api/start-wa', async (req, res) => {
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
 
+// PERBAIKAN UTAMA: MENERUSKAN PHONE KE FUNGSINYA
 app.get('/api/request-pairing', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     const phone = req.query.phone;
@@ -545,6 +547,7 @@ app.get('/api/request-pairing', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
     }
 
+    // Panggil fungsi dengan nomor HP yang di-input dari prompt
     connectToWhatsApp(userId, phone);
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
