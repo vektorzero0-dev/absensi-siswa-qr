@@ -9,7 +9,6 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
-    <!-- Header Resmi Sekolah -->
     <header class="bg-blue-900 text-white shadow-md border-b-4 border-emerald-500">
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="flex items-center gap-3">
@@ -34,7 +33,6 @@
 
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1">
 
-        <!-- Banner Profil Guru -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="bg-blue-100 text-blue-800 p-3 rounded-xl">
@@ -49,7 +47,7 @@
             </div>
         </div>
 
-        <!-- WA Gateway Panel (DIPERBAIKI) -->
+        <!-- WA Gateway Panel Dynamic -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
@@ -57,28 +55,19 @@
                 </div>
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Status WhatsApp Gateway Notifikasi</h3>
-                    <p class="text-xs text-slate-600 mt-0.5">
-                        Koneksi Layanan: 
-                        <% if (statusWA === 'TERHUBUNG') { %>
-                            <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>
-                        <% } else if (qrCodeWA) { %>
-                            <span class="text-amber-600 font-bold">Pindai Kode QR WhatsApp Di Samping 📲</span>
-                        <% } else { %>
-                            <span class="text-rose-600 font-bold">Belum Terhubung / Sedang Membuat QR... ⏳</span>
-                        <% } %>
+                    <p class="text-xs text-slate-600 mt-0.5" id="waStatusText">
+                        Koneksi Layanan: <span class="text-slate-500 font-bold">Memeriksa status...</span>
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
-                <% if (qrCodeWA && statusWA !== 'TERHUBUNG') { %>
-                    <div class="bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
-                        <img src="<%= qrCodeWA %>" alt="Scan QR WA" class="w-24 h-24">
-                        <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai via WA HP</span>
-                    </div>
-                <% } %>
-                <button onclick="hubungkanWA()" id="btnWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-2">
-                    <i class="fa-solid fa-arrows-rotate"></i> <%= (statusWA === 'TERHUBUNG') ? 'Sambungkan Ulang' : 'Generasi Kode QR' %>
+                <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
+                    <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
+                    <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
+                </div>
+                <button onclick="mintaQRWA()" id="btnGenerateWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> Dapatkan Kode QR
                 </button>
             </div>
         </div>
@@ -299,27 +288,52 @@
 
     </main>
 
-    <!-- Script WA & Pratinjau Rekap -->
     <script>
-        function hubungkanWA() {
-            const btn = document.getElementById('btnWA');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyiapkan Kode...`;
+        const currentUserId = "<%= userId %>";
+
+        function cekStatusWA() {
+            fetch(`/api/wa-status?userId=${currentUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const statusText = document.getElementById('waStatusText');
+                    const qrContainer = document.getElementById('qrContainer');
+                    const qrImage = document.getElementById('qrImageWA');
+
+                    if (data.statusWA === 'TERHUBUNG') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
+                        qrContainer.classList.add('hidden');
+                    } else if (data.qrCodeWA) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
+                        qrImage.src = data.qrCodeWA;
+                        qrContainer.classList.remove('hidden');
+                    } else if (data.statusWA === 'MENUNGGU_SCAN') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
+                    } else {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                        qrContainer.classList.add('hidden');
+                    }
+                })
+                .catch(err => console.error("Gagal cek WA status:", err));
+        }
+
+        function mintaQRWA() {
+            const btn = document.getElementById('btnGenerateWA');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
             btn.disabled = true;
 
-            fetch('/api/start-wa?userId=<%= userId %>')
-                .then(res => res.json())
+            fetch(`/api/start-wa?userId=${currentUserId}`)
                 .then(() => {
                     setTimeout(() => {
-                        window.location.reload();
-                    }, 3000);
+                        btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Dapatkan Kode QR`;
+                        btn.disabled = false;
+                        cekStatusWA();
+                    }, 2000);
                 });
         }
 
-        <% if (statusWA !== 'TERHUBUNG' && !qrCodeWA) { %>
-            setTimeout(() => {
-                window.location.reload();
-            }, 5000);
-        <% } %>
+        // Cek otomatis setiap 2 detik secara teratur tanpa refresh halaman
+        setInterval(cekStatusWA, 2000);
+        cekStatusWA();
 
         function muatPreview() {
             const bulan = document.getElementById('selectBulan').value;
