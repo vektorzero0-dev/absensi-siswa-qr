@@ -3,8 +3,10 @@ const session = require('express-session');
 const path = require('path');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { DisconnectReason, initAuthCreds, proto } = require('@whiskeysockets/baileys');
+const { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
+const qrcodeTerminal = require('qrcode-terminal');
+const fs = require('fs');
 const pool = require('./db');
 
 // Package Ekspor Laporan
@@ -39,93 +41,14 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
-// ----------------- POSTGRES AUTH STATE ----------------- //
+// ----------------- HYBRID AUTH STATE (FS + NEON SYNC) ----------------- //
 
-async function usePostgresAuthState(pool, userId) {
-    const keyPrefix = `user_${userId}:`;
-
-    const writeData = async (data, id, key) => {
-        try {
-            const fullKey = keyPrefix + key;
-            const jsonStr = JSON.stringify(data, (k, v) => (typeof v === 'bigint' ? v.toString() + 'n' : v));
-            await pool.query(
-                `INSERT INTO wa_sessions (key, id, data) VALUES ($1, $2, $3)
-                 ON CONFLICT (key, id) DO UPDATE SET data = EXCLUDED.data`,
-                [fullKey, id, jsonStr]
-            );
-        } catch (e) {
-            console.error("DB Write Session Error:", e.message);
-        }
-    };
-
-    const readData = async (id, key) => {
-        try {
-            const fullKey = keyPrefix + key;
-            const res = await pool.query(`SELECT data FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
-            if (res.rows.length > 0) {
-                return JSON.parse(res.rows[0].data, (k, v) => {
-                    if (typeof v === 'string' && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
-                    return v;
-                });
-            }
-        } catch (e) {
-            console.error("DB Read Session Error:", e.message);
-        }
-        return null;
-    };
-
-    const removeData = async (id, key) => {
-        try {
-            const fullKey = keyPrefix + key;
-            await pool.query(`DELETE FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
-        } catch (e) {
-            console.error("DB Delete Session Error:", e.message);
-        }
-    };
-
-    let creds = await readData('creds', 'main');
-    if (!creds) {
-        creds = initAuthCreds();
-        await writeData(creds, 'creds', 'main');
+async function getAuthState(userId) {
+    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
+    if (!fs.existsSync(authFolder)) {
+        fs.mkdirSync(authFolder, { recursive: true });
     }
-
-    return {
-        state: {
-            creds,
-            keys: {
-                get: async (type, ids) => {
-                    const data = {};
-                    await Promise.all(
-                        ids.map(async (id) => {
-                            let value = await readData(id, type);
-                            if (type === 'app-state-sync-key' && value) {
-                                value = proto.Message.AppStateSyncKeyData.fromObject(value);
-                            }
-                            data[id] = value;
-                        })
-                    );
-                    return data;
-                },
-                set: async (data) => {
-                    const tasks = [];
-                    for (const category in data) {
-                        for (const id in data[category]) {
-                            const value = data[category][id];
-                            if (value) {
-                                tasks.push(writeData(value, id, category));
-                            } else {
-                                tasks.push(removeData(id, category));
-                            }
-                        }
-                    }
-                    await Promise.all(tasks);
-                }
-            }
-        },
-        saveCreds: async () => {
-            await writeData(creds, 'creds', 'main');
-        }
-    };
+    return await useMultiFileAuthState(authFolder);
 }
 
 async function connectToWhatsApp(userId) {
@@ -138,7 +61,10 @@ async function connectToWhatsApp(userId) {
         waStatus[userId] = 'PROSES_INIT';
         delete qrCodes[userId];
 
-        const { state, saveCreds } = await usePostgresAuthState(pool, userId);
+        const { state, saveCreds } = await getAuthState(userId);
+        const { version } = await fetchLatestBaileysVersion();
+
+        console.log(`⚡ [User #${userId}] Menginisialisasi WA Socket (Baileys v${version.join('.')})...`);
 
         const sock = makeWASocket({
             logger: pino({ level: 'silent' }),
@@ -147,7 +73,7 @@ async function connectToWhatsApp(userId) {
             browser: ["Mac OS", "Chrome", "121.0.0.0"],
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
-            keepAliveIntervalMs: 30000,
+            keepAliveIntervalMs: 25000,
             qrTimeout: 40000
         });
 
@@ -159,32 +85,45 @@ async function connectToWhatsApp(userId) {
 
             if (qr) {
                 try {
+                    // 1. Simpan ke DataURL untuk Web Browser Dashboard
                     qrCodes[userId] = await QRCode.toDataURL(qr);
                     waStatus[userId] = 'MENUNGGU_SCAN';
-                    console.log(`✅ [User #${userId}] QR Code Berhasil Dibuat!`);
+
+                    console.log(`\n========================================`);
+                    console.log(`📲 [User #${userId}] SCAN QR CODE DI BAWAH INI:`);
+                    console.log(`========================================\n`);
+                    // 2. Cetak ke Log Render Terminal sebagai Fallback
+                    qrcodeTerminal.generate(qr, { small: true });
+
                 } catch (qrErr) {
-                    console.error("Gagal buat QR DataURL:", qrErr);
+                    console.error("Gagal generate QR Code:", qrErr);
                 }
             }
 
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ [User #${userId}] WhatsApp Terhubung!`);
+                console.log(`✅ [User #${userId}] WhatsApp Berhasil Terhubung!`);
             }
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
 
+                console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Reason Status: ${statusCode}`);
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
 
                 if (shouldReconnect) {
+                    console.log(`🔄 Menguji sambungan ulang untuk User #${userId}...`);
                     setTimeout(() => connectToWhatsApp(userId), 3000);
                 } else {
+                    console.log(`🚪 User #${userId} Logged Out. Membersihkan Sesi...`);
                     delete qrCodes[userId];
-                    await pool.query(`DELETE FROM wa_sessions WHERE key LIKE $1`, [`user_${userId}:%`]);
+                    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
+                    if (fs.existsSync(authFolder)) {
+                        fs.rmSync(authFolder, { recursive: true, force: true });
+                    }
                 }
             }
         });
@@ -342,6 +281,22 @@ app.get('/api/wa-status', (req, res) => {
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
         qrCodeWA: qrCodes[userId] || null
     });
+});
+
+app.get('/api/reset-wa', async (req, res) => {
+    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    if (waSessions[userId]) {
+        try { waSessions[userId].end(undefined); } catch (e) {}
+        delete waSessions[userId];
+    }
+    delete qrCodes[userId];
+    waStatus[userId] = 'BELUM_TERHUBUNG';
+
+    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
+    if (fs.existsSync(authFolder)) {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+    }
+    res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
 app.post('/api/scan', async (req, res) => {
