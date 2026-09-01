@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Administrator - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <!-- Tailwind CSS v3 Engine (Aman & Tanpa Peringatan Production) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/base.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
@@ -111,7 +113,6 @@
                         <i class="fa-solid fa-plus-circle text-purple-600"></i> Rombongan Belajar
                     </h3>
                     
-                    <!-- 🟢 TOMBOL KOSONGKAN/RESET SEMUA ROMBEL -->
                     <% if (kelas && kelas.length > 0) { %>
                         <form action="/api/kelas/hapus-semua" method="POST" onsubmit="return confirm('HAPUS SELURUH ROMBEL?\n\nSemua rombel ganda akan dibersihkan dan nomor ID rombel di-reset ke 1.');">
                             <button type="submit" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-rose-200 transition flex items-center gap-1">
@@ -249,14 +250,14 @@
                 </div>
                 
                 <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <!-- 🟢 TOMBOL RESET TOTAL DATABASE (SISWA + ROMBEL + ID RESET KE 1) -->
+                    <!-- TOMBOL RESET TOTAL DATABASE -->
                     <form action="/api/siswa/hapus-semua" method="POST" onsubmit="return confirm('RESET TOTAL DATABASE?\n\nSeluruh data siswa, riwayat absensi, dan rombel akan DIHAPUS PERMANEN dari database dan penomoran ID kembali ke #1.');" class="inline">
                         <button type="submit" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
                             <i class="fa-solid fa-rotate-left text-rose-600"></i> Reset Total Database
                         </button>
                     </form>
 
-                    <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-slate-300 font-medium transition flex items-center gap-1.5">
+                    <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-slate-300 font-medium transition flex items-center gap-1.5">
                         <i class="fa-solid fa-print"></i> Cetak Kartu Identitas
                     </button>
                 </div>
@@ -281,7 +282,11 @@
                                     <td class="p-3 font-mono font-bold text-emerald-700">#<%= s.id %></td>
                                     <td class="p-3">
                                         <div class="bg-white p-1 rounded-lg inline-block border border-slate-300 shadow-sm">
-                                            <img src="<%= s.qrImage %>" alt="QR <%= s.nama %>" class="w-12 h-12">
+                                            <% if (s.qrImage) { %>
+                                                <img src="<%= s.qrImage %>" alt="QR <%= s.nama %>" class="w-12 h-12">
+                                            <% } else { %>
+                                                <span class="text-[10px] text-slate-400">Error QR</span>
+                                            <% } %>
                                         </div>
                                     </td>
                                     <td class="p-3 font-semibold text-slate-900"><%= s.nama %></td>
@@ -328,7 +333,7 @@
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-user-pen text-blue-600"></i> Edit Profil / Ubah Password Guru
                 </h3>
-                <button onclick="tutupModalEditGuru()" class="text-slate-400 hover:text-slate-600">
+                <button type="button" onclick="tutupModalEditGuru()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -380,7 +385,7 @@
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-user-pen text-emerald-600"></i> Edit Data Siswa / WhatsApp
                 </h3>
-                <button onclick="tutupModalEditSiswa()" class="text-slate-400 hover:text-slate-600">
+                <button type="button" onclick="tutupModalEditSiswa()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
