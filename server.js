@@ -328,9 +328,9 @@ app.post('/api/scan', async (req, res) => {
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
         await pool.query(
-            `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW())`,
-            [siswa.id, parsedScannedBy]
-        );
+    `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW() AT TIME ZONE 'Asia/Jakarta')`,
+    [siswa.id, parsedScannedBy]
+);
 
         let waClient = waSessions[parsedScannedBy];
         if (!waClient) {
