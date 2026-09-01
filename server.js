@@ -41,7 +41,7 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
-// ----------------- HYBRID AUTH STATE (FS + NEON SYNC) ----------------- //
+// ----------------- HYBRID AUTH STATE ----------------- //
 
 async function getAuthState(userId) {
     const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
@@ -64,23 +64,22 @@ async function connectToWhatsApp(userId) {
         const { state, saveCreds } = await getAuthState(userId);
         const { version } = await fetchLatestBaileysVersion();
 
-        console.log(`⚡ [User #${userId}] Menginisialisasi WA Socket (Baileys v${version.join('.')})...`);
+        console.log(`⚡ [User #${userId}] Inisialisasi WA Socket (Baileys v${version.join('.')})...`);
 
-        // Ganti opsi browser dan tambahkan opsi syncFullHistory: false
-const sock = makeWASocket({
-    logger: pino({ level: 'silent' }),
-    auth: state,
-    printQRInTerminal: false,
-    // Gunakan signature Ubuntu / Chrome yang lebih stabil untuk Baileys
-    browser: ["Ubuntu", "Chrome", "120.0.6099.109"],
-    connectTimeoutMs: 60000,
-    defaultQueryTimeoutMs: 60000,
-    keepAliveIntervalMs: 30000,
-    qrTimeout: 40000,
-    // Tambahkan 2 baris ini untuk mencegah timeout penautan di Render
-    syncFullHistory: false,
-    markOnlineOnConnect: false
-});
+        const sock = makeWASocket({
+            logger: pino({ level: 'silent' }),
+            auth: state,
+            printQRInTerminal: false,
+            // Perbaikan: Konfigurasi Browser & Options khusus penautan Render
+            browser: ["macOS", "Chrome", "121.0.0.0"],
+            connectTimeoutMs: 90000,
+            defaultQueryTimeoutMs: 90000,
+            keepAliveIntervalMs: 15000,
+            qrTimeout: 45000,
+            syncFullHistory: false,
+            fireInitQueries: false,
+            markOnlineOnConnect: false
+        });
 
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
@@ -90,14 +89,12 @@ const sock = makeWASocket({
 
             if (qr) {
                 try {
-                    // 1. Simpan ke DataURL untuk Web Browser Dashboard
                     qrCodes[userId] = await QRCode.toDataURL(qr);
                     waStatus[userId] = 'MENUNGGU_SCAN';
 
                     console.log(`\n========================================`);
                     console.log(`📲 [User #${userId}] SCAN QR CODE DI BAWAH INI:`);
                     console.log(`========================================\n`);
-                    // 2. Cetak ke Log Render Terminal sebagai Fallback
                     qrcodeTerminal.generate(qr, { small: true });
 
                 } catch (qrErr) {
@@ -115,15 +112,15 @@ const sock = makeWASocket({
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
 
-                console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Reason Status: ${statusCode}`);
+                console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
 
                 if (shouldReconnect) {
-                    console.log(`🔄 Menguji sambungan ulang untuk User #${userId}...`);
+                    console.log(`🔄 Sambung ulang User #${userId}...`);
                     setTimeout(() => connectToWhatsApp(userId), 3000);
                 } else {
-                    console.log(`🚪 User #${userId} Logged Out. Membersihkan Sesi...`);
+                    console.log(`🚪 User #${userId} Logged Out. Hapus Sesi Folder...`);
                     delete qrCodes[userId];
                     const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
                     if (fs.existsSync(authFolder)) {
@@ -271,7 +268,7 @@ app.get(['/scan', '/scanner'], (req, res) => {
     res.render('scan', { userId: userId });
 });
 
-// ---------------- API WA GATEWAY REAL-TIME ---------------- //
+// ---------------- API WA GATEWAY ---------------- //
 
 app.get('/api/start-wa', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
@@ -328,9 +325,9 @@ app.post('/api/scan', async (req, res) => {
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
         await pool.query(
-    `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW() AT TIME ZONE 'Asia/Jakarta')`,
-    [siswa.id, parsedScannedBy]
-);
+            `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW() AT TIME ZONE 'Asia/Jakarta')`,
+            [siswa.id, parsedScannedBy]
+        );
 
         let waClient = waSessions[parsedScannedBy];
         if (!waClient) {
@@ -379,7 +376,7 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
-// ---------------- FITUR REKAP BULANAN (PREVIEW & EXPORT) ---------------- //
+// ---------------- FITUR REKAP BULANAN ---------------- //
 
 app.get('/api/absensi/preview', async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
