@@ -49,7 +49,7 @@
             </div>
         </div>
 
-        <!-- WA Gateway Panel -->
+        <!-- WA Gateway Panel (DIPERBAIKI) -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
@@ -61,23 +61,24 @@
                         Koneksi Layanan: 
                         <% if (statusWA === 'TERHUBUNG') { %>
                             <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>
-                        <% } else if (statusWA === 'MENUNGGU_SCAN') { %>
-                            <span class="text-amber-600 font-bold">Pindai Kode QR WhatsApp Di Bawah 📲</span>
+                        <% } else if (qrCodeWA) { %>
+                            <span class="text-amber-600 font-bold">Pindai Kode QR WhatsApp Di Samping 📲</span>
                         <% } else { %>
-                            <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>
+                            <span class="text-rose-600 font-bold">Belum Terhubung / Sedang Membuat QR... ⏳</span>
                         <% } %>
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
-                <% if (qrCodeWA && statusWA === 'MENUNGGU_SCAN') { %>
-                    <div class="bg-white p-1 rounded-xl shadow border border-slate-200">
-                        <img src="<%= qrCodeWA %>" alt="Scan QR WA" class="w-20 h-20">
+                <% if (qrCodeWA && statusWA !== 'TERHUBUNG') { %>
+                    <div class="bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
+                        <img src="<%= qrCodeWA %>" alt="Scan QR WA" class="w-24 h-24">
+                        <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai via WA HP</span>
                     </div>
                 <% } %>
-                <button onclick="fetch('/api/start-wa?userId=<%= userId %>').then(() => location.reload())" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2.5 rounded-xl border border-slate-300 font-semibold transition flex items-center gap-2">
-                    <i class="fa-solid fa-arrows-rotate"></i> Hubungkan WhatsApp
+                <button onclick="hubungkanWA()" id="btnWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> <%= (statusWA === 'TERHUBUNG') ? 'Sambungkan Ulang' : 'Generasi Kode QR' %>
                 </button>
             </div>
         </div>
@@ -97,7 +98,6 @@
             <form id="filterForm" action="/api/absensi/export" method="GET" target="_blank" class="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-4">
                 <input type="hidden" name="kelas_id" id="kelasId" value="<%= user.kelas_id %>">
                 
-                <!-- Pilihan Bulan -->
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Bulan</label>
                     <select name="bulan" id="selectBulan" required class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600">
@@ -116,7 +116,6 @@
                     </select>
                 </div>
 
-                <!-- Pilihan Tahun -->
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Tahun</label>
                     <select name="tahun" id="selectTahun" required class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600">
@@ -125,7 +124,6 @@
                     </select>
                 </div>
 
-                <!-- Pilihan Format -->
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Format Berkas</label>
                     <select name="format" required class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600">
@@ -135,14 +133,12 @@
                     </select>
                 </div>
 
-                <!-- Tombol Lihat Rekapan -->
                 <div class="flex items-end">
                     <button type="button" onclick="muatPreview()" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-blue-900">
                         <i class="fa-solid fa-eye"></i> Lihat Rekapan
                     </button>
                 </div>
 
-                <!-- Tombol Unduh Berkas -->
                 <div class="flex items-end">
                     <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-700">
                         <i class="fa-solid fa-download"></i> Unduh Berkas
@@ -150,7 +146,6 @@
                 </div>
             </form>
 
-            <!-- Tabel Pratinjau (Preview) Rekapitulasi -->
             <div id="previewArea" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50">
                 <div class="flex justify-between items-center mb-3">
                     <h4 id="previewTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wide">
@@ -304,8 +299,28 @@
 
     </main>
 
-    <!-- Script AJAX Pratinjau Rekap -->
+    <!-- Script WA & Pratinjau Rekap -->
     <script>
+        function hubungkanWA() {
+            const btn = document.getElementById('btnWA');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyiapkan Kode...`;
+            btn.disabled = true;
+
+            fetch('/api/start-wa?userId=<%= userId %>')
+                .then(res => res.json())
+                .then(() => {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                });
+        }
+
+        <% if (statusWA !== 'TERHUBUNG' && !qrCodeWA) { %>
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        <% } %>
+
         function muatPreview() {
             const bulan = document.getElementById('selectBulan').value;
             const tahun = document.getElementById('selectTahun').value;
