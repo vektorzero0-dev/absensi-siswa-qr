@@ -239,9 +239,9 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     if (!userId) return res.redirect('/');
 
     try {
-        // 1. Ambil data wali kelas beserta ID kelas penugasannya
+        // 1. Ambil data guru beserta ID kelas penugasannya
         const userRes = await pool.query(`
-            SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas
+            SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Guru Mata Pelajaran (Semua Kelas)') AS nama_kelas
             FROM users u
             LEFT JOIN kelas k ON u.kelas_id = k.id
             WHERE u.id = $1
@@ -252,7 +252,9 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         const userRaw = userRes.rows[0];
         userRaw.nama = bersihkanGelar(userRaw.nama);
 
-        // 2. Query Siswa Presisi: Filter ketat berdasarkan kelas_id milik wali kelas tersebut
+        // 2. Query Siswa:
+        // - Jika Wali Kelas (punya kelas_id): Tampilkan siswa di kelasnya saja
+        // - Jika Guru Mapel / Tanpa Penugasan (kelas_id NULL): Tampilkan SELURUH SISWA (seperti Admin)
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s 
@@ -260,19 +262,17 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         `;
         const queryParamsSiswa = [];
 
-        // Jika user memiliki kelas_id (Wali Kelas), HANYA tampilkan siswa di kelas tersebut
         if (userRaw.kelas_id) {
             siswaQuery += ` WHERE s.kelas_id = $1`;
             queryParamsSiswa.push(parseInt(userRaw.kelas_id));
-        } else if (userRaw.role !== 'ADMIN') {
-            // Jika Wali Kelas belum diatur kelasnya oleh Admin, tampilkan tabel kosong
-            siswaQuery += ` WHERE s.kelas_id = -1`; 
         }
 
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // 3. Query Log Absensi Hari Ini (Filter berdasarkan kelas siswa)
+        // 3. Query Log Absensi Hari Ini:
+        // - Jika Wali Kelas: Tampilkan log presensi kelasnya saja
+        // - Jika Guru Mapel: Tampilkan SELURUH LOG PRESENSI HARI INI (seperti Admin)
         let absensiQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
@@ -302,13 +302,12 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // Generate QR Code untuk masing-masing siswa di kelas tersebut
+        // Generate QR Code untuk daftar siswa
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
 
-        // Simpan userId ke session agar konsisten
         req.session.userId = userId;
 
         res.render('walikelas-dashboard', {
