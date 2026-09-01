@@ -437,6 +437,57 @@
             </form>
         </div>
     </div>
+<!-- Tabel Log Absensi Hari Ini & Tombol Bersihkan Riwayat -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-user text-emerald-600"></i> Rekapitulasi Presensi Kehadiran Hari Ini
+                    </h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Daftar log aktivitas scan kartu siswa yang tercatat hari ini.</p>
+                </div>
+
+                <!-- TOMBOL BERSIHKAN RIWAYAT ABSEN UJI COBA -->
+                <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa, guru, dan rombel kelas TIDAK akan terhapus.');">
+                    <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold px-3.5 py-2 rounded-xl border border-amber-200 transition flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-broom text-amber-600"></i> Bersihkan Riwayat Uji Coba
+                    </button>
+                </form>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
+                        <tr>
+                            <th class="p-3">Nama Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3">Waktu Presensi</th>
+                            <th class="p-3 text-center">Status Kehadiran</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% if (typeof absensiHariIni !== 'undefined' && absensiHariIni && absensiHariIni.length > 0) { %>
+                            <% absensiHariIni.forEach(a => { %>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
+                                    <td class="p-3 text-slate-600"><%= a.nama_kelas %></td>
+                                    <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
+                                    <td class="p-3 text-center">
+                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded">
+                                            HADIR
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="4" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk untuk hari ini.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
     <script>
         function prosesImportExcel(e) {
