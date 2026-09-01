@@ -9,6 +9,11 @@ const qrcodeTerminal = require('qrcode-terminal');
 const fs = require('fs');
 const pool = require('./db');
 
+// Package Import & Upload Excel
+const multer = require('multer');
+const XLSX = require('xlsx');
+const upload = multer({ storage: multer.memoryStorage() });
+
 // Package Ekspor Laporan
 const ExcelJS = require('exceljs');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType } = require('docx');
@@ -85,7 +90,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
-        // PENAUTAN MENGGUNAKAN NOMOR TELEPON (PAIRING CODE)
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
@@ -106,7 +110,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            // QR hanya dibuat jika tidak menggunakan opsi nomor telepon
             if (qr && !phoneNumber) {
                 try {
                     qrCodes[userId] = await QRCode.toDataURL(qr);
@@ -288,6 +291,61 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 app.get(['/scan', '/scanner'], (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     res.render('scan', { userId: userId });
+});
+
+// ---------------- API IMPOR EXCEL SISWA DAPODIK ---------------- //
+
+app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Berkas Excel/CSV wajib diunggah!" });
+        }
+
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        if (sheetData.length === 0) {
+            return res.status(400).json({ success: false, message: "Berkas Excel kosong atau format tidak sesuai." });
+        }
+
+        let totalBerhasil = 0;
+
+        for (const row of sheetData) {
+            const namaSiswa = row['Nama'] || row['Nama Siswa'] || row['NAMA SISWA'] || row['nama'] || row['Nama Lengkap'];
+            const nomorWa = row['No HP'] || row['No. HP'] || row['No WhatsApp'] || row['Nomor HP'] || row['No HP Ortu'] || row['nomor_wa_ortu'] || '';
+            const namaKelas = row['Rombel'] || row['Rombongan Belajar'] || row['Kelas'] || row['KELAS'] || null;
+
+            if (namaSiswa) {
+                let kelasId = null;
+
+                if (namaKelas) {
+                    let kRes = await pool.query('SELECT id FROM kelas WHERE LOWER(nama_kelas) = LOWER($1)', [namaKelas.toString().trim()]);
+                    if (kRes.rows.length > 0) {
+                        kelasId = kRes.rows[0].id;
+                    } else {
+                        let newKRes = await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1) RETURNING id', [namaKelas.toString().trim()]);
+                        kelasId = newKRes.rows[0].id;
+                    }
+                }
+
+                await pool.query(
+                    `INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)`,
+                    [namaSiswa.toString().trim(), nomorWa.toString().trim(), kelasId]
+                );
+                totalBerhasil++;
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: `Berhasil mengimpor ${totalBerhasil} data siswa dari Dapodik!`
+        });
+
+    } catch (err) {
+        console.error("Import Excel Error:", err);
+        return res.status(500).json({ success: false, message: "Gagal memproses berkas: " + err.message });
+    }
 });
 
 // ---------------- API WA GATEWAY ---------------- //
