@@ -679,6 +679,26 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// ---------------- API HAPUS RIWAYAT ABSENSI UJI COBA ---------------- //
+app.post('/api/absensi/reset-riwayat', async (req, res) => {
+    try {
+        // 1. Menghapus semua baris di tabel absensi saja
+        await pool.query('DELETE FROM absensi');
+        
+        // 2. Mereset urutan ID absensi kembali ke 1
+        await pool.query('ALTER SEQUENCE absensi_id_seq RESTART WITH 1');
+
+        console.log("🧹 Riwayat absensi uji coba berhasil dibersihkan.");
+
+        // 3. Mengarahkan kembali ke halaman asal (Admin atau Wali Kelas)
+        const backUrl = req.headers.referer || `/admin?userId=${req.session.userId || 1}`;
+        return res.redirect(backUrl);
+    } catch (err) {
+        console.error("Gagal menghapus riwayat absensi:", err);
+        return res.status(500).send("Gagal membersihkan riwayat absensi: " + err.message);
+    }
+});
+
 // ---------------- FITUR REKAP BULANAN ---------------- //
 
 app.get('/api/absensi/preview', async (req, res) => {
