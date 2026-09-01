@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Wali Kelas - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    <title>Dashboard Wali Kelas - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
+    <!-- Header Resmi -->
     <header class="bg-blue-900 text-white shadow-md border-b-4 border-emerald-500">
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="flex items-center gap-3">
                 <div class="bg-white/10 p-2 rounded-lg border border-white/20">
-                    <i class="fa-solid fa-graduation-cap text-2xl text-amber-400"></i>
+                    <i class="fa-solid fa-graduation-cap text-2xl text-emerald-400"></i>
                 </div>
                 <div>
                     <h1 class="text-sm md:text-base font-bold tracking-wide uppercase">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                    <p class="text-[11px] text-blue-200">Portal Kehadiran Siswa & Pemindai WhatsApp Gateway</p>
+                    <p class="text-[11px] text-blue-200">Panel Tenaga Pendidik / Wali Kelas</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -33,181 +34,113 @@
 
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1">
 
+        <!-- Banner Profil Guru -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="bg-blue-100 text-blue-800 p-3 rounded-xl">
-                    <i class="fa-solid fa-user-chalkboard text-xl"></i>
+                    <i class="fa-solid fa-user-tie text-xl"></i>
                 </div>
                 <div>
-                    <span class="text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 rounded uppercase tracking-wider">
-                        Penugasan Rombel: <%= user.nama_kelas %>
+                    <span class="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded uppercase tracking-wider">
+                        Rombel: <%= user.nama_kelas %>
                     </span>
-                    <h2 class="text-base font-bold text-slate-900 mt-0.5">Selamat Datang, <%= user.nama %></h2>
+                    <h2 class="text-base font-bold text-slate-900 mt-0.5"><%= user.nama %></h2>
                 </div>
             </div>
         </div>
 
-        <!-- WA Gateway Panel Dynamic -->
-<!-- WA Gateway Panel Dynamic -->
-<div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-    <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-            <i class="fa-brands fa-whatsapp text-2xl"></i>
-        </div>
-        <div>
-            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Status WhatsApp Gateway Notifikasi</h3>
-            <p class="text-xs text-slate-600 mt-0.5" id="waStatusText">
-                Koneksi Layanan: <span class="text-slate-500 font-bold">Memeriksa status...</span>
-            </p>
-        </div>
-    </div>
-
-    <div class="flex items-center gap-3">
-        <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
-            <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
-            <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
-        </div>
-        
-        <button onclick="mintaQRWA()" id="btnGenerateWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-2">
-            <i class="fa-solid fa-arrows-rotate"></i> Dapatkan Kode QR
-        </button>
-
-        <button onclick="resetWA()" id="btnResetWA" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
-            <i class="fa-solid fa-trash"></i> Reset
-        </button>
-    </div>
-</div>
-
-        <!-- Panel Filter, Pratinjau & Unduh Rekap Presensi Bulanan -->
+        <!-- 🟢 PANEL INTEGRASI WHATSAPP GATEWAY (KODE PAIRING & SCAN QR) -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
-            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
-                <div class="bg-blue-50 text-blue-800 p-2.5 rounded-xl border border-blue-200">
-                    <i class="fa-solid fa-file-invoice text-lg"></i>
-                </div>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3 mb-4">
                 <div>
-                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Pratinjau & Unduh Rekap Presensi Bulanan</h3>
-                    <p class="text-[11px] text-slate-500">Pilih periode untuk menampilkan pratinjau data rekap sebelum mengunduh berkas laporan</p>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i> Pengaturan Notifikasi WhatsApp Gateway
+                    </h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Hubungkan akun WhatsApp pribadi/sekolah Anda untuk mengirim pesan kehadiran otomatis ke orang tua.</p>
+                </div>
+
+                <!-- Badge Status WA -->
+                <div id="waBadgeStatus">
+                    <% if (statusWA === 'TERHUBUNG') { %>
+                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-3 py-1 rounded-xl font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-600"></i> Terhubung & Aktif
+                        </span>
+                    <% } else { %>
+                        <span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs px-3 py-1 rounded-xl font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-exclamation text-amber-600"></i> Belum Terhubung
+                        </span>
+                    <% } %>
                 </div>
             </div>
 
-            <form id="filterForm" action="/api/absensi/export" method="GET" target="_blank" class="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-4">
-                <input type="hidden" name="kelas_id" id="kelasId" value="<%= user.kelas_id %>">
-                
-                <div>
-                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Bulan</label>
-                    <select name="bulan" id="selectBulan" required class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600">
-                        <option value="1">Januari</option>
-                        <option value="2">Februari</option>
-                        <option value="3">Maret</option>
-                        <option value="4">April</option>
-                        <option value="5">Mei</option>
-                        <option value="6">Juni</option>
-                        <option value="7">Juli</option>
-                        <option value="8">Agustus</option>
-                        <option value="9" selected>September</option>
-                        <option value="10">Oktober</option>
-                        <option value="11">November</option>
-                        <option value="12">Desember</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Tahun</label>
-                    <select name="tahun" id="selectTahun" required class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600">
-                        <option value="2026" selected>2026</option>
-                        <option value="2025">2025</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Format Berkas</label>
-                    <select name="format" required class="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600">
-                        <option value="excel">📊 Excel (.xlsx)</option>
-                        <option value="word">📝 Word (.docx)</option>
-                        <option value="pdf">📄 PDF (.pdf)</option>
-                    </select>
-                </div>
-
-                <div class="flex items-end">
-                    <button type="button" onclick="muatPreview()" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-blue-900">
-                        <i class="fa-solid fa-eye"></i> Lihat Rekapan
-                    </button>
-                </div>
-
-                <div class="flex items-end">
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-700">
-                        <i class="fa-solid fa-download"></i> Unduh Berkas
-                    </button>
-                </div>
-            </form>
-
-            <div id="previewArea" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50">
-                <div class="flex justify-between items-center mb-3">
-                    <h4 id="previewTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                        Hasil Pratinjau Rekapitulasi
-                    </h4>
-                    <span id="previewCount" class="text-[10px] bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded font-bold">
-                        0 Siswa
-                    </span>
-                </div>
-                <div class="overflow-x-auto bg-white rounded-lg border border-slate-200">
-                    <table class="w-full text-xs text-left text-slate-700 border-collapse">
-                        <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
-                            <tr>
-                                <th class="p-2.5">No</th>
-                                <th class="p-2.5">Nama Siswa</th>
-                                <th class="p-2.5">Rombel</th>
-                                <th class="p-2.5 text-center">Total Kehadiran</th>
-                            </tr>
-                        </thead>
-                        <tbody id="previewTableBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Form Tambah Siswa Rombel -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
-            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
-                <i class="fa-solid fa-user-plus text-emerald-600"></i> Registrasi Siswa Rombel (<%= user.nama_kelas %>)
-            </h3>
-            
-            <% if (!user.kelas_id) { %>
-                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Akun Anda belum terhubung ke Rombongan Belajar tertentu. Silakan hubungi Administrator Sekolah.
-                </div>
-            <% } else { %>
-                <form action="/api/siswa/tambah" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <input type="hidden" name="kelas_id" value="<%= user.kelas_id %>">
-                    
-                    <div>
-                        <label class="block text-[11px] text-slate-600 mb-1 font-medium">Nama Lengkap Siswa</label>
-                        <input type="text" name="nama" required placeholder="Contoh: Ahmad Rizky" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-slate-600 mb-1 font-medium">No. WhatsApp Orang Tua / Wali</label>
-                        <input type="text" name="nomor_wa_ortu" placeholder="Contoh: 082371729760" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
-                    </div>
-
-                    <div class="flex items-end">
-                        <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2 rounded-xl transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-plus"></i> Simpan Data Siswa
+            <!-- Konten Tautan WA -->
+            <div id="waControlPanel">
+                <% if (statusWA === 'TERHUBUNG') { %>
+                    <div class="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div class="text-xs text-slate-700">
+                            <p class="font-bold text-emerald-900">Layanan Notifikasi Berhasil Terhubung!</p>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Setiap presensi siswa di kelas ini akan otomatis mengirim pesan WA ke orang tua.</p>
+                        </div>
+                        <button onclick="resetWA()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap">
+                            <i class="fa-solid fa-power-off"></i> Putuskan Tautan WA
                         </button>
                     </div>
-                </form>
-            <% } %>
+                <% } else { %>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Opsi 1: Tautkan Menggunakan Kode Pairing Nomor HP -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                            <h4 class="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-mobile-screen-button text-blue-600"></i> Tautkan via Kode Tautan (Nomor HP)
+                            </h4>
+                            <p class="text-[11px] text-slate-500 mb-3">Masukkan nomor WA Anda untuk menerima 8 digit kode tautan langsung di HP.</p>
+
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="phoneWaInput" placeholder="Contoh: 082371729760" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                <button onclick="mintaKodePairing()" id="btnPairing" class="bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1">
+                                    <i class="fa-solid fa-key"></i> Minta Kode
+                                </button>
+                            </div>
+
+                            <!-- Tampilan Kode Tautan 8 Digit -->
+                            <div id="boxPairingCode" class="hidden bg-blue-900 text-white rounded-xl p-3 text-center border-2 border-blue-700">
+                                <p class="text-[10px] text-blue-200 uppercase tracking-wider font-semibold">Kode Tautan WhatsApp Anda:</p>
+                                <div id="displayPairingCode" class="text-xl font-mono font-bold tracking-widest text-amber-400 my-1">
+                                    ---- ----
+                                </div>
+                                <p class="text-[10px] text-blue-200">Buka WA di HP > Perangkat Tertaut > Tautkan dengan nomor telepon saja.</p>
+                            </div>
+                        </div>
+
+                        <!-- Opsi 2: Pindai Kode QR -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                            <h4 class="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-qrcode text-emerald-600"></i> Atau Tautkan via QR Code
+                            </h4>
+                            <p class="text-[11px] text-slate-500 mb-3">Klik tombol di bawah untuk menampilkan Kode QR tautan.</p>
+
+                            <button onclick="mulaiWA()" id="btnStartWA" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1.5 mb-3">
+                                <i class="fa-solid fa-arrows-rotate"></i> Tampilkan QR Code WA
+                            </button>
+
+                            <div id="boxQRCode" class="hidden">
+                                <img id="imgQRCodeWA" src="" alt="QR WA" class="w-36 h-36 border border-slate-300 rounded-lg p-1 bg-white shadow-sm mx-auto">
+                            </div>
+                        </div>
+
+                    </div>
+                <% } %>
+            </div>
         </div>
 
-        <!-- Tabel Siswa Rombel -->
+        <!-- Tabel Siswa & QR Presensi -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-users text-blue-600"></i> Daftar Peserta Didik (<%= user.nama_kelas %>)
                 </h3>
                 <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-slate-300 font-medium transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-print"></i> Cetak Kartu Identitas
+                    <i class="fa-solid fa-print"></i> Cetak Kartu QR Siswa
                 </button>
             </div>
 
@@ -215,11 +148,10 @@
                 <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
                     <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
                         <tr>
-                            <th class="p-3">ID Siswa</th>
-                            <th class="p-3">Kode QR</th>
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Kartu QR</th>
                             <th class="p-3">Nama Lengkap Siswa</th>
-                            <th class="p-3">No. WA Orang Tua / Wali</th>
-                            <th class="p-3 text-center">Tindakan</th>
+                            <th class="p-3">No. WhatsApp Orang Tua</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -236,55 +168,11 @@
                                     <td class="p-3 font-mono text-slate-700">
                                         <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
                                     </td>
-                                    <td class="p-3 text-center">
-                                        <form action="/api/siswa/hapus/<%= s.id %>" method="POST" onsubmit="return confirm('Hapus data siswa ini?');" class="inline">
-                                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium">
-                                                <i class="fa-solid fa-trash mr-1"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </td>
                                 </tr>
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="5" class="p-6 text-center text-slate-400 italic">Belum ada peserta didik terdaftar pada rombel ini.</td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Tabel Log Absensi Hari Ini -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
-            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
-                <i class="fa-solid fa-clipboard-user text-emerald-600"></i> Rekapitulasi Presensi Kehadiran Hari Ini
-            </h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[400px]">
-                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
-                        <tr>
-                            <th class="p-3">Nama Siswa</th>
-                            <th class="p-3">Waktu Presensi</th>
-                            <th class="p-3">Status Kehadiran</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <% if (absensiHariIni && absensiHariIni.length > 0) { %>
-                            <% absensiHariIni.forEach(a => { %>
-                                <tr class="hover:bg-slate-50">
-                                    <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
-                                    <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
-                                    <td class="p-3">
-                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded">
-                                            HADIR
-                                        </span>
-                                    </td>
-                                </tr>
-                            <% }); %>
-                        <% } else { %>
-                            <tr>
-                                <td colspan="3" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk untuk hari ini.</td>
+                                <td colspan="4" class="p-6 text-center text-slate-400 italic">Belum ada data siswa di rombel ini.</td>
                             </tr>
                         <% } %>
                     </tbody>
@@ -294,93 +182,76 @@
 
     </main>
 
+    <!-- Script Pemanggil Tautan WA -->
     <script>
-        const currentUserId = "<%= userId %>";
+        const currentUserId = <%= userId %>;
+        let timerCekStatus = null;
 
-        function cekStatusWA() {
-            fetch(`/api/wa-status?userId=${currentUserId}`)
+        function mintaKodePairing() {
+            const phone = document.getElementById('phoneWaInput').value.trim();
+            if (!phone) return alert("Masukkan nomor WhatsApp terlebih dahulu!");
+
+            const btn = document.getElementById('btnPairing');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Meminta...`;
+            btn.disabled = true;
+
+            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(phone)}`)
                 .then(res => res.json())
                 .then(data => {
-                    const statusText = document.getElementById('waStatusText');
-                    const qrContainer = document.getElementById('qrContainer');
-                    const qrImage = document.getElementById('qrImageWA');
-
-                    if (data.statusWA === 'TERHUBUNG') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
-                        qrContainer.classList.add('hidden');
-                    } else if (data.qrCodeWA) {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
-                        qrImage.src = data.qrCodeWA;
-                        qrContainer.classList.remove('hidden');
-                    } else if (data.statusWA === 'MENUNGGU_SCAN') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
-                    } else {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
-                        qrContainer.classList.add('hidden');
-                    }
+                    btn.innerHTML = `<i class="fa-solid fa-key"></i> Minta Kode`;
+                    btn.disabled = false;
+                    mulaiCekStatus();
                 })
-                .catch(err => console.error("Gagal cek WA status:", err));
+                .catch(err => {
+                    alert("Gagal meminta kode tautan.");
+                    btn.innerHTML = `<i class="fa-solid fa-key"></i> Minta Kode`;
+                    btn.disabled = false;
+                });
         }
 
-        function mintaQRWA() {
-            const btn = document.getElementById('btnGenerateWA');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+        function mulaiWA() {
+            const btn = document.getElementById('btnStartWA');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat QR...`;
             btn.disabled = true;
 
             fetch(`/api/start-wa?userId=${currentUserId}`)
+                .then(res => res.json())
                 .then(() => {
-                    setTimeout(() => {
-                        btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Dapatkan Kode QR`;
-                        btn.disabled = false;
-                        cekStatusWA();
-                    }, 2000);
+                    btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Tampilkan QR Code WA`;
+                    btn.disabled = false;
+                    mulaiCekStatus();
                 });
         }
-function resetWA() {
-    if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp?')) return;
-    fetch(`/api/reset-wa?userId=${currentUserId}`)
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-            cekStatusWA();
-        });
-}
-        // Cek otomatis setiap 2 detik secara teratur tanpa refresh halaman
-        setInterval(cekStatusWA, 2000);
-        cekStatusWA();
 
-        function muatPreview() {
-            const bulan = document.getElementById('selectBulan').value;
-            const tahun = document.getElementById('selectTahun').value;
-            const kelasId = document.getElementById('kelasId').value;
-            const previewArea = document.getElementById('previewArea');
-            const tbody = document.getElementById('previewTableBody');
-            const countTag = document.getElementById('previewCount');
+        function mulaiCekStatus() {
+            if (timerCekStatus) clearInterval(timerCekStatus);
 
-            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data rekapitulasi...</td></tr>`;
-            previewArea.classList.remove('hidden');
+            timerCekStatus = setInterval(() => {
+                fetch(`/api/wa-status?userId=${currentUserId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.statusWA === 'TERHUBUNG') {
+                            clearInterval(timerCekStatus);
+                            location.reload();
+                        } else if (data.pairingCode) {
+                            document.getElementById('boxPairingCode').classList.remove('hidden');
+                            document.getElementById('displayPairingCode').innerText = data.pairingCode;
+                        } else if (data.qrCodeWA) {
+                            document.getElementById('boxQRCode').classList.remove('hidden');
+                            document.getElementById('imgQRCodeWA').src = data.qrCodeWA;
+                        }
+                    });
+            }, 3000);
+        }
 
-            fetch(`/api/absensi/preview?bulan=${bulan}&tahun=${tahun}&kelas_id=${kelasId}`)
+        function resetWA() {
+            if (!confirm('Apakah Anda yakin ingin memutuskan tautan WhatsApp?')) return;
+
+            fetch(`/api/reset-wa?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success && data.data.length > 0) {
-                        countTag.innerText = `${data.data.length} Siswa`;
-                        tbody.innerHTML = data.data.map((item, index) => `
-                            <tr class="hover:bg-slate-50 border-b border-slate-100">
-                                <td class="p-2.5 text-center font-mono">${index + 1}</td>
-                                <td class="p-2.5 font-semibold text-slate-900">${item.nama_siswa}</td>
-                                <td class="p-2.5 text-slate-600">${item.nama_kelas}</td>
-                                <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${item.total_hadir} Hari</td>
-                            </tr>
-                        `).join('');
-                    } else {
-                        countTag.innerText = '0 Siswa';
-                        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Tidak ada data kehadiran pada bulan dan tahun yang dipilih.</td></tr>`;
-                    }
-                })
-                .catch(err => {
-                    console.error("Preview error:", err);
-                    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
+                    alert(data.message);
+                    location.reload();
                 });
         }
     </script>
