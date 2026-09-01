@@ -39,36 +39,48 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
-// ----------------- POSTGRES AUTH STATE ----------------- //
+// ----------------- POSTGRES AUTH STATE (WA SESI) ----------------- //
 
 async function usePostgresAuthState(pool, userId) {
     const keyPrefix = `user_${userId}:`;
 
     const writeData = async (data, id, key) => {
-        const fullKey = keyPrefix + key;
-        const jsonStr = JSON.stringify(data, (k, v) => (typeof v === 'bigint' ? v.toString() + 'n' : v));
-        await pool.query(
-            `INSERT INTO wa_sessions (key, id, data) VALUES ($1, $2, $3)
-             ON CONFLICT (key, id) DO UPDATE SET data = EXCLUDED.data`,
-            [fullKey, id, jsonStr]
-        );
+        try {
+            const fullKey = keyPrefix + key;
+            const jsonStr = JSON.stringify(data, (k, v) => (typeof v === 'bigint' ? v.toString() + 'n' : v));
+            await pool.query(
+                `INSERT INTO wa_sessions (key, id, data) VALUES ($1, $2, $3)
+                 ON CONFLICT (key, id) DO UPDATE SET data = EXCLUDED.data`,
+                [fullKey, id, jsonStr]
+            );
+        } catch (e) {
+            console.error("DB Write Session Error:", e.message);
+        }
     };
 
     const readData = async (id, key) => {
-        const fullKey = keyPrefix + key;
-        const res = await pool.query(`SELECT data FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
-        if (res.rows.length > 0) {
-            return JSON.parse(res.rows[0].data, (k, v) => {
-                if (typeof v === 'string' && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
-                return v;
-            });
+        try {
+            const fullKey = keyPrefix + key;
+            const res = await pool.query(`SELECT data FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
+            if (res.rows.length > 0) {
+                return JSON.parse(res.rows[0].data, (k, v) => {
+                    if (typeof v === 'string' && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
+                    return v;
+                });
+            }
+        } catch (e) {
+            console.error("DB Read Session Error:", e.message);
         }
         return null;
     };
 
     const removeData = async (id, key) => {
-        const fullKey = keyPrefix + key;
-        await pool.query(`DELETE FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
+        try {
+            const fullKey = keyPrefix + key;
+            await pool.query(`DELETE FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
+        } catch (e) {
+            console.error("DB Delete Session Error:", e.message);
+        }
     };
 
     let creds = await readData('creds', 'main');
@@ -118,13 +130,24 @@ async function usePostgresAuthState(pool, userId) {
 
 async function connectToWhatsApp(userId) {
     try {
+        if (waSessions[userId]) {
+            try { waSessions[userId].end(undefined); } catch (e) {}
+            delete waSessions[userId];
+        }
+
+        waStatus[userId] = 'PROSES_INIT';
+        delete qrCodes[userId];
+
         const { state, saveCreds } = await usePostgresAuthState(pool, userId);
 
-        const sock = makeWASocket({ 
-            logger: pino({ level: 'silent' }), 
-            auth: state, 
+        const sock = makeWASocket({
+            logger: pino({ level: 'silent' }),
+            auth: state,
             printQRInTerminal: false,
-            browser: ["SDN 1 KMS Presensi", "Chrome", "1.0.0"]
+            browser: ["Ubuntu", "Chrome", "120.0.0.0"],
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 25000
         });
 
         waSessions[userId] = sock;
@@ -132,54 +155,45 @@ async function connectToWhatsApp(userId) {
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
-            
+
             if (qr) {
-                qrCodes[userId] = await QRCode.toDataURL(qr);
-                waStatus[userId] = 'MENUNGGU_SCAN';
-                console.log(`📱 QR Code dibuat untuk User #${userId}`);
+                try {
+                    qrCodes[userId] = await QRCode.toDataURL(qr);
+                    waStatus[userId] = 'MENUNGGU_SCAN';
+                    console.log(`✅ [User #${userId}] QR Code Berhasil Di-generate!`);
+                } catch (qrErr) {
+                    console.error("Gagal convert QR ke DataURL:", qrErr);
+                }
             }
-            
+
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
-                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung`);
+                console.log(`✅ [User #${userId}] WhatsApp Terhubung & Aktif!`);
             }
-            
+
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
-                
+
+                console.log(`⚠️ [User #${userId}] WA Terputus (Status Code: ${statusCode}). Reconnect: ${shouldReconnect}`);
+
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
-                delete qrCodes[userId];
-                
+
                 if (shouldReconnect) {
-                    connectToWhatsApp(userId);
+                    setTimeout(() => connectToWhatsApp(userId), 3000);
                 } else {
+                    delete qrCodes[userId];
                     await pool.query(`DELETE FROM wa_sessions WHERE key LIKE $1`, [`user_${userId}:%`]);
                 }
             }
         });
     } catch (err) {
-        console.error(`❌ WA Connect Error User #${userId}:`, err.message);
+        console.error(`❌ WA Connect Fatal Error User #${userId}:`, err.message);
+        waStatus[userId] = 'ERROR';
     }
 }
-
-// Auto Load Saved Session
-async function autoLoadSavedSessions() {
-    try {
-        const res = await pool.query(`SELECT DISTINCT key FROM wa_sessions`);
-        const userIds = new Set();
-        res.rows.forEach(row => {
-            const match = row.key.match(/^user_(\d+):/);
-            if (match) userIds.add(match[1]);
-        });
-        userIds.forEach(id => connectToWhatsApp(id));
-    } catch (err) {
-        console.error("Gagal auto-load sesi WA:", err.message);
-    }
-}
-setTimeout(() => autoLoadSavedSessions(), 2000);
 
 // ---------------- ROUTES HALAMAN ---------------- //
 
@@ -314,45 +328,15 @@ app.get(['/scan', '/scanner'], (req, res) => {
     res.render('scan', { userId: userId });
 });
 
-// ---------------- API CRUD SISWA & KELAS ---------------- //
-
-app.post('/api/siswa/tambah', async (req, res) => {
-    const { nama, nomor_wa_ortu, kelas_id } = req.body;
-    try {
-        if (!nama || !kelas_id) return res.status(400).send("Nama dan Rombel wajib diisi!");
-        let noWa = nomor_wa_ortu ? nomor_wa_ortu.trim().replace(/[^0-9]/g, '') : '';
-        if (noWa.startsWith('0')) noWa = '62' + noWa.slice(1);
-
-        await pool.query(
-            'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
-            [nama.trim(), noWa, parseInt(kelas_id)]
-        );
-        res.redirect('back');
-    } catch (err) {
-        res.status(500).send("Gagal Menambahkan Data Siswa: " + err.message);
-    }
-});
-
-app.post('/api/siswa/hapus/:id', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM siswa WHERE id = $1', [req.params.id]);
-        res.redirect('back');
-    } catch (err) {
-        res.status(500).send("Gagal Menghapus Data Siswa: " + err.message);
-    }
-});
-
-// ---------------- API SCANNER & WA GATEWAY REAL-TIME ---------------- //
+// ---------------- API WA GATEWAY ---------------- //
 
 app.get('/api/start-wa', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
-    if (!waSessions[userId]) {
-        await connectToWhatsApp(userId);
-    }
-    res.json({ success: true, message: 'Menginisialisasi WhatsApp Gateway...' });
+    console.log(`🚀 Menerima permintaan awal koneksi WA User #${userId}`);
+    connectToWhatsApp(userId);
+    res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
 
-// Endpoint Polling QR Code Real-Time
 app.get('/api/wa-status', (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     res.json({
