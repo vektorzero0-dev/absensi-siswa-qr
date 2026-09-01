@@ -48,29 +48,35 @@
         </div>
 
         <!-- WA Gateway Panel Dynamic -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-                    <i class="fa-brands fa-whatsapp text-2xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Status WhatsApp Gateway Notifikasi</h3>
-                    <p class="text-xs text-slate-600 mt-0.5" id="waStatusText">
-                        Koneksi Layanan: <span class="text-slate-500 font-bold">Memeriksa status...</span>
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
-                    <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
-                    <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
-                </div>
-                <button onclick="mintaQRWA()" id="btnGenerateWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-2">
-                    <i class="fa-solid fa-arrows-rotate"></i> Dapatkan Kode QR
-                </button>
-            </div>
+<!-- WA Gateway Panel Dynamic -->
+<div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+        <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <i class="fa-brands fa-whatsapp text-2xl"></i>
         </div>
+        <div>
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Status WhatsApp Gateway Notifikasi</h3>
+            <p class="text-xs text-slate-600 mt-0.5" id="waStatusText">
+                Koneksi Layanan: <span class="text-slate-500 font-bold">Memeriksa status...</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+        <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
+            <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
+            <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
+        </div>
+        
+        <button onclick="mintaQRWA()" id="btnGenerateWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-2">
+            <i class="fa-solid fa-arrows-rotate"></i> Dapatkan Kode QR
+        </button>
+
+        <button onclick="resetWA()" id="btnResetWA" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-trash"></i> Reset
+        </button>
+    </div>
+</div>
 
         <!-- Panel Filter, Pratinjau & Unduh Rekap Presensi Bulanan -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
