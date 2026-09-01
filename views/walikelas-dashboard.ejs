@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Wali Kelas - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
-    <!-- Tailwind CSS v3 (Compiled Native - Tanpa Peringatan Production) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/base.css">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
@@ -51,7 +49,7 @@
             </div>
         </div>
 
-        <!-- PANEL INTEGRASI WHATSAPP GATEWAY (KODE PAIRING & SCAN QR) -->
+        <!-- PANEL INTEGRASI WHATSAPP GATEWAY -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3 mb-4">
                 <div>
@@ -104,8 +102,8 @@
 
                             <div id="boxPairingCode" class="hidden bg-blue-900 text-white rounded-xl p-3 text-center border-2 border-blue-700">
                                 <p class="text-[10px] text-blue-200 uppercase tracking-wider font-semibold">Kode Tautan WhatsApp Anda:</p>
-                                <div id="displayPairingCode" class="text-xl font-mono font-bold tracking-widest text-amber-400 my-1">
-                                    ---- ----
+                                <div id="displayPairingCode" class="text-2xl font-mono font-bold tracking-widest text-amber-400 my-2">
+                                    MEMUAT...
                                 </div>
                                 <p class="text-[10px] text-blue-200">Buka WA di HP > Perangkat Tertaut > Tautkan dengan nomor telepon saja.</p>
                             </div>
@@ -185,36 +183,39 @@
 
     </main>
 
-    <!-- Script Pemanggil Tautan WA -->
     <script>
         const currentUserId = Number('<%= userId %>') || 1;
         let timerCekStatus = null;
 
         function mintaKodePairing() {
             const inputEl = document.getElementById('phoneWaInput');
-            if (!inputEl) return alert("Elemen input nomor HP tidak ditemukan!");
+            const phone = inputEl ? inputEl.value.trim() : '';
 
-            const phone = inputEl.value.trim();
-            if (!phone) return alert("Masukkan nomor WhatsApp terlebih dahulu!");
+            if (!phone) {
+                alert("Masukkan nomor WhatsApp terlebih dahulu!");
+                return;
+            }
 
             const btn = document.getElementById('btnPairing');
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Meminta...`;
             btn.disabled = true;
+
+            const box = document.getElementById('boxPairingCode');
+            const disp = document.getElementById('displayPairingCode');
+            if (box && disp) {
+                box.classList.remove('hidden');
+                disp.innerText = "MENUNGGU KODE...";
+            }
 
             fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(phone)}`)
                 .then(res => res.json())
                 .then(data => {
                     btn.innerHTML = `<i class="fa-solid fa-key"></i> Minta Kode`;
                     btn.disabled = false;
-                    if (data.success) {
-                        mulaiCekStatus();
-                    } else {
-                        alert(data.message || "Gagal meminta kode.");
-                    }
+                    mulaiCekStatus();
                 })
                 .catch(err => {
-                    console.error("Pairing Error:", err);
-                    alert("Terjadi kesalahan jaringan atau server.");
+                    alert("Gagal terhubung ke server.");
                     btn.innerHTML = `<i class="fa-solid fa-key"></i> Minta Kode`;
                     btn.disabled = false;
                 });
@@ -222,7 +223,7 @@
 
         function mulaiWA() {
             const btn = document.getElementById('btnStartWA');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat QR...`;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat...`;
             btn.disabled = true;
 
             fetch(`/api/start-wa?userId=${currentUserId}`)
@@ -230,15 +231,10 @@
                 .then(data => {
                     btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Tampilkan QR Code WA`;
                     btn.disabled = false;
-                    if (data.success) {
-                        mulaiCekStatus();
-                    } else {
-                        alert(data.message || "Gagal memulai sesi WhatsApp.");
-                    }
+                    mulaiCekStatus();
                 })
                 .catch(err => {
-                    console.error("Start WA Error:", err);
-                    alert("Terjadi kesalahan koneksi server.");
+                    alert("Gagal memulai WhatsApp.");
                     btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Tampilkan QR Code WA`;
                     btn.disabled = false;
                 });
@@ -254,14 +250,18 @@
                         if (data.statusWA === 'TERHUBUNG') {
                             clearInterval(timerCekStatus);
                             location.reload();
-                        } else if (data.pairingCode) {
+                        } 
+                        
+                        if (data.pairingCode) {
                             const box = document.getElementById('boxPairingCode');
                             const disp = document.getElementById('displayPairingCode');
                             if (box && disp) {
                                 box.classList.remove('hidden');
                                 disp.innerText = data.pairingCode;
                             }
-                        } else if (data.qrCodeWA) {
+                        } 
+                        
+                        if (data.qrCodeWA) {
                             const boxQR = document.getElementById('boxQRCode');
                             const imgQR = document.getElementById('imgQRCodeWA');
                             if (boxQR && imgQR) {
@@ -271,7 +271,7 @@
                         }
                     })
                     .catch(e => console.error("Status Check Error:", e));
-            }, 3000);
+            }, 2000);
         }
 
         function resetWA() {
