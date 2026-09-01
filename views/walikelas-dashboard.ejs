@@ -498,6 +498,149 @@
                             <tr class="hover:bg-slate-50 border-b border-slate-100">
                                 <td class="p-2.5 text-center font-mono">${index + 1}</td>
                                 <td class="p-2.5 font-semibold text-slate-900">${item.nama_siswa}</td>
+<script>
+        const currentUserId = "<%= userId %>";
+        let lastQrSrc = ""; // Mencegah gambar QR merefresh berulang kali jika kodenya sama
+
+        function cekStatusWA() {
+            fetch(`/api/wa-status?userId=${currentUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const statusText = document.getElementById('waStatusText');
+                    const qrContainer = document.getElementById('qrContainer');
+                    const qrImage = document.getElementById('qrImageWA');
+                    const pairingContainer = document.getElementById('pairingContainer');
+                    const pairingCodeText = document.getElementById('pairingCodeText');
+
+                    if (data.statusWA === 'TERHUBUNG') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
+                        lastQrSrc = "";
+                    } else if (data.pairingCode) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
+                        pairingCodeText.innerText = data.pairingCode;
+                        pairingContainer.classList.remove('hidden');
+                        qrContainer.classList.add('hidden');
+                        lastQrSrc = "";
+                    } else if (data.qrCodeWA) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
+                        
+                        // Hanya update elemen img jika QR dari server benar-benar berubah
+                        if (lastQrSrc !== data.qrCodeWA) {
+                            qrImage.src = data.qrCodeWA;
+                            lastQrSrc = data.qrCodeWA;
+                        }
+                        
+                        qrContainer.classList.remove('hidden');
+                        pairingContainer.classList.add('hidden');
+                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'MENUNGGU_SCAN') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan... ⏳</span>`;
+                    } else {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
+                        lastQrSrc = "";
+                    }
+                })
+                .catch(err => console.error("Gagal cek WA status:", err));
+        }
+
+        function mintaQRWA() {
+            const btn = document.getElementById('btnGenerateWA');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+            btn.disabled = true;
+
+            fetch(`/api/start-wa?userId=${currentUserId}`)
+                .then(() => {
+                    setTimeout(() => {
+                        btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
+                        btn.disabled = false;
+                        cekStatusWA();
+                    }, 2000);
+                });
+        }
+
+        function mintaPairingWA() {
+            const noHp = prompt("Masukkan Nomor WhatsApp Anda (Contoh: 082371729760):");
+            if (!noHp) return;
+
+            const btn = document.getElementById('btnPairingWA');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+            btn.disabled = true;
+
+            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
+                .then(res => res.json())
+                .then(data => {
+                    alert("Mempersiapkan kode tautan. Silakan tunggu 3-5 detik...");
+                    setTimeout(() => {
+                        btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                        btn.disabled = false;
+                        cekStatusWA();
+                    }, 3000);
+                });
+        }
+
+        function resetWA() {
+            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp?')) return;
+            fetch(`/api/reset-wa?userId=${currentUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    cekStatusWA();
+                });
+        }
+
+        // Cek berkala setiap 3 detik
+        setInterval(cekStatusWA, 3000);
+        cekStatusWA();
+
+        function bukaModalEditSiswa(btn) {
+            const id = btn.getAttribute('data-id');
+            const nama = decodeURIComponent(btn.getAttribute('data-nama'));
+            const wa = decodeURIComponent(btn.getAttribute('data-wa'));
+
+            document.getElementById('formEditSiswa').action = `/api/siswa/edit/${id}`;
+            document.getElementById('editNamaSiswa').value = nama;
+            document.getElementById('editWaSiswa').value = wa;
+            document.getElementById('modalEditSiswa').classList.remove('hidden');
+        }
+
+        function tutupModalEditSiswa() {
+            document.getElementById('modalEditSiswa').classList.add('hidden');
+        }
+
+        function hapusSiswa(btn) {
+            const id = btn.getAttribute('data-id');
+            const nama = decodeURIComponent(btn.getAttribute('data-nama'));
+
+            if (confirm(`Apakah Anda yakin ingin menghapus data siswa "${nama}"?`)) {
+                const formHapus = document.getElementById('formHapusSiswa');
+                formHapus.action = `/api/siswa/hapus/${id}`;
+                formHapus.submit();
+            }
+        }
+
+        function muatPreview() {
+            const bulan = document.getElementById('selectBulan').value;
+            const tahun = document.getElementById('selectTahun').value;
+            const kelasId = document.getElementById('kelasId').value;
+            const previewArea = document.getElementById('previewArea');
+            const tbody = document.getElementById('previewTableBody');
+            const countTag = document.getElementById('previewCount');
+
+            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data rekapitulasi...</td></tr>`;
+            previewArea.classList.remove('hidden');
+
+            fetch(`/api/absensi/preview?bulan=${bulan}&tahun=${tahun}&kelas_id=${kelasId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        countTag.innerText = `${data.data.length} Siswa`;
+                        tbody.innerHTML = data.data.map((item, index) => `
+                            <tr class="hover:bg-slate-50 border-b border-slate-100">
+                                <td class="p-2.5 text-center font-mono">${index + 1}</td>
+                                <td class="p-2.5 font-semibold text-slate-900">${item.nama_siswa}</td>
                                 <td class="p-2.5 text-slate-600">${item.nama_kelas}</td>
                                 <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${item.total_hadir} Hari</td>
                             </tr>
