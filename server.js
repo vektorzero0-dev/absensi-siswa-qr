@@ -47,6 +47,17 @@ function bersihkanGelar(nama) {
     return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
 }
 
+// 🟢 FUNGSIONALITAS GENERATE QR AMAN (ANTI ERROR/CRASH)
+async function generateQRDataURL(text) {
+    try {
+        if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        return await QRCode.toDataURL(text.toString());
+    } catch (err) {
+        console.error("Gagal Generate QR:", err.message);
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    }
+}
+
 // ----------------- HYBRID AUTH STATE ----------------- //
 
 async function getAuthState(userId) {
@@ -112,7 +123,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (qr && !phoneNumber) {
                 try {
-                    qrCodes[userId] = await QRCode.toDataURL(qr);
+                    qrCodes[userId] = await generateQRDataURL(qr);
                     waStatus[userId] = 'MENUNGGU_SCAN';
 
                     console.log(`\n========================================`);
@@ -121,7 +132,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                     qrcodeTerminal.generate(qr, { small: true });
 
                 } catch (qrErr) {
-                    console.error("Gagal generate QR Code:", qrErr);
+                    console.error("Gagal generate QR Code WA:", qrErr);
                 }
             }
 
@@ -204,7 +215,7 @@ app.get('/admin', async (req, res) => {
 
         const usersCleaned = usersRes.rows.map(u => ({ ...u, nama: bersihkanGelar(u.nama) }));
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await QRCode.toDataURL(s.id.toString());
+            const qrImage = await generateQRDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
 
@@ -270,7 +281,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         });
 
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await QRCode.toDataURL(s.id.toString());
+            const qrImage = await generateQRDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
 
@@ -440,7 +451,7 @@ app.post('/api/siswa/hapus-semua', async (req, res) => {
     }
 });
 
-// ---------------- API IMPOR EXCEL SISWA DAPODIK (FLEKSIBEL CANGGIH) ---------------- //
+// ---------------- API IMPOR EXCEL SISWA DAPODIK ---------------- //
 
 app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res) => {
     try {
