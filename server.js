@@ -293,6 +293,38 @@ app.get(['/scan', '/scanner'], (req, res) => {
     res.render('scan', { userId: userId });
 });
 
+// ---------------- API KELOLA GURU (EDIT & UBAH PASSWORD) ---------------- //
+
+app.post('/api/guru/edit/:id', async (req, res) => {
+    const guruId = parseInt(req.params.id);
+    const { nama, username, password, kelas_id } = req.body;
+
+    try {
+        if (!nama || !username) {
+            return res.status(400).send("Nama dan Username wajib diisi.");
+        }
+
+        const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+
+        if (password && password.trim() !== '') {
+            await pool.query(
+                `UPDATE users SET nama = $1, username = $2, password = $3, kelas_id = $4 WHERE id = $5`,
+                [nama.trim(), username.trim(), password.trim(), parsedKelasId, guruId]
+            );
+        } else {
+            await pool.query(
+                `UPDATE users SET nama = $1, username = $2, kelas_id = $3 WHERE id = $4`,
+                [nama.trim(), username.trim(), parsedKelasId, guruId]
+            );
+        }
+
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        console.error("Gagal edit guru:", err);
+        return res.status(500).send("Gagal memperbarui data guru: " + err.message);
+    }
+});
+
 // ---------------- API IMPOR EXCEL SISWA DAPODIK ---------------- //
 
 app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res) => {
