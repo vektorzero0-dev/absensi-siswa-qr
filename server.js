@@ -398,12 +398,18 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
     }
 });
 
-// 🟢 API HAPUS SEMUA SISWA (RESET TOTAL)
+// 🟢 API HAPUS SEMUA SISWA & RESET ID KE NOMOR 1
 app.post('/api/siswa/hapus-semua', async (req, res) => {
     try {
-        // Hapus juga riwayat absensi terkait agar tidak melanggar Foreign Key Constraint
+        // 1. Hapus semua riwayat absensi agar tidak melanggar foreign key
         await pool.query('DELETE FROM absensi');
+        
+        // 2. Hapus semua siswa
         await pool.query('DELETE FROM siswa');
+        
+        // 3. Reset urutan ID tabel siswa kembali ke nomor 1
+        await pool.query("ALTER SEQUENCE siswa_id_seq RESTART WITH 1");
+
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
         console.error("Gagal reset siswa:", err);
