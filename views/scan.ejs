@@ -32,11 +32,11 @@
 
         <!-- Area Kamera Scanner -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
-            <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3">
+            <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3 min-h-[250px] flex items-center justify-center">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
-                <i class="fa-solid fa-camera text-blue-900"></i> Posisikan Kode QR Kartu Siswa di Depan Kamera Belakang
+            <p id="cameraStatusText" class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
+                <i class="fa-solid fa-camera text-blue-900"></i> Memuat kamera... Memohon izin akses.
             </p>
         </div>
 
@@ -90,6 +90,7 @@
     <script>
         const userId = <%= userId %>;
         let isProcessing = false;
+        let html5QrCode = null;
 
         function onScanSuccess(decodedText, decodedResult) {
             if (isProcessing) return;
@@ -130,29 +131,42 @@
             });
         }
 
-        // Inisialisasi Html5QrcodeScanner dengan kamera belakang otomatis
-        const scannerConfig = {
-            fps: 10,
-            qrbox: { width: 220, height: 220 },
-            videoConstraints: {
-                facingMode: { exact: "environment" }
-            }
-        };
+        // Inisialisasi Pembukaan Kamera Otomatis
+        document.addEventListener("DOMContentLoaded", () => {
+            const cameraStatus = document.getElementById('cameraStatusText');
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", scannerConfig, false);
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length > 0) {
+                    // Otomatis cari kamera belakang
+                    let selectedCameraId = devices[0].id;
+                    const backCam = devices.find(d => 
+                        d.label.toLowerCase().includes('back') || 
+                        d.label.toLowerCase().includes('belakang') ||
+                        d.label.toLowerCase().includes('environment')
+                    );
+                    
+                    if (backCam) {
+                        selectedCameraId = backCam.id;
+                    }
 
-        html5QrcodeScanner.render(onScanSuccess).catch(err => {
-            console.warn("Perangkat tidak mendukung constraint exact, mengaktifkan mode kamera belakang alternatif...");
-            
-            // Fallback jika browser/HP tertentu menolak constraint exact
-            const fallbackConfig = {
-                fps: 10,
-                qrbox: { width: 220, height: 220 },
-                videoConstraints: { facingMode: "environment" }
-            };
-            
-            const fallbackScanner = new Html5QrcodeScanner("reader", fallbackConfig, false);
-            fallbackScanner.render(onScanSuccess);
+                    html5QrCode = new Html5Qrcode("reader");
+                    html5QrCode.start(
+                        selectedCameraId, 
+                        { fps: 10, qrbox: { width: 220, height: 220 } },
+                        onScanSuccess
+                    ).then(() => {
+                        cameraStatus.innerHTML = `<i class="fa-solid fa-camera text-emerald-600"></i> Kamera Aktif. Arahkan Kode QR Siswa ke Kotak Pemindai`;
+                    }).catch(err => {
+                        console.error("Gagal menjalankan kamera:", err);
+                        cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Gagal membuka kamera. Pastikan izin kamera sudah diberikan.</span>`;
+                    });
+                } else {
+                    cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-video-slash"></i> Perangkat kamera tidak ditemukan.</span>`;
+                }
+            }).catch(err => {
+                console.error("Error akses kamera:", err);
+                cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-lock"></i> Izin kamera ditolak atau web belum menggunakan HTTPS!</span>`;
+            });
         });
     </script>
 
