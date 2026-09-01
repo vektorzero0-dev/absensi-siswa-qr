@@ -197,7 +197,7 @@ app.get('/admin', async (req, res) => {
             FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id ORDER BY u.id ASC
         `);
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.id ASC
         `);
         const kelasRes = await pool.query(`SELECT * FROM kelas ORDER BY id ASC`);
@@ -293,17 +293,40 @@ app.get(['/scan', '/scanner'], (req, res) => {
     res.render('scan', { userId: userId });
 });
 
-// ---------------- API KELOLA GURU (EDIT & UBAH PASSWORD) ---------------- //
+// ---------------- API TAMBAH, EDIT, & HAPUS DATA ---------------- //
+
+app.post('/api/kelas/tambah', async (req, res) => {
+    const { nama_kelas } = req.body;
+    try {
+        if (!nama_kelas) return res.status(400).send("Nama kelas wajib diisi.");
+        await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1)', [nama_kelas.trim()]);
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menambah kelas: " + err.message);
+    }
+});
+
+app.post('/api/guru/tambah', async (req, res) => {
+    const { nama, username, password, kelas_id } = req.body;
+    try {
+        if (!nama || !username || !password) return res.status(400).send("Semua kolom wajib diisi.");
+        const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+        await pool.query(
+            'INSERT INTO users (nama, username, password, role, kelas_id) VALUES ($1, $2, $3, $4, $5)',
+            [nama.trim(), username.trim(), password.trim(), 'WALI_KELAS', parsedKelasId]
+        );
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menambah guru: " + err.message);
+    }
+});
 
 app.post('/api/guru/edit/:id', async (req, res) => {
     const guruId = parseInt(req.params.id);
     const { nama, username, password, kelas_id } = req.body;
 
     try {
-        if (!nama || !username) {
-            return res.status(400).send("Nama dan Username wajib diisi.");
-        }
-
+        if (!nama || !username) return res.status(400).send("Nama dan Username wajib diisi.");
         const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
 
         if (password && password.trim() !== '') {
@@ -317,15 +340,78 @@ app.post('/api/guru/edit/:id', async (req, res) => {
                 [nama.trim(), username.trim(), parsedKelasId, guruId]
             );
         }
-
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
-        console.error("Gagal edit guru:", err);
         return res.status(500).send("Gagal memperbarui data guru: " + err.message);
     }
 });
 
-// ---------------- API IMPOR EXCEL SISWA DAPODIK ---------------- //
+app.post('/api/guru/hapus/:id', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM users WHERE id = $1 AND role != $2', [parseInt(req.params.id), 'ADMIN']);
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menghapus guru: " + err.message);
+    }
+});
+
+app.post('/api/siswa/tambah', async (req, res) => {
+    const { nama, nomor_wa_ortu, kelas_id } = req.body;
+    try {
+        if (!nama) return res.status(400).send("Nama siswa wajib diisi.");
+        const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+        await pool.query(
+            'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
+            [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId]
+        );
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menambah siswa: " + err.message);
+    }
+});
+
+app.post('/api/siswa/edit/:id', async (req, res) => {
+    const siswaId = parseInt(req.params.id);
+    const { nama, nomor_wa_ortu, kelas_id } = req.body;
+
+    try {
+        if (!nama) return res.status(400).send("Nama siswa wajib diisi.");
+        const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+
+        await pool.query(
+            `UPDATE siswa SET nama = $1, nomor_wa_ortu = $2, kelas_id = $3 WHERE id = $4`,
+            [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId, siswaId]
+        );
+
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal memperbarui data siswa: " + err.message);
+    }
+});
+
+app.post('/api/siswa/hapus/:id', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM siswa WHERE id = $1', [parseInt(req.params.id)]);
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menghapus siswa: " + err.message);
+    }
+});
+
+// 🟢 API HAPUS SEMUA SISWA (RESET TOTAL)
+app.post('/api/siswa/hapus-semua', async (req, res) => {
+    try {
+        // Hapus juga riwayat absensi terkait agar tidak melanggar Foreign Key Constraint
+        await pool.query('DELETE FROM absensi');
+        await pool.query('DELETE FROM siswa');
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        console.error("Gagal reset siswa:", err);
+        return res.status(500).send("Gagal menghapus seluruh siswa: " + err.message);
+    }
+});
+
+// ---------------- API IMPOR EXCEL SISWA DAPODIK (FLEKSIBEL CANGGIH) ---------------- //
 
 app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res) => {
     try {
@@ -335,38 +421,65 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
 
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
-        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
 
         if (sheetData.length === 0) {
-            return res.status(400).json({ success: false, message: "Berkas Excel kosong atau format tidak sesuai." });
+            return res.status(400).json({ success: false, message: "Berkas Excel kosong atau tidak terbaca." });
         }
 
         let totalBerhasil = 0;
 
         for (const row of sheetData) {
-            const namaSiswa = row['Nama'] || row['Nama Siswa'] || row['NAMA SISWA'] || row['nama'] || row['Nama Lengkap'];
-            const nomorWa = row['No HP'] || row['No. HP'] || row['No WhatsApp'] || row['Nomor HP'] || row['No HP Ortu'] || row['nomor_wa_ortu'] || '';
-            const namaKelas = row['Rombel'] || row['Rombongan Belajar'] || row['Kelas'] || row['KELAS'] || null;
+            let namaSiswa = "";
+            let nomorWa = "";
+            let namaKelas = null;
 
-            if (namaSiswa) {
+            Object.keys(row).forEach(key => {
+                const cleanKey = key.toString().toLowerCase().trim();
+                const val = row[key] ? row[key].toString().trim() : "";
+
+                // Deteksi Kolom Nama
+                if (cleanKey.includes('nama') || cleanKey.includes('peserta didik') || cleanKey.includes('siswa')) {
+                    if (!namaSiswa && val) namaSiswa = val;
+                }
+                // Deteksi Kolom Nomor HP/WA
+                if (cleanKey.includes('hp') || cleanKey.includes('wa') || cleanKey.includes('telepon') || cleanKey.includes('seluler') || cleanKey.includes('kontak')) {
+                    if (!nomorWa && val) nomorWa = val;
+                }
+                // Deteksi Kolom Rombel/Kelas
+                if (cleanKey.includes('rombel') || cleanKey.includes('kelas') || cleanKey.includes('rombongan') || cleanKey.includes('tingkat')) {
+                    if (!namaKelas && val) namaKelas = val;
+                }
+            });
+
+            if (namaSiswa && namaSiswa.length > 1) {
                 let kelasId = null;
 
                 if (namaKelas) {
-                    let kRes = await pool.query('SELECT id FROM kelas WHERE LOWER(nama_kelas) = LOWER($1)', [namaKelas.toString().trim()]);
+                    const cleanNamaKelas = namaKelas.toString().trim();
+                    let kRes = await pool.query('SELECT id FROM kelas WHERE LOWER(nama_kelas) = LOWER($1)', [cleanNamaKelas]);
+                    
                     if (kRes.rows.length > 0) {
                         kelasId = kRes.rows[0].id;
                     } else {
-                        let newKRes = await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1) RETURNING id', [namaKelas.toString().trim()]);
+                        let newKRes = await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1) RETURNING id', [cleanNamaKelas]);
                         kelasId = newKRes.rows[0].id;
                     }
                 }
 
                 await pool.query(
                     `INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)`,
-                    [namaSiswa.toString().trim(), nomorWa.toString().trim(), kelasId]
+                    [namaSiswa, nomorWa, kelasId]
                 );
                 totalBerhasil++;
             }
+        }
+
+        if (totalBerhasil === 0) {
+            return res.json({
+                success: false,
+                message: "Gagal membaca data. Pastikan ada kolom 'Nama' atau 'Nama Siswa' di baris pertama Excel."
+            });
         }
 
         return res.json({
