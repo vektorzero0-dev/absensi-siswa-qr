@@ -231,28 +231,47 @@ app.get('/admin', async (req, res) => {
 });
 
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    // Utamakan userId dari query URL, lalu session
+    const userId = parseInt(req.query.userId) || req.session.userId;
+    
+    // Jika tidak ada ID login, kembalikan ke halaman login utama
+    if (!userId) return res.redirect('/');
+
     try {
-        const userRes = await pool.query(`SELECT id, nama, role, kelas_id FROM users WHERE id = $1`, [userId]);
-        const userRaw = userRes.rows[0] || { id: userId, nama: 'Tenaga Pendidik', role: 'WALI_KELAS', kelas_id: null };
+        // 1. Ambil data wali kelas beserta ID kelas penugasannya
+        const userRes = await pool.query(`
+            SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas
+            FROM users u
+            LEFT JOIN kelas k ON u.kelas_id = k.id
+            WHERE u.id = $1
+        `, [userId]);
+
+        if (userRes.rows.length === 0) return res.redirect('/');
+        
+        const userRaw = userRes.rows[0];
         userRaw.nama = bersihkanGelar(userRaw.nama);
 
-        let namaKelas = 'Seluruh Rombongan Belajar';
-        if (userRaw.kelas_id) {
-            const kRes = await pool.query(`SELECT nama_kelas FROM kelas WHERE id = $1`, [userRaw.kelas_id]);
-            if (kRes.rows.length > 0) namaKelas = kRes.rows[0].nama_kelas;
-        }
-        userRaw.nama_kelas = namaKelas;
-
-        let siswaQuery = `SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id`;
+        // 2. Query Siswa Presisi: Filter ketat berdasarkan kelas_id milik wali kelas tersebut
+        let siswaQuery = `
+            SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            FROM siswa s 
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+        `;
         const queryParamsSiswa = [];
+
+        // Jika user memiliki kelas_id (Wali Kelas), HANYA tampilkan siswa di kelas tersebut
         if (userRaw.kelas_id) {
             siswaQuery += ` WHERE s.kelas_id = $1`;
             queryParamsSiswa.push(parseInt(userRaw.kelas_id));
+        } else if (userRaw.role !== 'ADMIN') {
+            // Jika Wali Kelas belum diatur kelasnya oleh Admin, tampilkan tabel kosong
+            siswaQuery += ` WHERE s.kelas_id = -1`; 
         }
+
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
+        // 3. Query Log Absensi Hari Ini (Filter berdasarkan kelas siswa)
         let absensiQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
@@ -261,10 +280,12 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             WHERE DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
         `;
         const queryParamsAbsensi = [];
+
         if (userRaw.kelas_id) {
             absensiQuery += ` AND s.kelas_id = $1`;
             queryParamsAbsensi.push(parseInt(userRaw.kelas_id));
         }
+
         absensiQuery += ` ORDER BY a.waktu DESC`;
         const absensiRes = await pool.query(absensiQuery, queryParamsAbsensi);
 
@@ -280,10 +301,14 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        // Generate QR Code untuk masing-masing siswa di kelas tersebut
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
+
+        // Simpan userId ke session agar konsisten
+        req.session.userId = userId;
 
         res.render('walikelas-dashboard', {
             user: userRaw,
