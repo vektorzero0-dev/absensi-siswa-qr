@@ -8,9 +8,12 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.9",
+    "docx": "^8.5.0",
     "ejs": "^3.1.9",
+    "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
+    "pdfkit-table": "^0.1.1",
     "pg": "^8.11.5",
     "pino": "^8.20.0",
     "qrcode": "^1.5.3"
