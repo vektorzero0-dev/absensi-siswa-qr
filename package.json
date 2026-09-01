@@ -16,6 +16,7 @@
     "pdfkit-table": "^0.1.1",
     "pg": "^8.11.5",
     "pino": "^8.20.0",
-    "qrcode": "^1.5.3"
+    "qrcode": "^1.5.3",
+    "qrcode-terminal": "^0.12.0"
   }
 }
