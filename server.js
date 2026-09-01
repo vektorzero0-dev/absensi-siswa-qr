@@ -9,7 +9,7 @@ const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whis
 // Package Tambahan untuk Fitur Ekspor Rekap Bulanan
 const ExcelJS = require('exceljs');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType } = require('docx');
-const PDFDocument = require('pdfkit-table');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -115,7 +115,6 @@ app.get('/walikelas-dashboard', async (req, res) => {
 
         let absensiHariIni = [];
         if (user.kelas_id) {
-            // FIX SQL QUERY: Menghapus SELECT ganda
             const absensiRes = await pool.query(`
                 SELECT a.*, s.nama AS nama_siswa,
                        TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS DD-MM-YYYY') AS waktu_formatted
@@ -328,24 +327,48 @@ app.get('/api/absensi/export', async (req, res) => {
             return res.send(buffer);
         }
 
-        // Format PDF (.pdf)
+        // Format PDF (.pdf) - Menggunakan PDFKit standar tanpa modul bermasalah
         if (format === 'pdf') {
-            const doc = new PDFDocument({ margin: 30, size: 'A4' });
+            const doc = new PDFDocument({ margin: 40, size: 'A4' });
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.pdf`);
 
             doc.pipe(res);
-            doc.fontSize(14).text('UPTD SD NEGERI 1 KARYA MULYA SARI', { align: 'center' });
-            doc.fontSize(12).text(judul, { align: 'center' });
+
+            // Header Dokumen
+            doc.fontSize(14).font('Helvetica-Bold').text('UPTD SD NEGERI 1 KARYA MULYA SARI', { align: 'center' });
+            doc.fontSize(11).font('Helvetica').text(judul, { align: 'center' });
             doc.moveDown(1.5);
 
-            const table = {
-                title: "Daftar Kehadiran Siswa",
-                headers: ["No", "Nama Siswa", "Kelas", "Total Hadir"],
-                rows: dataRekap.map((r, i) => [(i + 1).toString(), r.nama_siswa, r.nama_kelas, `${r.total_hadir} Hari`])
-            };
+            // Pengaturan Tabel PDF
+            let y = doc.y;
+            const startX = 40;
+            const colWidths = [40, 230, 130, 100]; // Lebar kolom No, Nama, Kelas, Total Hadir
 
-            await doc.table(table, { prepareHeader: () => doc.fontSize(10).font('Helvetica-Bold'), prepareRow: () => doc.fontSize(9).font('Helvetica') });
+            // Header Tabel
+            doc.font('Helvetica-Bold').fontSize(10);
+            doc.text('No', startX, y);
+            doc.text('Nama Siswa', startX + colWidths[0], y);
+            doc.text('Kelas', startX + colWidths[0] + colWidths[1], y);
+            doc.text('Total Hadir', startX + colWidths[0] + colWidths[1] + colWidths[2], y);
+
+            doc.moveTo(startX, y + 15).lineTo(startX + 500, y + 15).stroke();
+            y += 22;
+
+            // Isi Baris Tabel
+            doc.font('Helvetica').fontSize(9);
+            dataRekap.forEach((row, i) => {
+                if (y > 750) { // Auto Tambah Halaman Baru jika Halaman Penuh
+                    doc.addPage();
+                    y = 40;
+                }
+                doc.text((i + 1).toString(), startX, y);
+                doc.text(row.nama_siswa, startX + colWidths[0], y);
+                doc.text(row.nama_kelas, startX + colWidths[0] + colWidths[1], y);
+                doc.text(`${row.total_hadir} Hari`, startX + colWidths[0] + colWidths[1] + colWidths[2], y);
+                y += 18;
+            });
+
             doc.end();
             return;
         }
