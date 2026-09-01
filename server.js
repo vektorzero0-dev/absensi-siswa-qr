@@ -44,7 +44,8 @@ const pairingCodes = {};
 
 function bersihkanGelar(nama) {
     if (!nama) return '';
-    return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
+    // Menghapus gelar akademik umum tanpa merusak nama asli
+    return nama.replace(/,?\s*\b(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\b\.?/gi, '').trim();
 }
 
 // System QR Safe Generator
