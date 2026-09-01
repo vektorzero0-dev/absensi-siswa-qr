@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pemindai Presensi Kartu Siswa - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    
+    <!-- 🟢 DUKUNGAN PWA (PROGRESSIVE WEB APP) -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0284c7">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -35,6 +43,13 @@
             <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3 min-h-[250px] flex items-center justify-center">
                 <div id="reader" class="w-full"></div>
             </div>
+
+            <!-- Pilihan Switch Kamera jika Perangkat Memiliki Lebih dari 1 Kamera -->
+            <div id="cameraSelectContainer" class="hidden mb-3">
+                <select id="cameraSelect" onchange="gantiKamera(this.value)" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-xl p-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                </select>
+            </div>
+
             <p id="cameraStatusText" class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
                 <i class="fa-solid fa-camera text-blue-900"></i> Memuat kamera... Memohon izin akses.
             </p>
@@ -131,14 +146,51 @@
             });
         }
 
+        function gantiKamera(cameraId) {
+            if (!html5QrCode) return;
+
+            const cameraStatus = document.getElementById('cameraStatusText');
+            cameraStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-blue-900"></i> Mengganti perangkat kamera...`;
+
+            html5QrCode.stop().then(() => {
+                html5QrCode.start(
+                    cameraId,
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    onScanSuccess
+                ).then(() => {
+                    cameraStatus.innerHTML = `<i class="fa-solid fa-camera text-emerald-600"></i> Kamera Aktif. Arahkan Kode QR Siswa ke Kotak Pemindai`;
+                }).catch(err => {
+                    console.error("Gagal start kamera:", err);
+                    cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Gagal mengaktifkan kamera terpilih.</span>`;
+                });
+            }).catch(err => {
+                console.error("Gagal stop kamera:", err);
+            });
+        }
+
         // Inisialisasi Pembukaan Kamera Otomatis
         document.addEventListener("DOMContentLoaded", () => {
             const cameraStatus = document.getElementById('cameraStatusText');
+            const cameraSelectContainer = document.getElementById('cameraSelectContainer');
+            const cameraSelect = document.getElementById('cameraSelect');
 
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length > 0) {
-                    // Otomatis cari kamera belakang
                     let selectedCameraId = devices[0].id;
+
+                    // Isi Pilihan Opsi Kamera
+                    if (devices.length > 1) {
+                        cameraSelect.innerHTML = '';
+                        devices.forEach((dev, idx) => {
+                            const option = document.createElement('option');
+                            option.value = dev.id;
+                            option.text = dev.label || `Kamera ${idx + 1}`;
+                            cameraSelect.appendChild(option);
+                        });
+                        cameraSelectContainer.classList.remove('hidden');
+                    }
+
+                    // Otomatis cari kamera belakang
                     const backCam = devices.find(d => 
                         d.label.toLowerCase().includes('back') || 
                         d.label.toLowerCase().includes('belakang') ||
@@ -147,6 +199,7 @@
                     
                     if (backCam) {
                         selectedCameraId = backCam.id;
+                        if (cameraSelect) cameraSelect.value = backCam.id;
                     }
 
                     html5QrCode = new Html5Qrcode("reader");
