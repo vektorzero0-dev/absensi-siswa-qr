@@ -258,7 +258,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // Kueri SQL tunggal yang sudah dibersihkan
         let absensiQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
@@ -290,6 +289,11 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             const qrImage = await QRCode.toDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
+
+        // OTOMATIS PICU KONEKSI WA JIKA BELUM TERHUBUNG & BELUM ADA QR
+        if (!waSessions[userId] && (!waStatus[userId] || waStatus[userId] === 'BELUM_TERHUBUNG')) {
+            connectToWhatsApp(userId);
+        }
 
         res.render('walikelas-dashboard', {
             user: userRaw,
