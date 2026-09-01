@@ -47,7 +47,7 @@
             </div>
         </div>
 
-        <!-- WA Gateway Panel Dynamic (Dukungan Dual-Mode: Scan QR & Kode Tautan Nomor WA) -->
+        <!-- WA Gateway Panel Dynamic -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
@@ -250,10 +250,14 @@
                                     <td class="p-3 font-mono text-slate-700">
                                         <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
                                     </td>
-                                    <td class="p-3 text-center">
+                                    <td class="p-3 text-center flex justify-center gap-2">
+                                        <button type="button" onclick="bukaModalEditSiswa('<%= s.id %>', '<%= s.nama %>', '<%= s.nomor_wa_ortu || '' %>')" class="text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                            <i class="fa-solid fa-pen-to-square"></i> Edit
+                                        </button>
+
                                         <form action="/api/siswa/hapus/<%= s.id %>" method="POST" onsubmit="return confirm('Hapus data siswa ini?');" class="inline">
-                                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium">
-                                                <i class="fa-solid fa-trash mr-1"></i> Hapus
+                                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                <i class="fa-solid fa-trash"></i> Hapus
                                             </button>
                                         </form>
                                     </td>
@@ -307,6 +311,43 @@
         </div>
 
     </main>
+
+    <!-- MODAL EDIT DATA SISWA -->
+    <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-emerald-600"></i> Edit Data Siswa / WhatsApp
+                </h3>
+                <button type="button" onclick="tutupModalEditSiswa()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="formEditSiswa" action="" method="POST" class="space-y-3">
+                <input type="hidden" name="kelas_id" value="<%= user.kelas_id %>">
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Nama Lengkap Siswa</label>
+                    <input type="text" id="editNamaSiswa" name="nama" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">No. WhatsApp Ortu/Wali</label>
+                    <input type="text" id="editWaSiswa" name="nomor_wa_ortu" placeholder="Contoh: 082371729760" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                </div>
+
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="tutupModalEditSiswa()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl border border-slate-300 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2.5 rounded-xl border border-emerald-800 transition">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         const currentUserId = "<%= userId %>";
@@ -391,9 +432,19 @@
                 });
         }
 
-        // Cek otomatis setiap 2 detik secara teratur tanpa refresh halaman
         setInterval(cekStatusWA, 2000);
         cekStatusWA();
+
+        function bukaModalEditSiswa(id, nama, wa) {
+            document.getElementById('formEditSiswa').action = `/api/siswa/edit/${id}`;
+            document.getElementById('editNamaSiswa').value = nama;
+            document.getElementById('editWaSiswa').value = wa;
+            document.getElementById('modalEditSiswa').classList.remove('hidden');
+        }
+
+        function tutupModalEditSiswa() {
+            document.getElementById('modalEditSiswa').classList.add('hidden');
+        }
 
         function muatPreview() {
             const bulan = document.getElementById('selectBulan').value;
