@@ -1,453 +1,363 @@
 const express = require('express');
+const session = require('express-session');
+const { Pool } = require('pg');
+const QRCode = require('qrcode');
 const path = require('path');
 const pino = require('pino');
-const makeWASocket = require('@whiskeysockets/baileys').default;
-const { DisconnectReason, initAuthCreds, proto } = require('@whiskeysockets/baileys');
-const QRCode = require('qrcode');
-const pool = require('./db');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 
-process.env.TZ = 'Asia/Jakarta';
+// Package Tambahan untuk Fitur Ekspor Rekap Bulanan
+const ExcelJS = require('exceljs');
+const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType } = require('docx');
+const PDFDocument = require('pdfkit-table');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Database Connection (Neon PostgreSQL)
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
+
+// Middleware setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(session({
+    secret: 'secret-key-presensi-sd',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }
+}));
+
+// Variabel Penyimpanan Sesi WhatsApp Gateway
 const waSessions = {};
-const qrCodes = {};
-const waStatus = {};
 
-// Fungsi Pembersih Gelar Guru
-function bersihkanGelar(nama) {
-    if (!nama) return '';
-    return nama.replace(/,?\s*(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\.?/gi, '').trim();
-}
+// Fungsi Inisialisasi Layanan WhatsApp Gateway
+async function initWA(userId) {
+    if (waSessions[userId] && waSessions[userId].sock) {
+        return waSessions[userId];
+    }
 
-// ----------------- POSTGRES AUTH STATE (SIMPAN WA DI DB) ----------------- //
+    const authFolder = path.join(__dirname, 'auth_info_baileys', `user_${userId}`);
+    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
 
-async function usePostgresAuthState(pool, userId) {
-    const keyPrefix = `user_${userId}:`;
+    const sock = makeWASocket({
+        auth: state,
+        logger: pino({ level: 'silent' })
+    });
 
-    const writeData = async (data, id, key) => {
-        const fullKey = keyPrefix + key;
-        const jsonStr = JSON.stringify(data, (k, v) => (typeof v === 'bigint' ? v.toString() + 'n' : v));
-        await pool.query(
-            `INSERT INTO wa_sessions (key, id, data) VALUES ($1, $2, $3)
-             ON CONFLICT (key, id) DO UPDATE SET data = EXCLUDED.data`,
-            [fullKey, id, jsonStr]
-        );
+    waSessions[userId] = {
+        sock,
+        qrCode: null,
+        status: 'MENUNGGU_SCAN'
     };
 
-    const readData = async (id, key) => {
-        const fullKey = keyPrefix + key;
-        const res = await pool.query(`SELECT data FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
-        if (res.rows.length > 0) {
-            return JSON.parse(res.rows[0].data, (k, v) => {
-                if (typeof v === 'string' && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
-                return v;
-            });
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+            waSessions[userId].qrCode = await QRCode.toDataURL(qr);
+            waSessions[userId].status = 'MENUNGGU_SCAN';
         }
-        return null;
-    };
 
-    const removeData = async (id, key) => {
-        const fullKey = keyPrefix + key;
-        await pool.query(`DELETE FROM wa_sessions WHERE key = $1 AND id = $2`, [fullKey, id]);
-    };
-
-    let creds = await readData('creds', 'main');
-    if (!creds) {
-        creds = initAuthCreds();
-        await writeData(creds, 'creds', 'main');
-    }
-
-    return {
-        state: {
-            creds,
-            keys: {
-                get: async (type, ids) => {
-                    const data = {};
-                    await Promise.all(
-                        ids.map(async (id) => {
-                            let value = await readData(id, type);
-                            if (type === 'app-state-sync-key' && value) {
-                                value = proto.Message.AppStateSyncKeyData.fromObject(value);
-                            }
-                            data[id] = value;
-                        })
-                    );
-                    return data;
-                },
-                set: async (data) => {
-                    const tasks = [];
-                    for (const category in data) {
-                        for (const id in data[category]) {
-                            const value = data[category][id];
-                            if (value) {
-                                tasks.push(writeData(value, id, category));
-                            } else {
-                                tasks.push(removeData(id, category));
-                            }
-                        }
-                    }
-                    await Promise.all(tasks);
-                }
+        if (connection === 'open') {
+            waSessions[userId].qrCode = null;
+            waSessions[userId].status = 'TERHUBUNG';
+            console.log(`WhatsApp Gateway User #${userId} Terhubung!`);
+        } else if (connection === 'close') {
+            const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
+            waSessions[userId].status = 'TERPUTUS';
+            if (shouldReconnect) {
+                initWA(userId);
             }
-        },
-        saveCreds: async () => {
-            await writeData(creds, 'creds', 'main');
         }
-    };
+    });
+
+    return waSessions[userId];
 }
 
-async function connectToWhatsApp(userId) {
-    try {
-        const { state, saveCreds } = await usePostgresAuthState(pool, userId);
+// ================= ROUTES HALAMAN =================
 
-        const sock = makeWASocket({ 
-            logger: pino({ level: 'silent' }), 
-            auth: state, 
-            printQRInTerminal: false 
-        });
-
-        waSessions[userId] = sock;
-        sock.ev.on('creds.update', saveCreds);
-
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
-            if (qr) {
-                qrCodes[userId] = await QRCode.toDataURL(qr);
-                waStatus[userId] = 'MENUNGGU_SCAN';
-            }
-            if (connection === 'open') {
-                waStatus[userId] = 'TERHUBUNG';
-                delete qrCodes[userId];
-                console.log(`✅ WhatsApp Gateway User #${userId} Terhubung & Tersimpan di DB`);
-            }
-            if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const shouldReconnect = (statusCode !== DisconnectReason.loggedOut);
-                
-                waStatus[userId] = 'TERPUTUS';
-                delete waSessions[userId];
-                
-                if (shouldReconnect) {
-                    console.log(`🔄 Menyambungkan ulang WA User #${userId}...`);
-                    connectToWhatsApp(userId);
-                } else {
-                    await pool.query(`DELETE FROM wa_sessions WHERE key LIKE $1`, [`user_${userId}:%`]);
-                    console.log(`🗑️ Sesi User #${userId} dihapus dari Database (Logged Out).`);
-                }
-            }
-        });
-    } catch (err) {
-        console.error(`❌ WA Connect Error User #${userId}:`, err.message);
-    }
-}
-
-// Otomatis Muat Sesi WA dari Database Saat Server Booting
-async function autoLoadSavedSessions() {
-    try {
-        const res = await pool.query(`SELECT DISTINCT key FROM wa_sessions`);
-        const userIds = new Set();
-        
-        res.rows.forEach(row => {
-            const match = row.key.match(/^user_(\d+):/);
-            if (match) userIds.add(match[1]);
-        });
-
-        userIds.forEach(id => {
-            console.log(`⚙️ Mengembalikan koneksi WA terdaftar untuk User #${id}...`);
-            connectToWhatsApp(id);
-        });
-    } catch (err) {
-        console.error("Gagal auto-load sesi WA:", err.message);
-    }
-}
-
-// Inisialisasi auto-load sesi setelah server siap
-setTimeout(() => {
-    autoLoadSavedSessions();
-}, 2000);
-
-// ---------------- ROUTES HALAMAN ---------------- //
-
-app.get('/', (req, res) => res.render('login', { error: null }));
-
-app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    try {
-        if (!username || !password) return res.render('login', { error: 'Username dan kata sandi wajib diisi.' });
-
-        const result = await pool.query(
-            'SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND password = $2',
-            [username.trim(), password.trim()]
-        );
-
-        if (result.rows.length === 0) return res.render('login', { error: 'Username atau kata sandi tidak valid.' });
-
-        const user = result.rows[0];
-        if (user.role === 'ADMIN') {
-            return res.redirect(`/admin?userId=${user.id}`);
-        } else {
-            return res.redirect(`/wali?userId=${user.id}`);
-        }
-    } catch (err) {
-        return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message });
-    }
+// Halaman Utama / Login
+app.get('/', (req, res) => {
+    res.render('login');
 });
 
-app.get('/admin', async (req, res) => {
-    const userId = parseInt(req.query.userId) || 1;
+// Portal Wali Kelas Dashboard
+app.get('/walikelas-dashboard', async (req, res) => {
+    const userId = req.session.userId || 1; // Fallback ID
+
     try {
-        const usersRes = await pool.query(`
-            SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
-            FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id ORDER BY u.id ASC
-        `);
-        const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
-            FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.id ASC
-        `);
-        const kelasRes = await pool.query(`SELECT * FROM kelas ORDER BY id ASC`);
+        const userRes = await pool.query(`
+            SELECT u.*, k.nama_kelas 
+            FROM users u 
+            LEFT JOIN kelas k ON u.kelas_id = k.id 
+            WHERE u.id = $1
+        `, [userId]);
 
-        const usersCleaned = usersRes.rows.map(u => ({ ...u, nama: bersihkanGelar(u.nama) }));
-        const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await QRCode.toDataURL(s.id.toString());
-            return { ...s, qrImage };
-        }));
+        const user = userRes.rows[0] || { nama: 'Guru Wali Kelas', nama_kelas: 'Kelas Belum Set', kelas_id: null };
 
-        res.render('admin-dashboard', {
-            users: usersCleaned,
-            siswa: siswaData,
-            kelas: kelasRes.rows || [],
-            userId: userId
-        });
-    } catch (err) {
-        res.status(500).send("Kesalahan Database: " + err.message);
-    }
-});
-
-app.get('/wali', async (req, res) => {
-    const userId = parseInt(req.query.userId) || 1;
-    try {
-        const userRes = await pool.query(`SELECT id, nama, role, kelas_id FROM users WHERE id = $1`, [userId]);
-        const userRaw = userRes.rows[0] || { id: userId, nama: 'Tenaga Pendidik', role: 'WALI_KELAS', kelas_id: null };
-        userRaw.nama = bersihkanGelar(userRaw.nama);
-
-        let namaKelas = 'Seluruh Rombongan Belajar';
-        if (userRaw.kelas_id) {
-            const kRes = await pool.query(`SELECT nama_kelas FROM kelas WHERE id = $1`, [userRaw.kelas_id]);
-            if (kRes.rows.length > 0) namaKelas = kRes.rows[0].nama_kelas;
+        let siswaList = [];
+        if (user.kelas_id) {
+            const siswaRes = await pool.query(`SELECT * FROM siswa WHERE kelas_id = $1 ORDER BY nama ASC`, [user.kelas_id]);
+            siswaList = await Promise.all(siswaRes.rows.map(async (s) => {
+                const qrImage = await QRCode.toDataURL(s.id.toString());
+                return { ...s, qrImage };
+            }));
         }
-        userRaw.nama_kelas = namaKelas;
 
-        let siswaQuery = `SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id`;
-        if (userRaw.kelas_id) siswaQuery += ` WHERE s.kelas_id = ${parseInt(userRaw.kelas_id)}`;
-        siswaQuery += ` ORDER BY s.nama ASC`;
-        const siswaRes = await pool.query(siswaQuery);
+        let absensiHariIni = [];
+        if (user.kelas_id) {
+            // FIX SQL QUERY: Menghapus SELECT ganda
+            const absensiRes = await pool.query(`
+                SELECT a.*, s.nama AS nama_siswa,
+                       TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS DD-MM-YYYY') AS waktu_formatted
+                FROM absensi a
+                JOIN siswa s ON a.siswa_id = s.id
+                WHERE s.kelas_id = $1 AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+                ORDER BY a.waktu DESC
+            `, [user.kelas_id]);
+            absensiHariIni = absensiRes.rows;
+        }
 
-        let absensiQuery = `
-            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
-            FROM absensi a 
-            JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE DATE(a.waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
-        `;
-        if (userRaw.kelas_id) absensiQuery += ` AND s.kelas_id = ${parseInt(userRaw.kelas_id)}`;
-        absensiQuery += ` ORDER BY a.waktu DESC`;
-        const absensiRes = await pool.query(absensiQuery);
-
-        const absensiFormatted = absensiRes.rows.map(row => {
-            const dateObj = new Date(row.waktu);
-            const waktuWIB = dateObj.toLocaleTimeString('id-ID', {
-                timeZone: 'Asia/Jakarta',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            }) + ' WIB';
-
-            return { ...row, waktu_formatted: waktuWIB };
-        });
-
-        const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await QRCode.toDataURL(s.id.toString());
-            return { ...s, qrImage };
-        }));
+        const waData = waSessions[userId] || { status: 'BELUM_TERHUBUNG', qrCode: null };
 
         res.render('walikelas-dashboard', {
-            user: userRaw,
-            siswaList: siswaData,
-            absensiHariIni: absensiFormatted,
-            userId: userId,
-            statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[userId] || null
+            user,
+            userId,
+            siswaList,
+            absensiHariIni,
+            statusWA: waData.status,
+            qrCodeWA: waData.qrCode
         });
+
     } catch (err) {
-        res.status(500).send("Kesalahan Database: " + err.message);
+        console.error("Dashboard Error:", err);
+        res.status(500).send("Terjadi Kesalahan Server: " + err.message);
     }
 });
 
-app.get(['/scan', '/scanner'], (req, res) => {
-    const userId = parseInt(req.query.userId) || 1;
-    res.render('scan', { userId: userId });
+// Endpoint Memicu Koneksi WhatsApp Gateway
+app.get('/api/start-wa', async (req, res) => {
+    const userId = req.query.userId || req.session.userId || 1;
+    await initWA(userId);
+    res.json({ success: true, message: "Proses inisialisasi WA dimulai." });
 });
 
-// ---------------- API CRUD SISWA, GURU & KELAS ---------------- //
-
-app.post('/api/kelas/tambah', async (req, res) => {
-    const { nama_kelas } = req.body;
-    try {
-        await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1)', [nama_kelas]);
-        res.redirect('back');
-    } catch (err) {
-        res.status(500).send("Gagal Menambahkan Rombel Kelas: " + err.message);
-    }
-});
-
-app.post('/api/guru/tambah', async (req, res) => {
-    const { nama, username, password, role, kelas_id } = req.body;
-    try {
-        const namaBersih = bersihkanGelar(nama);
-        const kId = kelas_id ? parseInt(kelas_id) : null;
-        await pool.query(
-            'INSERT INTO users (nama, username, password, role, kelas_id) VALUES ($1, $2, $3, $4, $5)',
-            [namaBersih, username, password, role || 'WALI_KELAS', kId]
-        );
-        res.redirect('back');
-    } catch (err) {
-        res.status(500).send("Gagal Menambahkan Pengguna Tenaga Pendidik: " + err.message);
-    }
-});
-
-app.post('/api/guru/hapus/:id', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
-        res.redirect('back');
-    } catch (err) {
-        res.status(500).send("Gagal Menghapus Akun Pengguna: " + err.message);
-    }
-});
-
+// Endpoint Registrasi Siswa Baru
 app.post('/api/siswa/tambah', async (req, res) => {
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
     try {
-        if (!nama || !kelas_id) {
-            return res.status(400).send("Nama Siswa dan Rombongan Belajar wajib diisi!");
-        }
-
-        let noWa = nomor_wa_ortu ? nomor_wa_ortu.trim().replace(/[^0-9]/g, '') : '';
-        if (noWa.startsWith('0')) noWa = '62' + noWa.slice(1);
-
         await pool.query(
-            'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
-            [nama.trim(), noWa, parseInt(kelas_id)]
+            `INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)`,
+            [nama, nomor_wa_ortu, kelas_id]
         );
-
-        res.redirect('back');
+        res.redirect('/walikelas-dashboard');
     } catch (err) {
-        res.status(500).send("Gagal Menambahkan Data Siswa: " + err.message);
+        console.error("Tambah Siswa Error:", err);
+        res.status(500).send("Gagal menambah siswa.");
     }
 });
 
+// Endpoint Hapus Siswa
 app.post('/api/siswa/hapus/:id', async (req, res) => {
+    const { id } = req.params;
     try {
-        await pool.query('DELETE FROM siswa WHERE id = $1', [req.params.id]);
-        res.redirect('back');
+        await pool.query(`DELETE FROM siswa WHERE id = $1`, [id]);
+        res.redirect('/walikelas-dashboard');
     } catch (err) {
-        res.status(500).send("Gagal Menghapus Data Siswa: " + err.message);
+        console.error("Hapus Siswa Error:", err);
+        res.status(500).send("Gagal menghapus siswa.");
     }
 });
 
-// ---------------- API SCANNER & WA GATEWAY ---------------- //
+// ================= FITUR REKAP PRESENSI BULANAN =================
 
-app.get('/api/start-wa', (req, res) => {
-    const userId = parseInt(req.query.userId) || 1;
-    connectToWhatsApp(userId);
-    res.json({ success: true, message: 'Menginisialisasi WhatsApp Gateway...' });
-});
+// 1. Endpoint JSON Preview Rekapitulasi Presensi
+app.get('/api/absensi/preview', async (req, res) => {
+    const { bulan, tahun, kelas_id } = req.query;
 
-app.post('/api/scan', async (req, res) => {
-    const { siswa_id, scanned_by } = req.body;
-    if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR / Identitas Siswa tidak terdeteksi." });
+    if (!bulan || !tahun) {
+        return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
+    }
 
     try {
-        const parsedSiswaId = parseInt(siswa_id);
-        const parsedScannedBy = parseInt(scanned_by) || 1;
+        let query = `
+            SELECT 
+                s.nama AS nama_siswa,
+                COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                COUNT(a.id) AS total_hadir
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN absensi a ON s.id = a.siswa_id 
+                AND EXTRACT(MONTH FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $1
+                AND EXTRACT(YEAR FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $2
+        `;
 
-        const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
-            FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id WHERE s.id = $1
-        `, [parsedSiswaId]);
+        const queryParams = [parseInt(bulan), parseInt(tahun)];
 
-        if (siswaRes.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Kartu Identitas Siswa (ID: ${siswa_id}) Tidak Terdaftar!` });
+        if (kelas_id && kelas_id !== 'all') {
+            query += ` WHERE s.kelas_id = $3`;
+            queryParams.push(parseInt(kelas_id));
         }
 
-        const siswa = siswaRes.rows[0];
+        query += ` GROUP BY s.id, s.nama, k.nama_kelas ORDER BY s.nama ASC`;
 
-        // 1. Format Waktu & Tanggal WIB yang Akurat
-        const now = new Date();
-        const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
-        const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-        // 2. Simpan ke database menggunakan waktu server yang disesuaikan
-        await pool.query(
-            `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW())`,
-            [siswa.id, parsedScannedBy]
-        );
-
-        // 3. Cari koneksi WA milik Guru / Sesi Aktif
-        let waClient = waSessions[parsedScannedBy];
-        if (!waClient) {
-            const keys = Object.keys(waSessions);
-            if (keys.length > 0) waClient = waSessions[keys[0]];
-        }
-
-        let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
-
-        // 4. Kirim Pesan WA jika sesi terhubung
-        if (waClient && siswa.nomor_wa_ortu) {
-            let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
-            if (phone.startsWith('0')) phone = '62' + phone.slice(1);
-            const formattedJid = phone + '@s.whatsapp.net';
-
-            const pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
-                          `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
-                          `_________________________________________\n\n` +
-                          `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
-                          `Diberitahukan bahwa putra/putri Anda telah tiba di sekolah dan melakukan presensi kehadiran:\n\n` +
-                          `• Nama Siswa : *${siswa.nama}*\n` +
-                          `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
-                          `• Waktu Scan : *${jamWib}*\n` +
-                          `• Tanggal : *${tglWib}*\n` +
-                          `• Status Kehadiran : *HADIR (Scan Kartu) ✅*\n\n` +
-                          `Terima kasih atas perhatian dan kerja samanya.\n\n` +
-                          `_Pesan otomatis ini dikirim oleh Sistem Presensi Terpadu UPTD SD Negeri 1 Karya Mulya Sari._`;
-
-            waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error("Gagal Mengirim Notifikasi WA:", e.message));
-            statusWA = "Notifikasi WhatsApp Berhasil Dikirimkan ke Wali Murid ✅";
-        }
-
-        // 5. Kembalikan jamWib ke tampilan layar Scanner HP
-        return res.json({
-            success: true,
-            message: statusWA,
-            siswa: {
-                id: siswa.id,
-                nama: siswa.nama,
-                nama_kelas: siswa.nama_kelas,
-                waktu: jamWib
-            }
-        });
+        const result = await pool.query(query, queryParams);
+        return res.json({ success: true, data: result.rows });
 
     } catch (err) {
-        console.error("Kesalahan Scan:", err);
-        return res.status(500).json({ success: false, message: "Terjadi Kendala Sistem: " + err.message });
+        console.error("Preview API Error:", err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server Sistem Presensi Terpadu Aktif di Port ${PORT}`));
+// 2. Endpoint Export Rekapitulasi Presensi (Excel, Word, PDF)
+app.get('/api/absensi/export', async (req, res) => {
+    const { bulan, tahun, kelas_id, format } = req.query;
+
+    if (!bulan || !tahun) {
+        return res.status(400).send("Bulan dan Tahun wajib diisi.");
+    }
+
+    try {
+        let query = `
+            SELECT 
+                s.nama AS nama_siswa,
+                COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                COUNT(a.id) AS total_hadir
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN absensi a ON s.id = a.siswa_id 
+                AND EXTRACT(MONTH FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $1
+                AND EXTRACT(YEAR FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $2
+        `;
+
+        const queryParams = [parseInt(bulan), parseInt(tahun)];
+
+        if (kelas_id && kelas_id !== 'all') {
+            query += ` WHERE s.kelas_id = $3`;
+            queryParams.push(parseInt(kelas_id));
+        }
+
+        query += ` GROUP BY s.id, s.nama, k.nama_kelas ORDER BY s.nama ASC`;
+
+        const result = await pool.query(query, queryParams);
+        const dataRekap = result.rows;
+
+        const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][parseInt(bulan) - 1];
+        const judul = `REKAP PRESENSI SISWA - ${namaBulan.toUpperCase()} ${tahun}`;
+
+        // Format Excel (.xlsx)
+        if (format === 'excel') {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Rekap Absensi');
+
+            worksheet.mergeCells('A1:D1');
+            worksheet.getCell('A1').value = `UPTD SD NEGERI 1 KARYA MULYA SARI`;
+            worksheet.getCell('A1').font = { bold: true, size: 14 };
+            worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+            worksheet.mergeCells('A2:D2');
+            worksheet.getCell('A2').value = judul;
+            worksheet.getCell('A2').font = { bold: true, size: 12 };
+            worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+            worksheet.addRow([]);
+            const headerRow = worksheet.addRow(['No', 'Nama Siswa', 'Kelas / Rombel', 'Total Kehadiran']);
+            headerRow.font = { bold: true };
+            headerRow.eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9EAD3' } };
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            });
+
+            dataRekap.forEach((row, idx) => {
+                const r = worksheet.addRow([idx + 1, row.nama_siswa, row.nama_kelas, `${row.total_hadir} Hari`]);
+                r.eachCell(c => c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } });
+            });
+
+            worksheet.columns = [{ width: 6 }, { width: 30 }, { width: 20 }, { width: 18 }];
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.xlsx`);
+            return workbook.xlsx.write(res).then(() => res.end());
+        }
+
+        // Format Word (.docx)
+        if (format === 'word') {
+            const tableRows = [
+                new TableRow({
+                    children: [
+                        new TableCell({ children: [new Paragraph({ text: "No", bold: true })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                        new TableCell({ children: [new Paragraph({ text: "Nama Siswa", bold: true })], width: { size: 45, type: WidthType.PERCENTAGE } }),
+                        new TableCell({ children: [new Paragraph({ text: "Kelas", bold: true })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+                        new TableCell({ children: [new Paragraph({ text: "Total Hadir", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } }),
+                    ]
+                }),
+                ...dataRekap.map((row, idx) => new TableRow({
+                    children: [
+                        new TableCell({ children: [new Paragraph((idx + 1).toString())] }),
+                        new TableCell({ children: [new Paragraph(row.nama_siswa)] }),
+                        new TableCell({ children: [new Paragraph(row.nama_kelas)] }),
+                        new TableCell({ children: [new Paragraph(`${row.total_hadir} Hari`)] }),
+                    ]
+                }))
+            ];
+
+            const doc = new Document({
+                sections: [{
+                    children: [
+                        new Paragraph({ text: "UPTD SD NEGERI 1 KARYA MULYA SARI", heading: "Heading1", alignment: AlignmentType.CENTER }),
+                        new Paragraph({ text: judul, heading: "Heading2", alignment: AlignmentType.CENTER }),
+                        new Paragraph({ text: "" }),
+                        new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } })
+                    ]
+                }]
+            });
+
+            const buffer = await Packer.toBuffer(doc);
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.docx`);
+            return res.send(buffer);
+        }
+
+        // Format PDF (.pdf)
+        if (format === 'pdf') {
+            const doc = new PDFDocument({ margin: 30, size: 'A4' });
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.pdf`);
+
+            doc.pipe(res);
+            doc.fontSize(14).text('UPTD SD NEGERI 1 KARYA MULYA SARI', { align: 'center' });
+            doc.fontSize(12).text(judul, { align: 'center' });
+            doc.moveDown(1.5);
+
+            const table = {
+                title: "Daftar Kehadiran Siswa",
+                headers: ["No", "Nama Siswa", "Kelas", "Total Hadir"],
+                rows: dataRekap.map((r, i) => [(i + 1).toString(), r.nama_siswa, r.nama_kelas, `${r.total_hadir} Hari`])
+            };
+
+            await doc.table(table, { prepareHeader: () => doc.fontSize(10).font('Helvetica-Bold'), prepareRow: () => doc.fontSize(9).font('Helvetica') });
+            doc.end();
+            return;
+        }
+
+        return res.status(400).send("Format ekspor tidak valid (Gunakan format=excel, word, atau pdf).");
+
+    } catch (err) {
+        console.error("Export Error:", err);
+        res.status(500).send("Gagal mengekspor data: " + err.message);
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
