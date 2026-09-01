@@ -389,30 +389,31 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
+        // 1. Format Waktu & Tanggal WIB yang Akurat
+        const now = new Date();
+        const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+        const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        // 2. Simpan ke database menggunakan waktu server yang disesuaikan
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW())`,
             [siswa.id, parsedScannedBy]
         );
 
-        // Cari koneksi WA milik Guru yang scan, jika kosong fallback ke sesi WA aktif lain (misal Admin)
+        // 3. Cari koneksi WA milik Guru / Sesi Aktif
         let waClient = waSessions[parsedScannedBy];
         if (!waClient) {
-            const activeUserIds = Object.keys(waSessions);
-            if (activeUserIds.length > 0) {
-                waClient = waSessions[activeUserIds[0]];
-            }
+            const keys = Object.keys(waSessions);
+            if (keys.length > 0) waClient = waSessions[keys[0]];
         }
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
+        // 4. Kirim Pesan WA jika sesi terhubung
         if (waClient && siswa.nomor_wa_ortu) {
             let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
             if (phone.startsWith('0')) phone = '62' + phone.slice(1);
             const formattedJid = phone + '@s.whatsapp.net';
-
-            const now = new Date();
-            const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-            const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
             const pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
                           `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
@@ -431,6 +432,7 @@ app.post('/api/scan', async (req, res) => {
             statusWA = "Notifikasi WhatsApp Berhasil Dikirimkan ke Wali Murid ✅";
         }
 
+        // 5. Kembalikan jamWib ke tampilan layar Scanner HP
         return res.json({
             success: true,
             message: statusWA,
@@ -438,7 +440,7 @@ app.post('/api/scan', async (req, res) => {
                 id: siswa.id,
                 nama: siswa.nama,
                 nama_kelas: siswa.nama_kelas,
-                waktu: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB'
+                waktu: jamWib
             }
         });
 
