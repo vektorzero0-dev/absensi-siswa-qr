@@ -35,6 +35,7 @@ app.use(session({
 const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
+const pairingCodes = {};
 
 function bersihkanGelar(nama) {
     if (!nama) return '';
@@ -51,7 +52,7 @@ async function getAuthState(userId) {
     return await useMultiFileAuthState(authFolder);
 }
 
-async function connectToWhatsApp(userId) {
+async function connectToWhatsApp(userId, phoneNumber = null) {
     try {
         if (waSessions[userId]) {
             try { waSessions[userId].end(undefined); } catch (e) {}
@@ -60,6 +61,7 @@ async function connectToWhatsApp(userId) {
 
         waStatus[userId] = 'PROSES_INIT';
         delete qrCodes[userId];
+        delete pairingCodes[userId];
 
         const { state, saveCreds } = await getAuthState(userId);
         const { version } = await fetchLatestBaileysVersion();
@@ -70,7 +72,6 @@ async function connectToWhatsApp(userId) {
             logger: pino({ level: 'silent' }),
             auth: state,
             printQRInTerminal: false,
-            // Perbaikan: Konfigurasi Browser & Options khusus penautan Render
             browser: ["macOS", "Chrome", "121.0.0.0"],
             connectTimeoutMs: 90000,
             defaultQueryTimeoutMs: 90000,
@@ -84,10 +85,29 @@ async function connectToWhatsApp(userId) {
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
+        // PENAUTAN MENGGUNAKAN NOMOR TELEPON (PAIRING CODE)
+        if (phoneNumber && !sock.authState.creds.registered) {
+            setTimeout(async () => {
+                try {
+                    let cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+                    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+                    
+                    const code = await sock.requestPairingCode(cleanPhone);
+                    pairingCodes[userId] = code;
+                    waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
+                    console.log(`🔑 [User #${userId}] Pairing Code WA: ${code}`);
+                } catch (pErr) {
+                    console.error("Gagal Request Pairing Code:", pErr.message);
+                    waStatus[userId] = 'ERROR_PAIRING';
+                }
+            }, 3000);
+        }
+
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            if (qr) {
+            // QR hanya dibuat jika tidak menggunakan opsi nomor telepon
+            if (qr && !phoneNumber) {
                 try {
                     qrCodes[userId] = await QRCode.toDataURL(qr);
                     waStatus[userId] = 'MENUNGGU_SCAN';
@@ -105,6 +125,7 @@ async function connectToWhatsApp(userId) {
             if (connection === 'open') {
                 waStatus[userId] = 'TERHUBUNG';
                 delete qrCodes[userId];
+                delete pairingCodes[userId];
                 console.log(`✅ [User #${userId}] WhatsApp Berhasil Terhubung!`);
             }
 
@@ -122,6 +143,7 @@ async function connectToWhatsApp(userId) {
                 } else {
                     console.log(`🚪 User #${userId} Logged Out. Hapus Sesi Folder...`);
                     delete qrCodes[userId];
+                    delete pairingCodes[userId];
                     const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
                     if (fs.existsSync(authFolder)) {
                         fs.rmSync(authFolder, { recursive: true, force: true });
@@ -276,12 +298,25 @@ app.get('/api/start-wa', async (req, res) => {
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
 
+app.get('/api/request-pairing', async (req, res) => {
+    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const phone = req.query.phone;
+
+    if (!phone) {
+        return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
+    }
+
+    connectToWhatsApp(userId, phone);
+    res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
+});
+
 app.get('/api/wa-status', (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qrCodeWA: qrCodes[userId] || null
+        qrCodeWA: qrCodes[userId] || null,
+        pairingCode: pairingCodes[userId] || null
     });
 });
 
@@ -292,6 +327,7 @@ app.get('/api/reset-wa', async (req, res) => {
         delete waSessions[userId];
     }
     delete qrCodes[userId];
+    delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
     const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
