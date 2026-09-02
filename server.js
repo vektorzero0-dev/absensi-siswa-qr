@@ -100,7 +100,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
             logger: pino({ level: 'silent' }),
             auth: state,
             printQRInTerminal: false,
-            // STRUKTUR BROWSER DAN TIMEOUT DIKUNCI AGAR PROSES HANDSHAKE KODE PAIRING TIDAK MENTAL
             browser: ['Mac OS', 'Chrome', '121.0.6167.85'],
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
@@ -111,12 +110,10 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
         waSessions[userId] = sock;
 
-        // PASTIKAN PROSES SAVECREDS BERJALAN ASYNCHRONOUS LENGKAP
         sock.ev.on('creds.update', async () => {
             await saveCreds();
         });
 
-        // MINTA KODE PAIRING
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
@@ -138,7 +135,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            // QR CODE HANYA DIBUAT JIKA TIDAK SEDANG MEMINTA PAIRING CODE
             if (qr && !phoneNumber && waStatus[userId] !== 'MENUNGGU_PAIRING_CODE' && !sock.authState.creds.registered) {
                 try {
                     qrCodes[userId] = await generateQRDataURL(qr);
@@ -167,15 +163,13 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                
-                // PENTING: DONT HAPUS SESI SAAT AKUN SEDANG PROSES PAIRING VERIFIKASI (StatusCode 401 / Restart Handshake)
                 const isExplicitLoggedOut = (statusCode === DisconnectReason.loggedOut);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
                 delete waSessions[userId];
 
                 if (!isExplicitLoggedOut) {
-                    console.log(`🔄 Sambung ulang User #${userId} dalam 5 detik (Mempertahankan Kunci Sesi)...`);
+                    console.log(`🔄 Sambung ulang User #${userId} dalam 5 detik...`);
                     if (!reconnectTimers[userId]) {
                         reconnectTimers[userId] = setTimeout(() => {
                             delete reconnectTimers[userId];
@@ -183,7 +177,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                         }, 5000);
                     }
                 } else {
-                    console.log(`🚪 User #${userId} Resmi Logged Out dari HP. Menghapus database...`);
+                    console.log(`🚪 User #${userId} Resmi Logged Out. Menghapus database...`);
                     waStatus[userId] = 'TERPUTUS';
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
@@ -611,8 +605,10 @@ app.get('/api/request-pairing', async (req, res) => {
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
 
+// API STATUS DENGAN CACHE CONTROL UNTUK MENCEGAH MUTER TERUS
 app.get('/api/wa-status', (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
