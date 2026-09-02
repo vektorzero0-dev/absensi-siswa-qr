@@ -1,4 +1,4 @@
-const { proto, initAuthCreds, BufferJSON, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { initAuthCreds, BufferJSON, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const path = require('path');
 const fs = require('fs');
 const pool = require('./db');
@@ -10,27 +10,29 @@ async function usePostgresAuthState(userId) {
         fs.mkdirSync(authFolder, { recursive: true });
     }
 
-    // 1. Restore sesi dari Neon DB ke folder lokal jika folder lokal kosong (setelah redeploy Render)
+    // 1. Trik Utama: Saat Render Restart/Redeploy, restore SEMUA file sesi dari Neon DB ke folder lokal
     try {
         const res = await pool.query("SELECT id, data FROM wa_sessions WHERE id LIKE $1", [`user_${userId}_%`]);
         if (res.rows.length > 0) {
+            console.log(`📦 [User #${userId}] Mengunduh ${res.rows.length} file sesi WA dari Neon DB...`);
             for (const row of res.rows) {
                 const fileName = row.id.replace(`user_${userId}_`, '');
                 const filePath = path.join(authFolder, fileName);
-                if (!fs.existsSync(filePath)) {
-                    fs.writeFileSync(filePath, row.data);
-                }
+                // Tulis/Timpa file di lokal agar sesi selalu up-to-date
+                fs.writeFileSync(filePath, row.data, 'utf-8');
             }
+            console.log(`✅ [User #${userId}] Sesi WA berhasil dipulihkan dari Neon DB!`);
         }
     } catch (err) {
-        console.error("⚠️ Gagal sync sesi dari DB:", err.message);
+        console.error("⚠️ Gagal sync sesi dari DB Neon:", err.message);
     }
 
-    // 2. Gunakan auth folder lokal (Cepat & QR anti-gagal/kedap-kedip)
+    // 2. Pakai multi-file auth state lokal (Cepat & Anti-kedap-kedip)
     const { state, saveCreds: saveLocalCreds } = await useMultiFileAuthState(authFolder);
 
-    // 3. Backup otomatis file lokal ke Neon DB di latar belakang
-    const backupToPostgres = async () => {
+    // 3. Simpan ke Lokal + LANGSUNG Simpan ke Neon DB secara Wajib (Await)
+    const saveCredsDirect = async () => {
+        await saveLocalCreds(); // Simpan lokal
         try {
             const files = fs.readdirSync(authFolder);
             for (const file of files) {
@@ -38,6 +40,7 @@ async function usePostgresAuthState(userId) {
                 if (fs.lstatSync(filePath).isFile()) {
                     const content = fs.readFileSync(filePath, 'utf-8');
                     const key = `user_${userId}_${file}`;
+                    // Pakai await langsung agar tidak ada data tertinggal saat Render restart
                     await pool.query(
                         `INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
                          ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
@@ -46,17 +49,15 @@ async function usePostgresAuthState(userId) {
                 }
             }
         } catch (err) {
-            console.error("⚠️ Gagal backup sesi ke DB:", err.message);
+            console.error("⚠️ Gagal backup otomatis ke Neon DB:", err.message);
         }
     };
 
     return {
         state,
-        saveCreds: async () => {
-            await saveLocalCreds();
-            backupToPostgres(); // Backup async tanpa mengganggu QR Code
-        },
+        saveCreds: saveCredsDirect,
         clearCreds: async () => {
+            console.log(`🧹 Membersihkan seluruh sesi User #${userId}...`);
             if (fs.existsSync(authFolder)) {
                 fs.rmSync(authFolder, { recursive: true, force: true });
             }
