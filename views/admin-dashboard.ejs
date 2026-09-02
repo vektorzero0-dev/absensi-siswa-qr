@@ -26,59 +26,73 @@
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
 <!-- NAVBAR HEADER ATAS -->
-<nav class="navbar navbar-dark bg-primary sticky-top shadow-sm px-2">
-  <div class="container-fluid flex items-center justify-between">
+<!-- NAVBAR HEADER ATAS -->
+<nav class="bg-blue-900 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b-2 border-amber-500">
+  <div class="flex items-center gap-3">
     <!-- Tombol Pembuka Slide Menu -->
-    <button class="btn btn-primary border border-white/30 text-white me-2" type="button" onclick="toggleSidebar()">
-  <i class="bi bi-list fs-4"></i> <span class="d-none d-sm-inline ms-1 fw-bold">Menu</span>
-</button>
+    <button type="button" onclick="bukaSidebar()" class="bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border border-blue-600 font-bold text-xs flex items-center gap-2 transition">
+      <i class="fa-solid fa-bars text-sm"></i> <span>Menu</span>
+    </button>
     
-    <span class="navbar-brand mb-0 h1 fw-bold fs-6 fs-md-5 text-truncate">
+    <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
       UPTD SD NEGERI 1 KARYA MULYA SARI
     </span>
-    
-    <div class="text-white small d-none d-md-block">
-      <i class="bi bi-clock"></i> <span id="clock"></span>
-    </div>
+  </div>
+
+  <div class="text-xs text-blue-200 hidden sm:block">
+    <i class="fa-solid fa-user-shield text-amber-400"></i> Admin Panel
   </div>
 </nav>
 
-<!-- SLIDE MENU (OFFCANVAS SIDEBAR) -->
-<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" style="width: 280px;">
-  <div class="offcanvas-header bg-primary text-white">
-    <h5 class="offcanvas-title fw-bold">
-      <i class="bi bi-shield-lock me-2"></i>Menu Navigation
-    </h5>
-    <!-- Tombol Tutup Silang -->
-    <button type="button" class="btn-close btn-close-white" onclick="toggleSidebar()"></button>
+<!-- SIDEBAR SLIDE (VANILLA PURE CSS) -->
+<div id="sidebarMenu" class="fixed top-0 left-0 h-full w-[260px] bg-white text-slate-800 shadow-2xl z-50 transition-all duration-300 -translate-x-full flex flex-col justify-between border-r border-slate-200">
+  <div>
+    <!-- Header Sidebar -->
+    <div class="bg-blue-900 text-white p-4 flex justify-between items-center border-b border-blue-800">
+      <h5 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-shield-halved text-amber-400"></i> Menu Navigasi
+      </h5>
+      <button type="button" onclick="tutupSidebar()" class="text-blue-200 hover:text-white text-lg font-bold px-2">
+        &times;
+      </button>
+    </div>
+    
+    <!-- Link Navigasi -->
+    <div class="p-2 space-y-1 text-xs">
+      <a href="/admin?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
+        <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
+      </a>
+      <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
+      </a>
+      <a href="/admin/cetak-kartu" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
+      </a>
+      <a href="#section-dapodik" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-file-excel text-emerald-600"></i> Impor Excel Dapodik
+      </a>
+      <a href="#section-rombel" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-school text-purple-600"></i> Kelola Rombel & Guru
+      </a>
+      <a href="#section-siswa" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-users text-blue-600"></i> Direktori Siswa
+      </a>
+      <a href="#section-presensi" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-clipboard-check text-amber-600"></i> Presensi Hari Ini
+      </a>
+    </div>
   </div>
-  
-  <div class="offcanvas-body d-flex flex-column justify-content-between p-0">
-    <div class="list-group list-group-flush pt-2">
-      <a href="/admin?userId=<%= userId %>" class="list-group-item list-group-item-action border-0 py-3 active">
-        <i class="bi bi-speedometer2 me-3"></i>Dashboard Utama
-      </a>
-      <a href="/scan?userId=<%= userId %>" class="list-group-item list-group-item-action border-0 py-3">
-        <i class="bi bi-qr-code-scan me-3"></i>Buka Scanner QR
-      </a>
-      <a href="#section-siswa" onclick="toggleSidebar()" class="list-group-item list-group-item-action border-0 py-3">
-        <i class="bi bi-people me-3"></i>Kelola Data Siswa
-      </a>
-      <a href="#section-rombel" onclick="toggleSidebar()" class="list-group-item list-group-item-action border-0 py-3">
-        <i class="bi bi-door-open me-3"></i>Kelola Rombel
-      </a>
-    </div>
 
-    <div class="p-3 border-top">
-      <a href="/" class="btn btn-outline-danger w-100 py-2">
-        <i class="bi bi-box-arrow-right me-2"></i>Keluar (Logout)
-      </a>
-    </div>
+  <!-- Tombol Keluar / Logout -->
+  <div class="p-4 border-t border-slate-100">
+    <a href="/" class="flex items-center justify-center gap-2 w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs py-2.5 rounded-xl transition">
+      <i class="fa-solid fa-right-from-bracket"></i> Keluar (Logout)
+    </a>
   </div>
 </div>
 
-<!-- Backdrop Gelap Manual -->
-<div id="sidebarBackdrop" onclick="toggleSidebar()" class="hidden fixed inset-0 bg-slate-900/50 z-40"></div>
+<!-- Latar Belakang Gelap (Backdrop Overlay) -->
+<div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity"></div>
 
     <!-- Header Resmi Sekolah -->
     <header class="bg-blue-900 text-white shadow-md border-b-4 border-amber-500">
@@ -652,6 +666,15 @@
                 const formHapus = document.getElementById('formHapusUmum');
                 formHapus.action = `/api/siswa/hapus/${id}`;
                 formHapus.submit();
+        function bukaSidebar() {
+            document.getElementById('sidebarMenu').classList.remove('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.remove('hidden');
+            }
+
+        function tutupSidebar() {
+            document.getElementById('sidebarMenu').classList.add('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.add('hidden');
+            }
             }
         }
     </script>
