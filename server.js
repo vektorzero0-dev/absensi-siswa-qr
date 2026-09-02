@@ -896,5 +896,5 @@ app.get('/api/absensi/export', async (req, res) => {
         res.status(500).send("Gagal mengekspor data: " + err.message);
     }
 });
-
+app.get('/ping', (req, res) => res.send('OK'));
 app.listen(PORT, () => console.log(`🚀 Server Presensi Aktif di Port ${PORT}`));
