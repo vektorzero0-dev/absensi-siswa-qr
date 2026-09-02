@@ -266,6 +266,24 @@ app.get('/admin', async (req, res) => {
     }
 });
 
+app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
+    try {
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.nama ASC
+        `);
+
+        const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
+            const qrImage = await generateQRDataURL(s.id.toString());
+            return { ...s, qrImage };
+        }));
+
+        res.render('cetak-kartu', { siswa: siswaData });
+    } catch (err) {
+        res.status(500).send("Gagal memuat kartu: " + err.message);
+    }
+});
+
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/');
