@@ -32,7 +32,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// PENGATURAN SESSION DATABASE NEON (SUPAYA TIDAK LEAK MEMORY & TIDAK SLEEP)
+// PENGATURAN SESSION DATABASE NEON
 app.use(session({
     store: new pgSession({
         pool: pool,
@@ -49,14 +49,13 @@ const waSessions = {};
 const qrCodes = {};
 const waStatus = {};
 const pairingCodes = {};
-const reconnectTimers = {}; // Mencegah looping restart berulang
+const reconnectTimers = {};
 
 function bersihkanGelar(nama) {
     if (!nama) return '';
     return nama.replace(/,?\s*\b(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\b\.?/gi, '').trim();
 }
 
-// System QR Safe Generator
 async function generateQRDataURL(text) {
     try {
         if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
@@ -80,15 +79,17 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
             delete reconnectTimers[userId];
         }
 
-        // Tutup koneksi lama jika ada sebelum membuat socket baru
         if (waSessions[userId] && waStatus[userId] !== 'MENUNGGU_PAIRING_CODE') {
             try { waSessions[userId].end(undefined); } catch (e) {}
             delete waSessions[userId];
         }
 
-        waStatus[userId] = phoneNumber ? 'MENUNGGU_PAIRING_CODE' : 'PROSES_INIT';
-        delete qrCodes[userId];
-        delete pairingCodes[userId];
+        if (phoneNumber) {
+            waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
+            delete qrCodes[userId];
+        } else if (!waStatus[userId] || waStatus[userId] === 'TERPUTUS' || waStatus[userId] === 'BELUM_TERHUBUNG') {
+            waStatus[userId] = 'PROSES_INIT';
+        }
 
         const { state, saveCreds } = await getAuthState(userId);
         const { version } = await fetchLatestBaileysVersion();
@@ -99,18 +100,23 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
             logger: pino({ level: 'silent' }),
             auth: state,
             printQRInTerminal: false,
-            browser: ["Ubuntu", "Chrome", "120.0.0.0"],
+            // STRUKTUR BROWSER DAN TIMEOUT DIKUNCI AGAR PROSES HANDSHAKE KODE PAIRING TIDAK MENTAL
+            browser: ['Mac OS', 'Chrome', '121.0.6167.85'],
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
-            keepAliveIntervalMs: 25000,
+            keepAliveIntervalMs: 30000,
             qrTimeout: 45000,
             syncFullHistory: false
         });
 
         waSessions[userId] = sock;
-        sock.ev.on('creds.update', saveCreds);
 
-        // MINTA KODE PAIRING (JIKA DIPANGGUL DENGAN NOMOR HP)
+        // PASTIKAN PROSES SAVECREDS BERJALAN ASYNCHRONOUS LENGKAP
+        sock.ev.on('creds.update', async () => {
+            await saveCreds();
+        });
+
+        // MINTA KODE PAIRING
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
@@ -132,7 +138,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            // QR CODE GENERATION
+            // QR CODE HANYA DIBUAT JIKA TIDAK SEDANG MEMINTA PAIRING CODE
             if (qr && !phoneNumber && waStatus[userId] !== 'MENUNGGU_PAIRING_CODE' && !sock.authState.creds.registered) {
                 try {
                     qrCodes[userId] = await generateQRDataURL(qr);
@@ -161,22 +167,23 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
+                
+                // PENTING: DONT HAPUS SESI SAAT AKUN SEDANG PROSES PAIRING VERIFIKASI (StatusCode 401 / Restart Handshake)
+                const isExplicitLoggedOut = (statusCode === DisconnectReason.loggedOut);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
                 delete waSessions[userId];
 
-                if (!isLoggedOut) {
-                    waStatus[userId] = 'PROSES_INIT';
-                    console.log(`🔄 Sambung ulang User #${userId} dalam 8 detik...`);
+                if (!isExplicitLoggedOut) {
+                    console.log(`🔄 Sambung ulang User #${userId} dalam 5 detik (Mempertahankan Kunci Sesi)...`);
                     if (!reconnectTimers[userId]) {
                         reconnectTimers[userId] = setTimeout(() => {
                             delete reconnectTimers[userId];
                             connectToWhatsApp(userId);
-                        }, 8000);
+                        }, 5000);
                     }
                 } else {
-                    console.log(`🚪 User #${userId} Logged Out. Menghapus sesi database...`);
+                    console.log(`🚪 User #${userId} Resmi Logged Out dari HP. Menghapus database...`);
                     waStatus[userId] = 'TERPUTUS';
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
