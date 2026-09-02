@@ -8,58 +8,66 @@
     <!-- CSS Tailwind & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- EFEK ANIMASI & DOKUMEN PRO (TINGGAL PASANG) -->
-<style>
-  /* Scrollbar lebih rapi */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #f1f5f9; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-  /* Efek elemen muncul perlahan (smooth) */
-  @keyframes fadeInSoft {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fade-in {
-    animation: fadeInSoft 0.3s ease-out forwards;
-  }
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-  /* Kartu berinteraksi saat kursor di atasnya */
-  .card-pro {
-    transition: all 0.2s ease-in-out;
-  }
-  .card-pro:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.06);
-  }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-  /* Tombol terasa membal halus saat diklik */
-  button, .btn-interactive {
-    transition: all 0.15s ease-in-out;
-  }
-  button:active, .btn-interactive:active {
-    transform: scale(0.97);
-  }
-</style>
+        /* LATAR BELAKANG DASHBOARD WALI KELAS BERMOTIF (SERASI DENGAN LOGIN & ADMIN) */
+        .bg-wali-theme {
+            background-color: #1e293b;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.3) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(30, 58, 138, 0.25) 0px, transparent 50%),
+                radial-gradient(rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
+            background-size: 100% 100%, 100% 100%, 22px 22px;
+        }
+
+        /* Scrollbar Halus */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        /* KARTU PRO BERTEKSTUR GLASSMORPHISM LIGHT */
+        .card-pro {
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-pro:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes fadeInSoft {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInSoft 0.3s ease-out forwards; }
+
+        button, .btn-interactive { transition: all 0.15s ease-in-out; }
+        button:active, .btn-interactive:active { transform: scale(0.97); }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
+<body class="bg-wali-theme text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
 <!-- NAVBAR HEADER ATAS -->
-<nav class="bg-emerald-800 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b-2 border-emerald-500">
+<nav class="bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-lg px-4 py-3 flex items-center justify-between border-b border-slate-700/80">
   <div class="flex items-center gap-3">
     <!-- Tombol Pembuka Slide Menu -->
-    <button type="button" onclick="bukaSidebar()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg border border-emerald-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
+    <button type="button" onclick="bukaSidebar()" class="btn-interactive bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl border border-emerald-600 font-bold text-xs flex items-center gap-2 transition shadow-sm">
       <i class="fa-solid fa-bars text-sm"></i> <span>Menu</span>
     </button>
     
-    <span class="font-bold text-xs sm:text-sm tracking-wide text-emerald-100 uppercase truncate">
+    <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
       UPTD SD NEGERI 1 KARYA MULYA SARI
     </span>
   </div>
 
-  <!-- SUDAH DIPERBAIKI: Menampilkan Portal Wali Kelas (bukan Panel Admin) -->
-  <div class="text-xs text-emerald-100 hidden sm:block">
-    <i class="fa-solid fa-user-chalkboard text-emerald-300"></i> Portal Wali Kelas
+  <div class="text-xs text-slate-300 hidden sm:block">
+    <i class="fa-solid fa-user-chalkboard text-emerald-400 mr-1"></i> Portal Wali Kelas
   </div>
 </nav>
 
@@ -67,11 +75,11 @@
 <div id="sidebarMenu" class="fixed top-0 left-0 h-full w-[260px] bg-white text-slate-800 shadow-2xl z-50 transition-all duration-300 -translate-x-full flex flex-col justify-between border-r border-slate-200">
   <div>
     <!-- Header Sidebar -->
-    <div class="bg-emerald-800 text-white p-4 flex justify-between items-center border-b border-emerald-700">
+    <div class="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-slate-800">
       <h5 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-graduation-cap text-amber-400"></i> Menu Navigasi
       </h5>
-      <button type="button" onclick="tutupSidebar()" class="text-emerald-200 hover:text-white text-lg font-bold px-2">
+      <button type="button" onclick="tutupSidebar()" class="text-slate-400 hover:text-white text-lg font-bold px-2">
         &times;
       </button>
     </div>
@@ -108,39 +116,39 @@
 </div>
 
 <!-- Latar Belakang Gelap (Backdrop Overlay) -->
-<div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity"></div>
+<div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/60 z-40 hidden transition-opacity backdrop-blur-xs"></div>
 
-    <header class="bg-blue-900 text-white shadow-md border-b-4 border-emerald-500">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <header class="bg-slate-900/80 backdrop-blur-md text-white shadow-md border-b-4 border-emerald-500">
+        <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="flex items-center gap-3">
-                <div class="bg-white/10 p-2 rounded-lg border border-white/20">
-                    <i class="fa-solid fa-graduation-cap text-2xl text-amber-400"></i>
+                <div class="bg-gradient-to-tr from-amber-500 to-amber-300 p-2 rounded-xl text-slate-950 shadow-md">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-sm md:text-base font-bold tracking-wide uppercase">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                    <p class="text-[11px] text-blue-200">Portal Kehadiran Siswa & Pemindai WhatsApp Gateway</p>
+                    <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                    <p class="text-[11px] text-slate-300">Portal Kehadiran Siswa & Pemindai WhatsApp Gateway</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 w-full sm:w-auto">
-                <a href="/scan?userId=<%= userId %>" class="flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+                <a href="/scan?userId=<%= userId %>" class="btn-interactive flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-qrcode text-sm"></i> Pemindai Presensi (Scanner)
                 </a>
-                <a href="/" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1">
+                <a href="/" class="btn-interactive bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar
                 </a>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1">
+    <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between">
+        <div class="card-pro rounded-2xl p-4 mb-6 shadow-md flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="bg-blue-100 text-blue-800 p-3 rounded-xl">
+                <div class="bg-emerald-100 text-emerald-800 p-3 rounded-xl border border-emerald-200">
                     <i class="fa-solid fa-user-chalkboard text-xl"></i>
                 </div>
                 <div>
-                    <span class="text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                    <span class="text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded uppercase tracking-wider">
                         Penugasan Rombel: <%= user.nama_kelas %>
                     </span>
                     <h2 class="text-base font-bold text-slate-900 mt-0.5">Selamat Datang, <%= user.nama %></h2>
@@ -149,7 +157,7 @@
         </div>
 
         <!-- WA Gateway Panel Dynamic -->
-        <div id="section-wa-gateway" class="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div id="section-wa-gateway" class="card-pro rounded-2xl p-5 mb-6 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
                     <i class="fa-brands fa-whatsapp text-2xl"></i>
@@ -175,15 +183,15 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
-                    <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5">
+                    <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5 shadow-sm">
                         <i class="fa-solid fa-qrcode"></i> Scan QR
                     </button>
 
-                    <button type="button" onclick="mintaPairingWA()" id="btnPairingWA" class="bg-blue-800 hover:bg-blue-900 text-white text-xs px-3.5 py-2.5 rounded-xl border border-blue-900 font-semibold transition flex items-center gap-1.5">
+                    <button type="button" onclick="mintaPairingWA()" id="btnPairingWA" class="btn-interactive bg-blue-800 hover:bg-blue-900 text-white text-xs px-3.5 py-2.5 rounded-xl border border-blue-900 font-semibold transition flex items-center gap-1.5 shadow-sm">
                         <i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA
                     </button>
 
-                    <button type="button" onclick="resetWA()" id="btnResetWA" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
+                    <button type="button" onclick="resetWA()" id="btnResetWA" class="btn-interactive bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
                         <i class="fa-solid fa-trash"></i> Reset
                     </button>
                 </div>
@@ -191,7 +199,7 @@
         </div>
 
         <!-- Panel Filter, Pratinjau & Unduh Rekap Presensi Bulanan -->
-        <div id="section-rekap-bulanan" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+        <div id="section-rekap-bulanan" class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
                 <div class="bg-blue-50 text-blue-800 p-2.5 rounded-xl border border-blue-200">
                     <i class="fa-solid fa-file-invoice text-lg"></i>
@@ -241,13 +249,13 @@
                 </div>
 
                 <div class="flex items-end">
-                    <button type="button" onclick="muatPreview()" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-blue-900">
+                    <button type="button" onclick="muatPreview()" class="btn-interactive w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-blue-900 shadow-sm">
                         <i class="fa-solid fa-eye"></i> Lihat Rekapan
                     </button>
                 </div>
 
                 <div class="flex items-end">
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-700">
+                    <button type="submit" class="btn-interactive w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-700 shadow-sm">
                         <i class="fa-solid fa-download"></i> Unduh Berkas
                     </button>
                 </div>
@@ -280,7 +288,7 @@
         </div>
 
         <!-- Form Tambah Siswa Rombel -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+        <div class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <i class="fa-solid fa-user-plus text-emerald-600"></i> Registrasi Siswa Rombel (<%= user.nama_kelas %>)
             </h3>
@@ -304,7 +312,7 @@
                     </div>
 
                     <div class="flex items-end">
-                        <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2 rounded-xl transition flex items-center justify-center gap-1.5">
+                        <button type="submit" class="btn-interactive w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
                             <i class="fa-solid fa-plus"></i> Simpan Data Siswa
                         </button>
                     </div>
@@ -312,13 +320,13 @@
             <% } %>
         </div>
 
-        <!-- Tabel Siswa Rombel (ID DILENGKAPI: section-siswa-kelas) -->
-        <div id="section-siswa-kelas" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+        <!-- Tabel Siswa Rombel -->
+        <div id="section-siswa-kelas" class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-users text-blue-600"></i> Daftar Peserta Didik (<%= user.nama_kelas %>)
                 </h3>
-                <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-slate-300 font-medium transition flex items-center gap-1.5">
+                <button type="button" onclick="window.print()" class="btn-interactive bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-slate-300 font-medium transition flex items-center gap-1.5">
                     <i class="fa-solid fa-print"></i> Cetak Kartu Identitas
                 </button>
             </div>
@@ -338,7 +346,7 @@
                     <tbody class="divide-y divide-slate-100">
                         <% if (siswaList && siswaList.length > 0) { %>
                             <% siswaList.forEach(s => { %>
-                                <tr class="hover:bg-slate-50">
+                                <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="p-3 font-mono font-bold text-emerald-700">#<%= s.id %></td>
                                     <td class="p-3">
                                         <div class="bg-white p-1 rounded-lg inline-block border border-slate-300 shadow-sm">
@@ -361,7 +369,7 @@
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     data-wa="<%= encodeURIComponent(s.nomor_wa_ortu || '') %>" 
                                                     onclick="bukaModalEditSiswa(this)" 
-                                                    class="text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                    class="btn-interactive text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
                                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                                             </button>
 
@@ -369,7 +377,7 @@
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     onclick="hapusSiswa(this)" 
-                                                    class="text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                    class="btn-interactive text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
                                                 <i class="fa-solid fa-trash"></i> Hapus
                                             </button>
                                         </div>
@@ -388,15 +396,15 @@
 
         <form id="formHapusSiswa" action="" method="POST" class="hidden"></form>
 
-        <!-- Tabel Log Absensi Hari Ini (ID DILENGKAPI: section-absensi-today) -->
-        <div id="section-absensi-today" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+        <!-- Tabel Log Absensi Hari Ini -->
+        <div id="section-absensi-today" class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-2">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-clipboard-user text-emerald-600"></i> Rekapitulasi Presensi Kehadiran Hari Ini
                 </h3>
 
                 <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa & rombel kelas TIDAK akan terhapus.');">
-                    <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-semibold px-3 py-1.5 rounded-xl border border-amber-200 transition flex items-center gap-1.5">
+                    <button type="submit" class="btn-interactive bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-semibold px-3 py-1.5 rounded-xl border border-amber-200 transition flex items-center gap-1.5 shadow-sm">
                         <i class="fa-solid fa-broom text-amber-600"></i> Bersihkan Riwayat Uji Coba
                     </button>
                 </form>
@@ -414,7 +422,7 @@
                     <tbody class="divide-y divide-slate-100">
                         <% if (absensiHariIni && absensiHariIni.length > 0) { %>
                             <% absensiHariIni.forEach(a => { %>
-                                <tr class="hover:bg-slate-50">
+                                <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
                                     <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
                                     <td class="p-3">
@@ -632,9 +640,9 @@
         }
     </script>
 
-    <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
+    <footer class="bg-slate-950/90 border-t border-slate-800 py-3 text-center text-[11px] text-slate-400 backdrop-blur-md">
         <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
-        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-600">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-blue-700 font-medium hover:underline">0823-7172-9760</a></p>
+        <p class="mt-0.5 text-slate-500">Pengembang Sistem: <strong class="text-slate-300">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
 </body>
 </html>
