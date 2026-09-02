@@ -1,4 +1,3 @@
-const usePostgresAuthState = require('./usePostgresAuthState');
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -56,15 +55,20 @@ async function generateQRDataURL(text) {
         return await QRCode.toDataURL(text.toString());
     } catch (err) {
         console.error("Gagal Generate QR:", err.message);
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     }
 }
 
 // ----------------- HYBRID AUTH STATE (LOKAL AUTH FOLDER) ----------------- //
 
 async function getAuthState(userId) {
-    return await usePostgresAuthState(userId);
+    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
+    if (!fs.existsSync(authFolder)) {
+        fs.mkdirSync(authFolder, { recursive: true });
+    }
+    return await useMultiFileAuthState(authFolder);
 }
+
 async function connectToWhatsApp(userId, phoneNumber = null) {
     try {
         // Bersihkan timer pending jika ada request ulang
@@ -153,7 +157,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                // Hanya hapus sesi jika di-logout resmi dari HP (401 / DisconnectReason.loggedOut)
+                // Hanya hapus sesi jika di-logout resmi dari HP (401)
                 const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
@@ -170,12 +174,13 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                         }, 8000);
                     }
                 } else {
-                    console.log(`🚪 User #${userId} Logged Out. Menghapus sesi lokal & database...`);
+                    console.log(`🚪 User #${userId} Logged Out. Menghapus folder sesi lokal...`);
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
-
-                    // Panggil clearCreds dari auth handler hybrid untuk hapus lokal + DB Neon
-                    getAuthState(userId).then(({ clearCreds }) => clearCreds()).catch(e => console.error("Gagal clearCreds:", e.message));
+                    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
+                    if (fs.existsSync(authFolder)) {
+                        fs.rmSync(authFolder, { recursive: true, force: true });
+                    }
                 }
             }
         });
@@ -263,24 +268,6 @@ app.get('/admin', async (req, res) => {
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database: " + err.message);
-    }
-});
-
-app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
-    try {
-        const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
-            FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.nama ASC
-        `);
-
-        const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await generateQRDataURL(s.id.toString());
-            return { ...s, qrImage };
-        }));
-
-        res.render('cetak-kartu', { siswa: siswaData });
-    } catch (err) {
-        res.status(500).send("Gagal memuat kartu: " + err.message);
     }
 });
 
@@ -396,13 +383,15 @@ app.post('/api/kelas/hapus/:id', async (req, res) => {
     }
 });
 
-app.post('/api/siswa/hapus-semua', async (req, res) => {
+app.post('/api/kelas/hapus-semua', async (req, res) => {
     try {
-        // FITUR HAPUS DI-DISABLE DEMI KEAMANAN DATA
-        console.log("⚠️ Fitur reset total diblokir demi keamanan data.");
+        await pool.query('UPDATE users SET kelas_id = NULL');
+        await pool.query('UPDATE siswa SET kelas_id = NULL');
+        await pool.query('DELETE FROM kelas');
+        await pool.query("ALTER SEQUENCE kelas_id_seq RESTART WITH 1");
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
-        return res.status(500).send("Gagal: " + err.message);
+        return res.status(500).send("Gagal menghapus semua rombel: " + err.message);
     }
 });
 
@@ -497,6 +486,22 @@ app.post('/api/siswa/hapus/:id', async (req, res) => {
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
         return res.status(500).send("Gagal menghapus siswa: " + err.message);
+    }
+});
+
+app.post('/api/siswa/hapus-semua', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM absensi');
+        await pool.query('DELETE FROM siswa');
+        await pool.query('UPDATE users SET kelas_id = NULL');
+        await pool.query('DELETE FROM kelas');
+        await pool.query("ALTER SEQUENCE siswa_id_seq RESTART WITH 1");
+        await pool.query("ALTER SEQUENCE kelas_id_seq RESTART WITH 1");
+
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        console.error("Gagal reset data:", err);
+        return res.status(500).send("Gagal melakukan reset total: " + err.message);
     }
 });
 
