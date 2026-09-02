@@ -16,19 +16,19 @@ async function usePostgresAuthState(userId = 'default') {
     };
 
     const writeData = async (data, type, id) => {
-        try {
-            const key = `${userId}:${type}:${id}`;
-            const value = JSON.stringify(data, BufferJSON.replacer);
-            await pool.query(
-                `INSERT INTO wa_sessions (key_id, session_data, updated_at) 
-                 VALUES ($1, $2, NOW()) 
-                 ON CONFLICT (key_id) DO UPDATE SET session_data = $2, updated_at = NOW()`,
-                [key, value]
-            );
-        } catch (error) {
-            console.error(`❌ Gagal simpan ${type}:${id} ke Neon:`, error.message);
-        }
-    };
+    try {
+        const key = `${userId}:${type}:${id}`;
+        const value = JSON.stringify(data, BufferJSON.replacer);
+        await pool.query(
+            `INSERT INTO wa_sessions (key_id, session_data, updated_at) 
+             VALUES ($1, $2, NOW()) 
+             ON CONFLICT (key_id) DO UPDATE SET session_data = $2, updated_at = NOW()`,
+            [key, value]
+        );
+    } catch (error) {
+        console.error(`❌ Gagal simpan ${type}:${id} ke Neon:`, error.message);
+    }
+};
 
     const removeData = async (type, id) => {
         try {
