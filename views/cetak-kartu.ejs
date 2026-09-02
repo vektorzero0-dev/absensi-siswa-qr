@@ -14,7 +14,7 @@
 
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* LATAR BELAKANG TERANG DENGAN GRADASI BERGERAK & MOTIF */
+        /* LATAR BELAKANG TERANG DENGAN GRADASI BERGERAK & MOTIF HALUS */
         .bg-light-animated {
             background: linear-gradient(-45deg, #e0f2fe, #f0fdf4, #fef3c7, #f1f5f9);
             background-size: 400% 400%;
@@ -43,51 +43,80 @@
         }
         .animate-glow { animation: pulseGlow 5s infinite ease-in-out; }
 
-        /* UKURAN STANDAR FISIK KARTU ID CARD POTRAIT (54mm x 85.6mm) */
-        .kartu-potrait-size {
-            width: 54mm;
-            height: 85.6mm;
+        /* UKURAN PRESISI KARTU ID POTRAIT FISIK (54mm x 85.6mm) */
+        .kartu-potrait-pro {
+            width: 53mm;
+            height: 84mm;
             page-break-inside: avoid;
             position: relative;
             overflow: hidden;
-            border-radius: 14px;
-            background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 60%, #e0f2fe 100%);
-            border: 2px solid #a7f3d0;
-            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.15);
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1.5px solid #0f766e;
+            box-shadow: 0 10px 20px -5px rgba(15, 118, 110, 0.15);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: center;
         }
 
-        /* MOTIF PATTERN GEOMETRIS INTERNAL KARTU ID */
-        .kartu-potrait-size::before {
+        /* MOTIF PATTERN GEOMETRIS DAN GELOMBANG BERLESI KARTU */
+        .kartu-potrait-pro::before {
             content: "";
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                radial-gradient(rgba(16, 185, 129, 0.08) 1.2px, transparent 1.2px),
-                linear-gradient(160deg, rgba(30, 58, 138, 0.03) 0%, transparent 70%);
-            background-size: 10px 10px, 100% 100%;
+            background: 
+                radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 0% 100%, rgba(30, 58, 138, 0.08) 0%, transparent 50%),
+                radial-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 8px 8px;
             pointer-events: none;
         }
 
-        /* ANIMASI HOVER MELAYANG PADA KARTU ID */
-        .kartu-potrait-size:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 20px 30px -10px rgba(16, 185, 129, 0.3);
-            border-color: #10b981;
+        /* HOVER INTERAKTIF SAAT DILIHAT DI DASHBOARD */
+        .kartu-potrait-pro:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 18px 25px -8px rgba(15, 118, 110, 0.3);
+            border-color: #0d9488;
         }
 
-        /* CSS KHUSUS SAAT DICETAK KE KERTAS / PDF */
+        /* FORMURASI TATA LETAK KHUSUS CETAK PRINT / SAVE PDF (PAS 9 KARTU A4) */
         @media print {
-            .no-print { display: none !important; }
-            body { 
-                background: none !important; 
-                background-color: #ffffff !important; 
-                padding: 0 !important;
+            @page {
+                size: A4 portrait;
+                margin: 8mm 6mm;
             }
-            .kartu-potrait-size {
+
+            html, body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 5mm 4mm !important;
+                justify-content: center !important;
+                align-items: center !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            .kartu-potrait-pro {
                 box-shadow: none !important;
-                border: 1px solid #334155 !important;
+                border: 1px solid #1e293b !important;
                 transform: none !important;
+                margin: 0 auto !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
 
@@ -104,9 +133,9 @@
 <body class="bg-light-animated text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
     <!-- NAVBAR HEADER ATAS (NO PRINT) -->
-    <nav class="no-print bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-emerald-500/50">
+    <nav class="no-print bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-teal-500/50">
         <div class="flex items-center gap-3">
-            <a href="/admin" class="btn-interactive bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl border border-emerald-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
+            <a href="/admin" class="btn-interactive bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-xl border border-teal-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
                 <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Dashboard</span>
             </a>
             
@@ -116,13 +145,13 @@
         </div>
 
         <div class="text-xs text-slate-300 hidden sm:block">
-            <i class="fa-solid fa-address-card text-emerald-400 mr-1"></i> Cetak Kartu Potrait Siswa
+            <i class="fa-solid fa-address-card text-teal-400 mr-1"></i> Cetak Kartu Presensi
         </div>
     </nav>
 
     <!-- HEADER RESMI SEKOLAH BERANIMASI (NO PRINT) -->
-    <header class="no-print bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-900 text-white shadow-lg border-b-4 border-amber-500 relative overflow-hidden">
-        <div class="absolute -top-12 left-1/4 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl animate-glow pointer-events-none"></div>
+    <header class="no-print bg-gradient-to-r from-teal-900 via-slate-900 to-blue-900 text-white shadow-lg border-b-4 border-amber-500 relative overflow-hidden">
+        <div class="absolute -top-12 left-1/4 w-48 h-48 bg-teal-500/20 rounded-full blur-3xl animate-glow pointer-events-none"></div>
         <div class="absolute -bottom-10 right-10 w-36 h-36 bg-amber-400/20 rounded-full blur-3xl animate-glow pointer-events-none" style="animation-delay: 2.5s;"></div>
 
         <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
@@ -132,70 +161,72 @@
                 </div>
                 <div>
                     <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                    <p class="text-[11px] text-blue-200">Cetak Kartu Presensi Potrait (Muat 9–10 Kartu per Kertas A4)</p>
+                    <p class="text-[11px] text-teal-200">Format Cetak Presisi: 9 Kartu Per Lembar A4 (Grid 3x3)</p>
                 </div>
             </div>
             
             <button onclick="window.print()" class="btn-interactive bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 border border-emerald-500">
-                <i class="fa-solid fa-print text-sm"></i> Cetak / Simpan PDF
+                <i class="fa-solid fa-print text-sm"></i> Cetak Sekarang (A4)
             </button>
         </div>
     </header>
 
-    <!-- CONTAINER CONTAINER UTAMA -->
+    <!-- UTAMA -->
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
-        <!-- GRID KARTU-KARTU ID SISWA POTRAIT -->
-        <div class="flex flex-wrap gap-5 justify-center max-w-5xl mx-auto">
+        <!-- GRID KARTU (PAS 9 PER LEMBAR A4) -->
+        <div class="print-grid flex flex-wrap gap-4 justify-center">
             <% siswa.forEach(s => { %>
-                <div class="kartu-potrait-size flex flex-col justify-between text-center">
+                <div class="kartu-potrait-pro">
                     
-                    <!-- 1. KOP SEKOLAH / HEADER KARTU -->
-                    <div class="bg-gradient-to-r from-blue-900 via-emerald-800 to-slate-900 text-white p-2 border-b-2 border-amber-400 relative z-10 flex flex-col items-center">
-                        <div class="w-7 h-7 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm mb-1">
-                            <i class="fa-solid fa-graduation-cap text-emerald-800 text-xs"></i>
+                    <!-- 1. KOP SEKOLAH ELEGAN -->
+                    <div class="bg-gradient-to-r from-teal-900 via-slate-900 to-blue-950 text-white p-1.5 border-b-2 border-amber-400 relative z-10 flex items-center justify-center gap-1.5">
+                        <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm border border-amber-300">
+                            <i class="fa-solid fa-graduation-cap text-teal-900 text-[10px]"></i>
                         </div>
-                        <h2 class="font-black text-[8px] tracking-wide uppercase text-amber-300 leading-tight">SDN 1 KARYA MULYA SARI</h2>
-                        <p class="text-[6px] text-slate-200 font-medium tracking-wider">KARTU PRESENSI DIGITAL SISWA</p>
+                        <div class="leading-tight text-left">
+                            <h2 class="font-black text-[7.5px] tracking-tight uppercase text-amber-300">SDN 1 KARYA MULYA SARI</h2>
+                            <p class="text-[5.5px] text-slate-200 font-semibold tracking-wider uppercase">Kartu Presensi Digital</p>
+                        </div>
                     </div>
 
-                    <!-- 2. ISI KARTU POTRAIT (FOTO, DETAIL & QR CODE) -->
-                    <div class="p-2 flex flex-col items-center justify-between relative z-10 flex-1 my-auto space-y-1.5">
+                    <!-- 2. KONTEN KARTU (FOTO + BIO + QR) -->
+                    <div class="p-1.5 flex flex-col items-center justify-between relative z-10 flex-1 my-auto space-y-1">
                         
-                        <!-- Foto Formal Siswa / Avatar Default -->
-                        <div class="w-14 h-16 bg-white border-2 border-emerald-300 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
+                        <!-- FOTO FORMAL SISWA -->
+                        <div class="w-13 h-15 bg-slate-50 border-2 border-teal-500 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-xs mt-0.5">
                             <% if (s.foto) { %>
                                 <img src="<%= s.foto %>" class="w-full h-full object-cover">
                             <% } else { %>
-                                <i class="fa-solid fa-user text-slate-400 text-xl"></i>
+                                <i class="fa-solid fa-user text-slate-300 text-xl"></i>
                             <% } %>
                         </div>
 
-                        <!-- Detail Data Siswa -->
-                        <div class="w-full leading-tight">
-                            <h3 class="text-[10px] font-black text-slate-900 truncate uppercase tracking-tight"><%= s.nama %></h3>
+                        <!-- IDENTITAS SISWA -->
+                        <div class="w-full leading-tight px-1">
+                            <h3 class="text-[9.5px] font-black text-slate-900 truncate uppercase tracking-tight leading-snug"><%= s.nama %></h3>
                             
-                            <div class="flex items-center justify-center gap-1.5 mt-1">
-                                <span class="text-[7.5px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                            <div class="flex items-center justify-center gap-1 mt-1">
+                                <span class="text-[7px] font-extrabold text-teal-900 bg-teal-100 px-2 py-0.5 rounded-md border border-teal-300">
                                     <%= s.nama_kelas %>
                                 </span>
-                                <span class="text-[7.5px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300">
+                                <span class="text-[7px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-300">
                                     #<%= s.id %>
                                 </span>
                             </div>
                         </div>
 
-                        <!-- QR Code Presensi -->
+                        <!-- QR CODE PRESENSI -->
                         <div class="text-center shrink-0 pt-0.5">
-                            <div class="bg-white p-1 border-2 border-emerald-200 rounded-xl shadow-xs inline-block">
-                                <img src="<%= s.qrImage %>" class="w-16 h-16">
+                            <div class="bg-white p-1 border-2 border-teal-300 rounded-xl shadow-xs inline-block">
+                                <img src="<%= s.qrImage %>" class="w-15 h-15">
                             </div>
-                            <span class="text-[5.5px] text-slate-500 font-mono font-bold uppercase block mt-0.5 tracking-wider">SCAN PRESENSI</span>
+                            <span class="text-[5px] text-slate-500 font-mono font-extrabold uppercase block mt-0.5 tracking-wider">SCAN PRESENSI</span>
                         </div>
                     </div>
 
                     <!-- 3. FOOTER KARTU -->
-                    <div class="bg-slate-900 text-slate-300 text-[6px] py-1 px-2 flex justify-between items-center relative z-10 border-t border-emerald-500/40">
+                    <div class="bg-slate-900 text-slate-300 text-[5.5px] py-1 px-2 flex justify-between items-center relative z-10 border-t border-teal-500/40 font-medium">
                         <span>Tahun Ajaran Aktif</span>
                         <span class="font-bold text-amber-400">Harap Dibawa Setiap Hari</span>
                     </div>
