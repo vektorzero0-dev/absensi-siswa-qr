@@ -1,18 +1,10 @@
 const usePostgresAuthState = require('./usePostgresAuthState');
 const express = require('express');
-const pgSession = require('connect-pg-simple')(session);
-
-app.use(session({
-    store: new pgSession({
-        pool: pool,                  // Koneksi Neon DB dari db.js
-        tableName: 'user_sessions',  // Tabel tempat menyimpan sesi login
-        createTableIfMissing: true    // Membuat tabel otomatis di DB
-    }),
-    secret: 'secret-key-presensi-sd',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false }
-}));
+const express = require('express');
+const session = require('express-session'); // <-- WAJIB DIATAS
+const pgSession = require('connect-pg-simple')(session); // <-- BARU DIPANGGUL DI SINI
+const path = require('path');
+const pino = require('pino');
 const path = require('path');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
