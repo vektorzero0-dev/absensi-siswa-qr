@@ -1,94 +1,172 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <title>Cetak ID Card Potret - Presensi Siswa</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; padding: 0 !important; }
-        }
-        /* Ukuran Standar ID Card Potret (54mm x 85.6mm) */
-        .kartu-potret {
-            width: 54mm;
-            height: 85.6mm;
-            page-break-inside: avoid;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cetak Kartu Presensi Siswa - UPTD SD Negeri 1 Karya Mulya Sari</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f1f5f9;
+    }
+
+    /* ID CARD DIMENSION (Standar CR80: 54mm x 86mm -> Disesuaikan ke Skala Layar/Cetak 220px x 340px) */
+    .id-card {
+      width: 230px;
+      height: 350px;
+      background: #ffffff;
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-col;
+      justify-content: space-between;
+      page-break-inside: avoid;
+    }
+
+    /* HEADER LENGKUNG ELEGANT */
+    .card-header-bg {
+      background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
+      clip-path: ellipse(120% 80% at 50% 15%);
+    }
+
+    /* WATERMARK ORNAMEN LOGO / DEKORASI */
+    .card-watermark {
+      position: absolute;
+      right: -20px;
+      bottom: 40px;
+      font-size: 140px;
+      color: rgba(6, 78, 59, 0.03);
+      pointer-events: none;
+    }
+
+    /* CSS ATURAN CETAK PRINTER / PDF */
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 15px !important;
+        padding: 10mm !important;
+      }
+      .id-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
 </head>
-<body class="bg-slate-100 p-6">
+<body class="p-6">
 
-    <!-- Tombol Cetak / Simpan PDF -->
-    <div class="no-print mb-6 max-w-4xl mx-auto flex justify-between items-center bg-white p-4 rounded-xl shadow border border-slate-200">
-        <div>
-            <h1 class="font-bold text-lg text-slate-800">Cetak ID Card Siswa (Versi Potret / Tegak)</h1>
-            <p class="text-xs text-slate-500">Desain tegak standar ID card — Siap cetak ke A4 / PVC</p>
-        </div>
-        <button onclick="window.print()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-emerald-700 transition flex items-center gap-2">
-            <i class="fa-solid fa-print"></i> Cetak / Simpan PDF
-        </button>
+  <!-- BAR NAVIGASI ATAS & TOMBOL CETAK (TIDAK IKUT TERCETAK) -->
+  <div class="no-print max-w-6xl mx-auto mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+    <div>
+      <h1 class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+        <i class="fa-solid fa-address-card text-emerald-700"></i> Cetak Kartu Presensi Digital Siswa
+      </h1>
+      <p class="text-xs text-slate-500 mt-0.5">Desain standar ID Card Potret (Vertikal) — Siap cetak ke Kertas A4 / PVC ID Card</p>
     </div>
+    <div class="flex items-center gap-3">
+      <a href="/admin" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Kembali
+      </a>
+      <button onclick="window.print()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-700/20 transition flex items-center gap-2">
+        <i class="fa-solid fa-print"></i> Cetak / Simpan PDF
+      </button>
+    </div>
+  </div>
 
-    <!-- Container Grid Kartu -->
-    <div class="flex flex-wrap gap-4 justify-center max-w-5xl mx-auto">
-        <% if (typeof siswa !== 'undefined' && siswa && siswa.length > 0) { %>
-            <% siswa.forEach(s => { %>
-                <div class="kartu-potret bg-white border-2 border-slate-800 rounded-xl flex flex-col justify-between shadow-sm relative overflow-hidden text-center">
-                    
-                    <!-- 1. KOP / HEADER SEKOLAH -->
-                    <div class="bg-emerald-800 text-white p-1.5 border-b-2 border-amber-400">
-                        <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center mx-auto mb-0.5">
-                            <i class="fa-solid fa-graduation-cap text-emerald-800 text-[10px]"></i>
-                        </div>
-                        <h2 class="font-extrabold text-[7.5px] leading-tight uppercase">UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
-                        <p class="text-[5.5px] text-emerald-200 font-medium tracking-wider">KARTU PRESENSI DIGITAL</p>
-                    </div>
+  <!-- CONTAINER GRID KARTU SISWA -->
+  <div class="max-w-6xl mx-auto print-grid flex flex-wrap justify-center gap-6">
 
-                    <!-- 2. FOTO & DATA SISWA -->
-                    <div class="px-2 py-1 flex flex-col items-center justify-center my-auto">
-                        <!-- Frame Foto Siswa -->
-                        <div class="w-11 h-14 bg-slate-100 border border-slate-300 rounded overflow-hidden flex items-center justify-center mb-1.5 shadow-inner">
-                            <i class="fa-solid fa-user text-slate-300 text-2xl"></i>
-                        </div>
+    <% if (siswa && siswa.length > 0) { %>
+      <% siswa.forEach((s) => { %>
 
-                        <!-- Nama Lengkap -->
-                        <div class="w-full mb-1">
-                            <span class="text-[5.5px] text-slate-400 font-bold uppercase tracking-wider block">Nama Siswa</span>
-                            <h3 class="text-[9.5px] font-extrabold text-slate-900 truncate leading-tight"><%= s.nama %></h3>
-                        </div>
+        <!-- ID CARD INDIVIDUAL -->
+        <div class="id-card bg-white text-slate-800">
+          
+          <!-- WATERMARK DEKORASI -->
+          <div class="card-watermark">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
 
-                        <!-- Detail Kelas & ID -->
-                        <div class="grid grid-cols-2 gap-1 w-full border-t border-b border-slate-100 py-1 my-0.5">
-                            <div>
-                                <span class="text-[5.5px] text-slate-400 font-bold uppercase tracking-wider block">Kelas</span>
-                                <span class="text-[8.5px] font-bold text-emerald-700 block"><%= s.nama_kelas %></span>
-                            </div>
-                            <div>
-                                <span class="text-[5.5px] text-slate-400 font-bold uppercase tracking-wider block">ID Siswa</span>
-                                <span class="text-[8.5px] font-mono font-bold text-slate-800 block">#<%= s.id %></span>
-                            </div>
-                        </div>
+          <div>
+            <!-- HEADER KARTU (WARNA INSTANSI + LOGO) -->
+            <div class="card-header-bg text-white p-3 pt-3.5 pb-7 text-center relative">
+              <div class="w-7 h-7 bg-amber-400 text-emerald-950 rounded-full flex items-center justify-center mx-auto mb-1 text-xs font-bold shadow-sm">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </div>
+              <h2 class="text-[9.5px] font-extrabold tracking-wider uppercase leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
+              <p class="text-[7.5px] text-emerald-200 uppercase font-semibold tracking-widest mt-0.5">KARTU PRESENSI DIGITAL</p>
+            </div>
 
-                        <!-- 3. QR CODE PRESENSI -->
-                        <div class="mt-1">
-                            <div class="bg-white p-0.5 border border-slate-300 rounded-lg shadow-sm inline-block">
-                                <img src="<%= s.qrImage %>" class="w-12 h-12">
-                            </div>
-                            <span class="text-[5.5px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">Scan Presensi</span>
-                        </div>
-                    </div>
+            <!-- FOTO PROFILE AVATAR (MELAYANG DI ANTARA HEADER & CONTENT) -->
+            <div class="-mt-6 flex justify-center relative z-10">
+              <div class="w-16 h-16 bg-slate-100 rounded-2xl border-2 border-white shadow-md overflow-hidden flex items-center justify-center text-slate-300">
+                <i class="fa-solid fa-user text-3xl mt-2"></i>
+              </div>
+            </div>
 
-                    <!-- 4. FOOTER KARTU -->
-                    <div class="bg-slate-900 text-amber-400 text-[6px] font-bold py-1 px-1">
-                        Wajib Dibawa Setiap Hari Sekolah
-                    </div>
+            <!-- DETAIL IDENTITAS SISWA -->
+            <div class="text-center px-3 mt-2">
+              <h3 class="text-xs font-black text-slate-900 leading-snug line-clamp-2 uppercase tracking-tight">
+                <%= s.nama %>
+              </h3>
 
+              <!-- INFORMASI KELAS & ID SISWA -->
+              <div class="mt-2.5 grid grid-cols-2 bg-slate-50 rounded-xl p-1.5 border border-slate-100 text-[9px]">
+                <div class="border-r border-slate-200 pr-1">
+                  <span class="block text-slate-400 font-bold uppercase text-[7.5px]">KELAS</span>
+                  <strong class="text-emerald-700 font-extrabold text-[10px]"><%= s.nama_kelas %></strong>
                 </div>
-            <% }); %>
-        <% } %>
-    </div>
+                <div class="pl-1">
+                  <span class="block text-slate-400 font-bold uppercase text-[7.5px]">ID SISWA</span>
+                  <strong class="text-slate-800 font-extrabold text-[10px]">#<%= s.id %></strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- KODE QR SCANNER -->
+            <div class="mt-3 flex flex-col items-center justify-center">
+              <div class="p-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <img src="<%= s.qrImage %>" alt="QR Code" class="w-20 h-20 object-contain">
+              </div>
+              <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">SCAN PRESENSI</span>
+            </div>
+          </div>
+
+          <!-- FOOTER KARTU -->
+          <div class="bg-slate-900 text-amber-400 py-1.5 px-2 text-center text-[7.5px] font-bold uppercase tracking-wider">
+            Wajib Dibawa Setiap Hari Sekolah
+          </div>
+
+        </div>
+
+      <% }); %>
+    <% } else { %>
+      <div class="w-full text-center py-12 bg-white rounded-2xl border border-slate-200">
+        <i class="fa-solid fa-folder-open text-4xl text-slate-300 mb-2"></i>
+        <p class="text-sm font-bold text-slate-600">Belum Ada Data Siswa Untuk Dicetak.</p>
+      </div>
+    <% } %>
+
+  </div>
 
 </body>
 </html>
