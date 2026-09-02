@@ -16,65 +16,54 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
         .offcanvas { z-index: 1055 !important; }
         .offcanvas-backdrop { z-index: 1050 !important; }
 
-        /* BACKGROUND DASHBOARD BERTEKSTUR SANGAT ELEGAN (TIDAK SEPI/KOSONG) */
-        .bg-dashboard-pattern {
-            background-color: #f1f5f9;
+        /* LATAR BELAKANG DASHBOARD ADMIN BERMOTIF ELEGAN & SERASI DENGAN LOGIN */
+        .bg-admin-theme {
+            background-color: #1e293b;
             background-image: 
-                radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
-                radial-gradient(rgba(148, 163, 184, 0.35) 1px, transparent 1px);
-            background-size: 100% 100%, 100% 100%, 20px 20px;
+                radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.35) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.2) 0px, transparent 50%),
+                radial-gradient(rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
+            background-size: 100% 100%, 100% 100%, 22px 22px;
         }
 
         /* Scrollbar Halus */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-        /* Efek Elemen Muncul Soft */
-        @keyframes fadeInSoft {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fadeInSoft 0.3s ease-out forwards;
-        }
-
-        /* Kartu Berinteraksi (Hover Elevation) */
+        /* KARTU ADMIN MODERN WITH ACCENT GLOW */
         .card-pro {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .card-pro:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.08);
-            border-color: #cbd5e1;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
         }
 
-        /* Tombol Interaktif */
-        button, .btn-interactive {
-            transition: all 0.15s ease-in-out;
+        @keyframes fadeInSoft {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        button:active, .btn-interactive:active {
-            transform: scale(0.97);
-        }
+        .animate-fade-in { animation: fadeInSoft 0.3s ease-out forwards; }
+
+        button, .btn-interactive { transition: all 0.15s ease-in-out; }
+        button:active, .btn-interactive:active { transform: scale(0.97); }
     </style>
 </head>
-<body class="bg-dashboard-pattern text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
+<body class="bg-admin-theme text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
 <!-- NAVBAR HEADER ATAS -->
-<nav class="bg-blue-900 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b-2 border-amber-500">
+<nav class="bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-lg px-4 py-3 flex items-center justify-between border-b border-slate-700/80">
   <div class="flex items-center gap-3">
-    <!-- Tombol Pembuka Slide Menu -->
-    <button type="button" onclick="bukaSidebar()" class="btn-interactive bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border border-blue-600 font-bold text-xs flex items-center gap-2 transition">
+    <button type="button" onclick="bukaSidebar()" class="btn-interactive bg-blue-900 hover:bg-blue-800 text-white px-3 py-1.5 rounded-xl border border-blue-700/80 font-bold text-xs flex items-center gap-2 transition shadow-sm">
       <i class="fa-solid fa-bars text-sm"></i> <span>Menu</span>
     </button>
     
@@ -83,25 +72,23 @@
     </span>
   </div>
 
-  <div class="text-xs text-blue-200 hidden sm:block">
-    <i class="fa-solid fa-user-shield text-amber-400"></i> Admin Panel
+  <div class="text-xs text-slate-300 hidden sm:block">
+    <i class="fa-solid fa-user-shield text-amber-400 mr-1"></i> Admin Panel
   </div>
 </nav>
 
 <!-- SIDEBAR SLIDE ADMIN -->
 <div id="sidebarMenu" class="fixed top-0 left-0 h-full w-[260px] bg-white text-slate-800 shadow-2xl z-50 transition-all duration-300 -translate-x-full flex flex-col justify-between border-r border-slate-200">
   <div>
-    <!-- Header Sidebar -->
-    <div class="bg-blue-900 text-white p-4 flex justify-between items-center border-b border-blue-800">
+    <div class="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-slate-800">
       <h5 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-shield-halved text-amber-400"></i> Menu Navigasi
       </h5>
-      <button type="button" onclick="tutupSidebar()" class="text-blue-200 hover:text-white text-lg font-bold px-2">
+      <button type="button" onclick="tutupSidebar()" class="text-slate-400 hover:text-white text-lg font-bold px-2">
         &times;
       </button>
     </div>
     
-    <!-- Link Navigasi -->
     <div class="p-2 space-y-1 text-xs">
       <a href="/admin?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
         <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
@@ -124,13 +111,9 @@
       <a href="#section-presensi" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-clipboard-check text-amber-600"></i> Presensi Hari Ini
       </a>
-      <a href="#section-rekap" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-file-invoice text-blue-600"></i> Rekap Presensi Bulanan
-      </a>
     </div>
   </div>
 
-  <!-- Tombol Keluar / Logout -->
   <div class="p-4 border-t border-slate-100">
     <a href="/" class="flex items-center justify-center gap-2 w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs py-2.5 rounded-xl transition">
       <i class="fa-solid fa-right-from-bracket"></i> Keluar (Logout)
@@ -138,26 +121,25 @@
   </div>
 </div>
 
-<!-- Latar Belakang Gelap (Backdrop Overlay) -->
-<div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity"></div>
+<div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/60 z-40 hidden transition-opacity backdrop-blur-xs"></div>
 
     <!-- Header Resmi Sekolah -->
-    <header class="bg-blue-900 text-white shadow-md border-b-4 border-amber-500">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <header class="bg-slate-900/80 backdrop-blur-md text-white shadow-md border-b-4 border-amber-500">
+        <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="flex items-center gap-3">
-                <div class="bg-white/10 p-2 rounded-lg border border-white/20">
-                    <i class="fa-solid fa-graduation-cap text-2xl text-amber-400"></i>
+                <div class="bg-gradient-to-tr from-amber-500 to-amber-300 p-2 rounded-xl text-slate-950 shadow-md">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-sm md:text-base font-bold tracking-wide uppercase">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                    <p class="text-[11px] text-blue-200">Panel Kelola Administrator Sistem Presensi</p>
+                    <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                    <p class="text-[11px] text-slate-300">Panel Kelola Administrator Sistem Presensi</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 w-full sm:w-auto">
                 <a href="/scan?userId=<%= userId %>" class="btn-interactive flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-qrcode text-sm"></i> Pemindai Presensi (Scanner)
                 </a>
-                <a href="/" class="btn-interactive bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1">
+                <a href="/" class="btn-interactive bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar
                 </a>
             </div>
@@ -167,9 +149,9 @@
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
         <!-- Banner Profil -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between card-pro">
+        <div class="card-pro rounded-2xl p-4 mb-6 shadow-md flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="bg-amber-100 text-amber-800 p-3 rounded-xl">
+                <div class="bg-amber-100 text-amber-800 p-3 rounded-xl border border-amber-200">
                     <i class="fa-solid fa-user-shield text-xl"></i>
                 </div>
                 <div>
@@ -181,7 +163,7 @@
 
         <!-- Metric Summary -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm card-pro">
+            <div class="card-pro rounded-2xl p-4 flex items-center justify-between shadow-md">
                 <div>
                     <p class="text-xs text-slate-500 font-medium">Total Akun Pengguna Guru</p>
                     <h3 class="text-xl font-bold text-slate-900 mt-1"><%= users.length %> <span class="text-xs font-normal text-slate-500">Personel</span></h3>
@@ -191,7 +173,7 @@
                 </div>
             </div>
 
-            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm card-pro">
+            <div class="card-pro rounded-2xl p-4 flex items-center justify-between shadow-md">
                 <div>
                     <p class="text-xs text-slate-500 font-medium">Total Peserta Didik</p>
                     <h3 class="text-xl font-bold text-emerald-700 mt-1"><%= siswa.length %> <span class="text-xs font-normal text-slate-500">Siswa</span></h3>
@@ -201,7 +183,7 @@
                 </div>
             </div>
 
-            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm card-pro">
+            <div class="card-pro rounded-2xl p-4 flex items-center justify-between shadow-md">
                 <div>
                     <p class="text-xs text-slate-500 font-medium">Rombongan Belajar (Rombel)</p>
                     <h3 class="text-xl font-bold text-purple-700 mt-1"><%= kelas.length %> <span class="text-xs font-normal text-slate-500">Kelas</span></h3>
@@ -213,7 +195,7 @@
         </div>
 
         <!-- Panel Impor Massal Data Siswa Dapodik -->
-        <div id="section-dapodik" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6 card-pro">
+        <div id="section-dapodik" class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <div class="flex items-center gap-3 mb-3 border-b border-slate-100 pb-2">
                 <div class="bg-emerald-50 text-emerald-700 p-2.5 rounded-xl border border-emerald-200">
                     <i class="fa-solid fa-file-excel text-lg"></i>
@@ -227,7 +209,7 @@
             <form id="formImportExcel" onsubmit="prosesImportExcel(event)" class="flex flex-col sm:flex-row items-center gap-3">
                 <input type="file" id="fileExcelInput" accept=".xlsx, .xls, .csv" required class="flex-1 text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-300 rounded-xl p-1 w-full bg-slate-50">
                 
-                <button type="submit" id="btnImportExcel" class="btn-interactive w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-800 whitespace-nowrap">
+                <button type="submit" id="btnImportExcel" class="btn-interactive w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-800 whitespace-nowrap shadow-sm">
                     <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data
                 </button>
             </form>
@@ -237,7 +219,7 @@
         <div id="section-rombel" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
             <!-- Form Rombel -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm card-pro">
+            <div class="card-pro rounded-2xl p-5 shadow-md">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-4">
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-plus-circle text-purple-600"></i> Rombongan Belajar
@@ -276,7 +258,7 @@
             </div>
 
             <!-- Form Guru -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm card-pro">
+            <div class="card-pro rounded-2xl p-5 shadow-md">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
                     <i class="fa-solid fa-user-plus text-blue-600"></i> Registrasi Akun Wali Kelas / Guru
                 </h3>
@@ -294,7 +276,7 @@
                             <% }); %>
                         </select>
                     </div>
-                    <button type="submit" class="btn-interactive w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs py-2.5 rounded-xl transition">
+                    <button type="submit" class="btn-interactive w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs py-2.5 rounded-xl transition shadow-sm">
                         Daftarkan Pengguna Baru
                     </button>
                 </form>
@@ -302,7 +284,7 @@
         </div>
 
         <!-- Form Tambah Siswa Manual -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6 card-pro">
+        <div class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <i class="fa-solid fa-address-card text-emerald-600"></i> Registrasi Peserta Didik Baru (Manual)
             </h3>
@@ -316,13 +298,13 @@
                             <option value="<%= k.id %>"><%= k.nama_kelas %></option>
                         <% }); %>
                     </select>
-                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition">Simpan Siswa</button>
+                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow-sm">Simpan Siswa</button>
                 </div>
             </form>
         </div>
 
         <!-- Tabel Akun Pengguna Guru -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6 card-pro">
+        <div class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <i class="fa-solid fa-users-gear text-blue-600"></i> Direktori Akun Tenaga Pendidik
             </h3>
@@ -379,7 +361,7 @@
         </div>
 
         <!-- Tabel Siswa & QR Code -->
-        <div id="section-siswa" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6 card-pro">
+        <div id="section-siswa" class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -469,7 +451,7 @@
         </div>
 
         <!-- Tabel Log Absensi Hari Ini -->
-        <div id="section-presensi" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6 card-pro">
+        <div id="section-presensi" class="card-pro rounded-2xl p-5 shadow-md mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -727,9 +709,9 @@
         }
     </script>
 
-    <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
+    <footer class="bg-slate-950/90 border-t border-slate-800 py-3 text-center text-[11px] text-slate-400 backdrop-blur-md">
         <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
-        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-600">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-blue-700 font-medium hover:underline">0823-7172-9760</a></p>
+        <p class="mt-0.5 text-slate-500">Pengembang Sistem: <strong class="text-slate-300">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
 </body>
 </html>
