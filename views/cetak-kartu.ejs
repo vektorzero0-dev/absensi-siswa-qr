@@ -3,156 +3,180 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cetak Kartu Presensi Siswa - UPTD SD Negeri 1 Karya Mulya Sari</title>
-  <!-- Tailwind CSS & FontAwesome -->
+  <title>Cetak ID Card Siswa - UPTD SD Negeri 1 Karya Mulya Sari</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
     
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #f1f5f9;
+      margin: 0;
+      padding: 0;
     }
 
-    /* ID CARD DIMENSION (Standar CR80: 54mm x 86mm -> Disesuaikan ke Skala Layar/Cetak 220px x 340px) */
+    /* WADAH UTAMA KARTU UNTUK LAYAR */
+    .card-grid-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* UKURAN PRESISI ID CARD (CR80: 54mm x 85mm -> Scaled Web 210px x 330px) */
     .id-card {
-      width: 230px;
-      height: 350px;
+      width: 210px;
+      height: 330px;
       background: #ffffff;
-      border-radius: 16px;
+      border-radius: 12px;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-      border: 1px solid #e2e8f0;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: flex;
-      flex-col;
+      flex-direction: column;
       justify-content: space-between;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
 
-    /* HEADER LENGKUNG ELEGANT */
+    /* HEADER LENGKUNG */
     .card-header-bg {
       background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
-      clip-path: ellipse(120% 80% at 50% 15%);
+      clip-path: ellipse(130% 85% at 50% 15%);
     }
 
-    /* WATERMARK ORNAMEN LOGO / DEKORASI */
+    /* WATERMARK LOGO */
     .card-watermark {
       position: absolute;
-      right: -20px;
-      bottom: 40px;
-      font-size: 140px;
+      right: -15px;
+      bottom: 30px;
+      font-size: 120px;
       color: rgba(6, 78, 59, 0.03);
       pointer-events: none;
     }
 
-    /* CSS ATURAN CETAK PRINTER / PDF */
+    /* ATURAN KHUSUS MODE CETAK / PRINT A4 */
     @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+      
       body {
         background: #ffffff !important;
         padding: 0 !important;
       }
+
       .no-print {
         display: none !important;
       }
-      .print-grid {
+
+      .card-grid-container {
         display: grid !important;
         grid-template-columns: repeat(3, 1fr) !important;
-        gap: 15px !important;
-        padding: 10mm !important;
+        gap: 10px !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
+
       .id-card {
         box-shadow: none !important;
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #94a3b8 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
     }
   </style>
 </head>
-<body class="p-6">
+<body class="p-4">
 
-  <!-- BAR NAVIGASI ATAS & TOMBOL CETAK (TIDAK IKUT TERCETAK) -->
-  <div class="no-print max-w-6xl mx-auto mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+  <!-- BAR ATAS UNTUK TOMBOL CETAK -->
+  <div class="no-print max-w-5xl mx-auto mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
     <div>
-      <h1 class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
-        <i class="fa-solid fa-address-card text-emerald-700"></i> Cetak Kartu Presensi Digital Siswa
+      <h1 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
+        <i class="fa-solid fa-address-card text-emerald-700"></i> Cetak ID Card Presensi Siswa
       </h1>
-      <p class="text-xs text-slate-500 mt-0.5">Desain standar ID Card Potret (Vertikal) — Siap cetak ke Kertas A4 / PVC ID Card</p>
+      <p class="text-xs text-slate-500 mt-0.5">Format A4 Pas (3x3 Kartu Per Halaman) — Siap Cetak ke Paper A4 / PVC</p>
     </div>
     <div class="flex items-center gap-3">
       <a href="/admin" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">
         <i class="fa-solid fa-arrow-left mr-1"></i> Kembali
       </a>
-      <button onclick="window.print()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-700/20 transition flex items-center gap-2">
+      <button onclick="window.print()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md transition flex items-center gap-2">
         <i class="fa-solid fa-print"></i> Cetak / Simpan PDF
       </button>
     </div>
   </div>
 
   <!-- CONTAINER GRID KARTU SISWA -->
-  <div class="max-w-6xl mx-auto print-grid flex flex-wrap justify-center gap-6">
+  <div class="max-w-6xl mx-auto card-grid-container">
 
     <% if (siswa && siswa.length > 0) { %>
       <% siswa.forEach((s) => { %>
 
-        <!-- ID CARD INDIVIDUAL -->
+        <!-- INDIVIDUAL ID CARD -->
         <div class="id-card bg-white text-slate-800">
           
-          <!-- WATERMARK DEKORASI -->
           <div class="card-watermark">
             <i class="fa-solid fa-graduation-cap"></i>
           </div>
 
           <div>
-            <!-- HEADER KARTU (WARNA INSTANSI + LOGO) -->
-            <div class="card-header-bg text-white p-3 pt-3.5 pb-7 text-center relative">
-              <div class="w-7 h-7 bg-amber-400 text-emerald-950 rounded-full flex items-center justify-center mx-auto mb-1 text-xs font-bold shadow-sm">
+            <!-- HEADER KARTU -->
+            <div class="card-header-bg text-white p-2.5 pt-3 pb-6 text-center relative">
+              <div class="w-6 h-6 bg-amber-400 text-emerald-950 rounded-full flex items-center justify-center mx-auto mb-1 text-[10px] font-bold">
                 <i class="fa-solid fa-graduation-cap"></i>
               </div>
-              <h2 class="text-[9.5px] font-extrabold tracking-wider uppercase leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
-              <p class="text-[7.5px] text-emerald-200 uppercase font-semibold tracking-widest mt-0.5">KARTU PRESENSI DIGITAL</p>
+              <h2 class="text-[8.5px] font-extrabold tracking-wider uppercase leading-tight">UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
+              <p class="text-[7px] text-emerald-200 uppercase font-semibold tracking-widest mt-0.5">KARTU PRESENSI DIGITAL</p>
             </div>
 
-            <!-- FOTO PROFILE AVATAR (MELAYANG DI ANTARA HEADER & CONTENT) -->
-            <div class="-mt-6 flex justify-center relative z-10">
-              <div class="w-16 h-16 bg-slate-100 rounded-2xl border-2 border-white shadow-md overflow-hidden flex items-center justify-center text-slate-300">
-                <i class="fa-solid fa-user text-3xl mt-2"></i>
+            <!-- FOTO PROFILE AVATAR -->
+            <div class="-mt-5 flex justify-center relative z-10">
+              <div class="w-14 h-14 bg-slate-100 rounded-xl border-2 border-white shadow-sm overflow-hidden flex items-center justify-center text-slate-300">
+                <i class="fa-solid fa-user text-2xl mt-1"></i>
               </div>
             </div>
 
-            <!-- DETAIL IDENTITAS SISWA -->
-            <div class="text-center px-3 mt-2">
-              <h3 class="text-xs font-black text-slate-900 leading-snug line-clamp-2 uppercase tracking-tight">
+            <!-- DETAIL SISWA -->
+            <div class="text-center px-2 mt-1.5">
+              <h3 class="text-[11px] font-black text-slate-900 leading-tight line-clamp-1 uppercase">
                 <%= s.nama %>
               </h3>
 
-              <!-- INFORMASI KELAS & ID SISWA -->
-              <div class="mt-2.5 grid grid-cols-2 bg-slate-50 rounded-xl p-1.5 border border-slate-100 text-[9px]">
+              <!-- KELAS & ID -->
+              <div class="mt-2 grid grid-cols-2 bg-slate-50 rounded-lg p-1 border border-slate-200 text-[8px]">
                 <div class="border-r border-slate-200 pr-1">
-                  <span class="block text-slate-400 font-bold uppercase text-[7.5px]">KELAS</span>
-                  <strong class="text-emerald-700 font-extrabold text-[10px]"><%= s.nama_kelas %></strong>
+                  <span class="block text-slate-400 font-bold uppercase text-[6.5px]">KELAS</span>
+                  <strong class="text-emerald-700 font-extrabold text-[9px]"><%= s.nama_kelas %></strong>
                 </div>
                 <div class="pl-1">
-                  <span class="block text-slate-400 font-bold uppercase text-[7.5px]">ID SISWA</span>
-                  <strong class="text-slate-800 font-extrabold text-[10px]">#<%= s.id %></strong>
+                  <span class="block text-slate-400 font-bold uppercase text-[6.5px]">ID SISWA</span>
+                  <strong class="text-slate-800 font-extrabold text-[9px]">#<%= s.id %></strong>
                 </div>
               </div>
             </div>
 
-            <!-- KODE QR SCANNER -->
-            <div class="mt-3 flex flex-col items-center justify-center">
-              <div class="p-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <img src="<%= s.qrImage %>" alt="QR Code" class="w-20 h-20 object-contain">
+            <!-- QR CODE -->
+            <div class="mt-2 flex flex-col items-center justify-center">
+              <div class="p-1 bg-white border border-slate-200 rounded-lg shadow-sm">
+                <img src="<%= s.qrImage %>" alt="QR Code" class="w-16 h-16 object-contain">
               </div>
-              <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">SCAN PRESENSI</span>
+              <span class="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">SCAN PRESENSI</span>
             </div>
           </div>
 
           <!-- FOOTER KARTU -->
-          <div class="bg-slate-900 text-amber-400 py-1.5 px-2 text-center text-[7.5px] font-bold uppercase tracking-wider">
+          <div class="bg-slate-900 text-amber-400 py-1 px-2 text-center text-[7px] font-bold uppercase tracking-wider">
             Wajib Dibawa Setiap Hari Sekolah
           </div>
 
@@ -161,8 +185,7 @@
       <% }); %>
     <% } else { %>
       <div class="w-full text-center py-12 bg-white rounded-2xl border border-slate-200">
-        <i class="fa-solid fa-folder-open text-4xl text-slate-300 mb-2"></i>
-        <p class="text-sm font-bold text-slate-600">Belum Ada Data Siswa Untuk Dicetak.</p>
+        <p class="text-xs font-bold text-slate-500">Belum ada data siswa untuk dicetak.</p>
       </div>
     <% } %>
 
