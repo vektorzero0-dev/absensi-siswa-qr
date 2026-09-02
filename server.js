@@ -153,7 +153,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                // Hanya hapus sesi jika di-logout resmi dari HP (401)
+                // Hanya hapus sesi jika di-logout resmi dari HP (401 / DisconnectReason.loggedOut)
                 const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
@@ -170,13 +170,12 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                         }, 8000);
                     }
                 } else {
-                    console.log(`🚪 User #${userId} Logged Out. Menghapus folder sesi lokal...`);
+                    console.log(`🚪 User #${userId} Logged Out. Menghapus sesi lokal & database...`);
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
-                    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-                    if (fs.existsSync(authFolder)) {
-                        fs.rmSync(authFolder, { recursive: true, force: true });
-                    }
+
+                    // Panggil clearCreds dari auth handler hybrid untuk hapus lokal + DB Neon
+                    getAuthState(userId).then(({ clearCreds }) => clearCreds()).catch(e => console.error("Gagal clearCreds:", e.message));
                 }
             }
         });
