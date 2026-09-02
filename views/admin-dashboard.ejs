@@ -666,7 +666,9 @@
                 const formHapus = document.getElementById('formHapusUmum');
                 formHapus.action = `/api/siswa/hapus/${id}`;
                 formHapus.submit();
-        function bukaSidebar() {
+            }
+        }
+       function bukaSidebar() {
             document.getElementById('sidebarMenu').classList.remove('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.remove('hidden');
             }
@@ -675,8 +677,6 @@
             document.getElementById('sidebarMenu').classList.add('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.add('hidden');
             }
-            }
-        }
     </script>
 
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
