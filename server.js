@@ -1,6 +1,19 @@
 const usePostgresAuthState = require('./usePostgresAuthState');
 const express = require('express');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+
+app.use(session({
+    store: new pgSession({
+        pool: pool,
+        tableName: 'user_sessions',
+        createTableIfMissing: true
+    }),
+    secret: 'secret-key-presensi-sd',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }
+}));
 const path = require('path');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
