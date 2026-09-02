@@ -32,7 +32,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// PENGATURAN SESSION DEPOSIT NEON DB (SUPAYA TIDAK LEAK MEMORY)
+// PENGATURAN SESSION DATABASE NEON (SUPAYA TIDAK LEAK MEMORY & TIDAK SLEEP)
 app.use(session({
     store: new pgSession({
         pool: pool,
@@ -67,20 +67,21 @@ async function generateQRDataURL(text) {
     }
 }
 
-// ----------------- HYBRID AUTH STATE (LOKAL AUTH FOLDER) ----------------- //
+// ----------------- POSTGRES AUTH STATE WA ----------------- //
 
 async function getAuthState(userId) {
     return await usePostgresAuthState(userId);
 }
+
 async function connectToWhatsApp(userId, phoneNumber = null) {
     try {
-        // Bersihkan timer pending jika ada request ulang
         if (reconnectTimers[userId]) {
             clearTimeout(reconnectTimers[userId]);
             delete reconnectTimers[userId];
         }
 
-        if (waSessions[userId]) {
+        // Tutup koneksi lama jika ada sebelum membuat socket baru
+        if (waSessions[userId] && waStatus[userId] !== 'MENUNGGU_PAIRING_CODE') {
             try { waSessions[userId].end(undefined); } catch (e) {}
             delete waSessions[userId];
         }
@@ -125,14 +126,14 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                     console.error("Gagal Request Pairing Code:", pErr.message);
                     waStatus[userId] = 'ERROR_PAIRING';
                 }
-            }, 5000);
+            }, 3000);
         }
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            // QR CODE GENERATION (DENGAN DEBOUNCE TERKONTROL)
-            if (qr && !phoneNumber && !sock.authState.creds.registered) {
+            // QR CODE GENERATION
+            if (qr && !phoneNumber && waStatus[userId] !== 'MENUNGGU_PAIRING_CODE' && !sock.authState.creds.registered) {
                 try {
                     qrCodes[userId] = await generateQRDataURL(qr);
                     waStatus[userId] = 'MENUNGGU_SCAN';
@@ -160,15 +161,13 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                // Hanya hapus sesi jika di-logout resmi dari HP (401 / DisconnectReason.loggedOut)
                 const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
-                waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
 
                 if (!isLoggedOut) {
-                    // Beri jeda 8 detik agar tidak looping kedap-kedip
+                    waStatus[userId] = 'PROSES_INIT';
                     console.log(`🔄 Sambung ulang User #${userId} dalam 8 detik...`);
                     if (!reconnectTimers[userId]) {
                         reconnectTimers[userId] = setTimeout(() => {
@@ -177,11 +176,11 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                         }, 8000);
                     }
                 } else {
-                    console.log(`🚪 User #${userId} Logged Out. Menghapus sesi lokal & database...`);
+                    console.log(`🚪 User #${userId} Logged Out. Menghapus sesi database...`);
+                    waStatus[userId] = 'TERPUTUS';
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
 
-                    // Panggil clearCreds dari auth handler hybrid untuk hapus lokal + DB Neon
                     getAuthState(userId).then(({ clearCreds }) => clearCreds()).catch(e => console.error("Gagal clearCreds:", e.message));
                 }
             }
@@ -405,7 +404,6 @@ app.post('/api/kelas/hapus/:id', async (req, res) => {
 
 app.post('/api/siswa/hapus-semua', async (req, res) => {
     try {
-        // FITUR HAPUS DI-DISABLE DEMI KEAMANAN DATA
         console.log("⚠️ Fitur reset total diblokir demi keamanan data.");
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
@@ -630,10 +628,8 @@ app.get('/api/reset-wa', async (req, res) => {
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
-    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-    if (fs.existsSync(authFolder)) {
-        fs.rmSync(authFolder, { recursive: true, force: true });
-    }
+    getAuthState(userId).then(({ clearCreds }) => clearCreds()).catch(e => console.error("Gagal clearCreds:", e.message));
+
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
@@ -712,7 +708,7 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
-// ---------------- API HAPUS RIWAYAT ABSENSI UJI COBA ---------------- //
+// ---------------- API HAPUS RIWAYAT ABSENSI ---------------- //
 app.post('/api/absensi/reset-riwayat', async (req, res) => {
     try {
         await pool.query('DELETE FROM absensi');
@@ -903,8 +899,9 @@ app.get('/api/absensi/export', async (req, res) => {
         res.status(500).send("Gagal mengekspor data: " + err.message);
     }
 });
+
+// PING ENDPOINT UNTUK UPTIMEROBOT
 app.get('/ping', (req, res) => res.send('OK'));
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server Presensi Aktif di Port ${PORT}`);
-});
+// SINGLE LISTEN PORT UNTUK RENDER
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server Presensi Aktif di Port ${PORT}`));
