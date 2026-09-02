@@ -1,13 +1,12 @@
 const usePostgresAuthState = require('./usePostgresAuthState');
 const express = require('express');
-const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 
 app.use(session({
     store: new pgSession({
-        pool: pool,
-        tableName: 'user_sessions',
-        createTableIfMissing: true
+        pool: pool,                  // Koneksi Neon DB dari db.js
+        tableName: 'user_sessions',  // Tabel tempat menyimpan sesi login
+        createTableIfMissing: true    // Membuat tabel otomatis di DB
     }),
     secret: 'secret-key-presensi-sd',
     resave: false,
