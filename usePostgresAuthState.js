@@ -2,7 +2,6 @@ const { BufferJSON, initAuthCreds, proto } = require('@whiskeysockets/baileys');
 const pool = require('./db');
 
 async function usePostgresAuthState(userId = 'default') {
-    // 1. Membaca data sesi dari Neon DB
     const readData = async (type, id) => {
         try {
             const key = `${userId}:${type}:${id}`;
@@ -16,7 +15,6 @@ async function usePostgresAuthState(userId = 'default') {
         }
     };
 
-    // 2. Menulis / memperbarui data sesi ke Neon DB
     const writeData = async (data, type, id) => {
         try {
             const key = `${userId}:${type}:${id}`;
@@ -32,7 +30,6 @@ async function usePostgresAuthState(userId = 'default') {
         }
     };
 
-    // 3. Menghapus sesi
     const removeData = async (type, id) => {
         try {
             const key = `${userId}:${type}:${id}`;
@@ -42,7 +39,6 @@ async function usePostgresAuthState(userId = 'default') {
         }
     };
 
-    // 4. Menghapus seluruh sesi user saat Logout
     const clearCreds = async () => {
         try {
             await pool.query('DELETE FROM wa_sessions WHERE key_id LIKE $1', [`${userId}:%`]);
@@ -75,7 +71,7 @@ async function usePostgresAuthState(userId = 'default') {
                     );
                     return data;
                 },
-                // FITUR KUNCI: Menyimpan kunci enkripsi transaksi harian ke Neon DB
+                // BAGIAN PENTING: Menyimpan rotasi kunci enkripsi harian ke Neon DB
                 set: async (data) => {
                     const tasks = [];
                     for (const category in data) {
