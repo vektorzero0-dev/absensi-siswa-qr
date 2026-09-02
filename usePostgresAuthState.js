@@ -1,5 +1,4 @@
-const { proto } = require('@whiskeysockets/baileys');
-const { initAuthCreds, BufferJSON } = require('@whiskeysockets/baileys');
+const { proto, initAuthCreds, BufferJSON } = require('@whiskeysockets/baileys');
 const pool = require('./db');
 
 async function usePostgresAuthState(userId) {
