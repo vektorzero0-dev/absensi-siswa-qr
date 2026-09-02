@@ -29,9 +29,9 @@
 <nav class="navbar navbar-dark bg-success sticky-top shadow-sm px-2">
   <div class="container-fluid flex items-center justify-between">
     <!-- Tombol Pembuka Slide Menu -->
-    <button class="btn btn-success border border-white/30 text-white me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
-      <i class="bi bi-list fs-4"></i> <span class="d-none d-sm-inline ms-1 fw-bold">Menu</span>
-    </button>
+    <button class="btn btn-primary border border-white/30 text-white me-2" type="button" onclick="toggleSidebar()">
+  <i class="bi bi-list fs-4"></i> <span class="d-none d-sm-inline ms-1 fw-bold">Menu</span>
+</button>
     
     <span class="navbar-brand mb-0 h1 fw-bold fs-6 fs-md-5 text-truncate">
       UPTD SD NEGERI 1 KARYA MULYA SARI
@@ -44,37 +44,31 @@
 </nav>
 
 <!-- SLIDE MENU (OFFCANVAS SIDEBAR WALI KELAS) -->
-<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel" style="width: 280px;">
-  <div class="offcanvas-header bg-success text-white">
-    <h5 class="offcanvas-title fw-bold" id="sidebarMenuLabel">
-      <i class="bi bi-person-workspace me-2"></i>Menu Wali Kelas
+<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" style="width: 280px;">
+  <div class="offcanvas-header bg-primary text-white">
+    <h5 class="offcanvas-title fw-bold">
+      <i class="bi bi-shield-lock me-2"></i>Menu Navigation
     </h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <!-- Tombol Tutup Silang -->
+    <button type="button" class="btn-close btn-close-white" onclick="toggleSidebar()"></button>
   </div>
   
   <div class="offcanvas-body d-flex flex-column justify-content-between p-0">
     <div class="list-group list-group-flush pt-2">
-      <a href="/wali?userId=<%= userId %>" class="list-group-item list-group-item-action border-0 py-3 active">
+      <a href="/admin?userId=<%= userId %>" class="list-group-item list-group-item-action border-0 py-3 active">
         <i class="bi bi-speedometer2 me-3"></i>Dashboard Utama
       </a>
       <a href="/scan?userId=<%= userId %>" class="list-group-item list-group-item-action border-0 py-3">
-        <i class="bi bi-qr-code-scan me-3"></i>Buka Scanner QR Kelas
+        <i class="bi bi-qr-code-scan me-3"></i>Buka Scanner QR
       </a>
-      <a href="#section-wa-gateway" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-whatsapp me-3"></i>Status Bot WhatsApp
+      <a href="#section-siswa" onclick="toggleSidebar()" class="list-group-item list-group-item-action border-0 py-3">
+        <i class="bi bi-people me-3"></i>Kelola Data Siswa
       </a>
-      <a href="#section-rekap-bulanan" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-file-earmark-spreadsheet me-3"></i>Rekap Presensi Bulanan
-      </a>
-      <a href="#section-siswa-kelas" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-people me-3"></i>Daftar Siswa Kelas
-      </a>
-      <a href="#section-absensi-today" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-calendar-check me-3"></i>Presensi Hari Ini
+      <a href="#section-rombel" onclick="toggleSidebar()" class="list-group-item list-group-item-action border-0 py-3">
+        <i class="bi bi-door-open me-3"></i>Kelola Rombel
       </a>
     </div>
 
-    <!-- Tombol Logout di Bagian Bawah -->
     <div class="p-3 border-top">
       <a href="/" class="btn btn-outline-danger w-100 py-2">
         <i class="bi bi-box-arrow-right me-2"></i>Keluar (Logout)
@@ -82,6 +76,9 @@
     </div>
   </div>
 </div>
+
+<!-- Backdrop Gelap Manual -->
+<div id="sidebarBackdrop" onclick="toggleSidebar()" class="hidden fixed inset-0 bg-slate-900/50 z-40"></div>
 
     <header class="bg-blue-900 text-white shadow-md border-b-4 border-emerald-500">
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
