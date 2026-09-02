@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Kartu ID Siswa - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    <title>Cetak Kartu Presensi Siswa - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     
     <!-- CSS Tailwind & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -43,34 +43,22 @@
         }
         .animate-glow { animation: pulseGlow 5s infinite ease-in-out; }
 
-        /* KARTU CONTROL PANEL (THEME PURPLE) */
-        .card-pro {
+        /* UKURAN STANDAR FISIK KARTU ID CARD (85.6mm x 54mm) */
+        .kartu-size {
+            width: 85.6mm;
+            height: 54mm;
+            page-break-inside: avoid;
             position: relative;
             overflow: hidden;
-            border-radius: 1.25rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .card-purple-theme {
-            background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
-            border: 1px solid #e9d5ff;
-        }
-
-        /* DESAIN KARTU ID SISWA FISIK (UKURAN STANDAR KARTU 85.6mm x 54mm RATIO) */
-        .id-card-item {
-            width: 320px;
-            height: 200px;
-            border-radius: 16px;
-            position: relative;
-            overflow: hidden;
+            border-radius: 14px;
             background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 50%, #e0f2fe 100%);
             border: 2px solid #a7f3d0;
             box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.15);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* MOTIF POLA GEOMETRIS HALUS DI DALAM KARTU ID */
-        .id-card-item::before {
+        /* MOTIF PATTERN GEOMETRIS INTERNAL KARTU ID */
+        .kartu-size::before {
             content: "";
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -81,33 +69,24 @@
             pointer-events: none;
         }
 
-        /* ANIMASI HOVER MELAYANG KARTU ID */
-        .id-card-item:hover {
+        /* ANIMASI HOVER MELAYANG PADA KARTU ID */
+        .kartu-size:hover {
             transform: translateY(-5px) scale(1.02);
             box-shadow: 0 20px 30px -10px rgba(16, 185, 129, 0.3);
             border-color: #10b981;
         }
 
-        /* CSS KHUSUS PADA SAAT DICETAK/PRINT */
+        /* CSS KHUSUS SAAT DICETAK KE KERTAS / PDF */
         @media print {
-            body {
-                background: none !important;
-                background-color: #ffffff !important;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .print-container {
-                display: grid !important;
-                grid-template-columns: repeat(2, 1fr) !important;
-                gap: 15px !important;
+            .no-print { display: none !important; }
+            body { 
+                background: none !important; 
+                background-color: #ffffff !important; 
                 padding: 0 !important;
-                margin: 0 !important;
             }
-            .id-card-item {
+            .kartu-size {
                 box-shadow: none !important;
-                border: 1px solid #000000 !important;
-                break-inside: avoid;
+                border: 1px solid #334155 !important;
                 transform: none !important;
             }
         }
@@ -124,26 +103,26 @@
 </head>
 <body class="bg-light-animated text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
-<!-- NAVBAR HEADER ATAS (NO PRINT) -->
-<nav class="no-print bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-purple-500/50">
-  <div class="flex items-center gap-3">
-    <a href="/admin?userId=<%= userId %>" class="btn-interactive bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded-xl border border-purple-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
-      <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Admin</span>
-    </a>
-    
-    <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
-      UPTD SD NEGERI 1 KARYA MULYA SARI
-    </span>
-  </div>
+    <!-- NAVBAR HEADER ATAS (NO PRINT) -->
+    <nav class="no-print bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-emerald-500/50">
+        <div class="flex items-center gap-3">
+            <a href="/admin" class="btn-interactive bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl border border-emerald-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
+                <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Dashboard</span>
+            </a>
+            
+            <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
+                UPTD SD NEGERI 1 KARYA MULYA SARI
+            </span>
+        </div>
 
-  <div class="text-xs text-slate-300 hidden sm:block">
-    <i class="fa-solid fa-address-card text-purple-400 mr-1"></i> Cetak Kartu Digital Siswa
-  </div>
-</nav>
+        <div class="text-xs text-slate-300 hidden sm:block">
+            <i class="fa-solid fa-address-card text-emerald-400 mr-1"></i> Cetak Kartu Digital Siswa
+        </div>
+    </nav>
 
     <!-- HEADER RESMI SEKOLAH BERANIMASI (NO PRINT) -->
-    <header class="no-print bg-gradient-to-r from-purple-900 via-slate-900 to-blue-900 text-white shadow-lg border-b-4 border-amber-500 relative overflow-hidden">
-        <div class="absolute -top-12 left-1/4 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl animate-glow pointer-events-none"></div>
+    <header class="no-print bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-900 text-white shadow-lg border-b-4 border-amber-500 relative overflow-hidden">
+        <div class="absolute -top-12 left-1/4 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl animate-glow pointer-events-none"></div>
         <div class="absolute -bottom-10 right-10 w-36 h-36 bg-amber-400/20 rounded-full blur-3xl animate-glow pointer-events-none" style="animation-delay: 2.5s;"></div>
 
         <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
@@ -153,131 +132,99 @@
                 </div>
                 <div>
                     <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
-                    <p class="text-[11px] text-purple-200">Pengelolaan & Cetak Massal Kartu Presensi QR Code Siswa</p>
+                    <p class="text-[11px] text-blue-200">Cetak Kartu Presensi Lengkap Siap Kertas A4 (Muat 8–10 Kartu)</p>
                 </div>
             </div>
             
-            <button type="button" onclick="window.print()" class="btn-interactive bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 border border-emerald-500">
-                <i class="fa-solid fa-print text-sm"></i> Cetak / Print Kartu Sekarang
+            <button onclick="window.print()" class="btn-interactive bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 border border-emerald-500">
+                <i class="fa-solid fa-print text-sm"></i> Cetak / Simpan PDF
             </button>
         </div>
     </header>
 
+    <!-- CONTAINER CONTAINER UTAMA -->
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
-        <!-- PANEL FILTER PER-KELAS (NO PRINT) -->
-        <div class="no-print card-pro card-purple-theme p-5 mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
-                <div class="flex items-center gap-3">
-                    <div class="bg-purple-600 text-white p-2.5 rounded-xl shadow-md">
-                        <i class="fa-solid fa-filter text-lg"></i>
+        <!-- GRID KARTU-KARTU ID SISWA -->
+        <div class="flex flex-wrap gap-5 justify-center max-w-5xl mx-auto">
+            <% siswa.forEach(s => { %>
+                <div class="kartu-size flex flex-col justify-between">
+                    
+                    <!-- 1. KOP SEKOLAH / HEADER KARTU -->
+                    <div class="bg-gradient-to-r from-blue-900 via-emerald-800 to-slate-900 text-white px-2.5 py-1.5 flex items-center gap-2 border-b-2 border-amber-400 relative z-10">
+                        <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                            <i class="fa-solid fa-graduation-cap text-emerald-800 text-[10px]"></i>
+                        </div>
+                        <div class="leading-tight flex-1">
+                            <h2 class="font-extrabold text-[8.5px] tracking-wide uppercase text-amber-300">UPTD SD NEGERI 1 KARYA MULYA SARI</h2>
+                            <p class="text-[6.5px] text-slate-200 font-medium">KARTU PRESENSI DIGITAL SISWA</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Filter Tampilan Rombongan Belajar</h3>
-                        <p class="text-[11px] text-slate-600">Pilih kelas tertentu untuk menampilkan kartu identitas siswa yang hendak dicetak</p>
-                    </div>
-                </div>
 
-                <div class="w-full sm:w-auto">
-                    <select id="filterKelas" onchange="filterKartuSiswa(this.value)" class="w-full sm:w-64 bg-white border border-purple-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 shadow-xs">
-                        <option value="SEMUA">-- Tampilkan Semua Kelas --</option>
-                        <% kelasList.forEach(k => { %>
-                            <option value="<%= k.id %>"><%= k.nama_kelas %></option>
-                        <% }); %>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- GRID KARTU ID SISWA -->
-        <div id="printContainer" class="print-container flex flex-wrap justify-center gap-6">
-            <% if (siswaList && siswaList.length > 0) { %>
-                <% siswaList.forEach(s => { %>
-                    <div class="id-card-item card-item-element flex flex-col justify-between" data-kelas-id="<%= s.kelas_id %>">
+                    <!-- 2. ISI KARTU (FOTO, DETAIL & QR CODE) -->
+                    <div class="p-2 flex items-center justify-between gap-2 relative z-10 my-auto">
                         
-                        <!-- HEADER KARTU ID -->
-                        <div class="bg-gradient-to-r from-blue-900 via-emerald-800 to-slate-900 text-white px-3 py-2 flex items-center justify-between border-b-2 border-amber-400 relative z-10">
-                            <div class="flex items-center gap-2">
-                                <div class="bg-white/10 p-1 rounded border border-white/20">
-                                    <i class="fa-solid fa-graduation-cap text-amber-300 text-xs"></i>
-                                </div>
-                                <div class="leading-tight">
-                                    <h4 class="text-[9px] font-black uppercase tracking-wider text-amber-300">SDN 1 KARYA MULYA SARI</h4>
-                                    <p class="text-[7px] text-slate-200">KARTU PRESENSI KARTU DIGITAL</p>
-                                </div>
-                            </div>
-                            <span class="text-[8px] font-mono bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black">
-                                ID: #<%= s.id %>
-                            </span>
+                        <!-- Foto Formal Siswa / Avatar Default -->
+                        <div class="w-11 h-14 bg-white border-2 border-emerald-300 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
+                            <% if (s.foto) { %>
+                                <img src="<%= s.foto %>" class="w-full h-full object-cover">
+                            <% } else { %>
+                                <i class="fa-solid fa-user text-slate-400 text-lg"></i>
+                            <% } %>
                         </div>
 
-                        <!-- BODY KARTU ID -->
-                        <div class="p-3 flex items-center justify-between gap-2 relative z-10 flex-1">
-                            
-                            <!-- INFORMASI SISWA -->
-                            <div class="flex-1 pr-1">
-                                <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8px] font-extrabold px-2 py-0.5 rounded-full inline-block uppercase tracking-wider mb-1">
-                                    <%= s.nama_kelas || 'Tanpa Rombel' %>
+                        <!-- Detail Data Siswa -->
+                        <div class="flex-1 min-w-0 leading-tight">
+                            <div class="mb-0.5">
+                                <span class="text-[6px] text-slate-400 font-extrabold uppercase block">Nama Lengkap</span>
+                                <h3 class="text-[10px] font-black text-slate-900 truncate uppercase"><%= s.nama %></h3>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-1 my-0.5">
+                                <div>
+                                    <span class="text-[6px] text-slate-400 font-extrabold uppercase block">Rombel</span>
+                                    <span class="text-[8px] font-extrabold text-emerald-700 bg-emerald-100/80 px-1 py-0.2 rounded border border-emerald-200 inline-block"><%= s.nama_kelas %></span>
+                                </div>
+                                <div>
+                                    <span class="text-[6px] text-slate-400 font-extrabold uppercase block">ID Presensi</span>
+                                    <span class="text-[8px] font-mono font-bold text-slate-800">#<%= s.id %></span>
+                                </div>
+                            </div>
+
+                            <div class="mt-0.5">
+                                <span class="text-[6px] text-slate-400 font-extrabold uppercase block">WA Wali Murid</span>
+                                <span class="text-[7.5px] font-mono text-slate-700 flex items-center gap-0.5">
+                                    <i class="fa-brands fa-whatsapp text-emerald-600 text-[8px]"></i>
+                                    <%= s.nomor_wa_ortu || '-' %>
                                 </span>
-                                
-                                <h3 class="text-xs font-black text-slate-900 leading-snug line-clamp-2 uppercase">
-                                    <%= s.nama %>
-                                </h3>
-
-                                <div class="mt-2 text-[8px] space-y-0.5 text-slate-600 font-medium">
-                                    <p class="flex items-center gap-1">
-                                        <i class="fa-solid fa-phone text-emerald-600 w-3"></i> 
-                                        <span>WA Ortu: <%= s.nomor_wa_ortu || '-' %></span>
-                                    </p>
-                                    <p class="flex items-center gap-1 text-[7.5px] text-slate-500">
-                                        <i class="fa-solid fa-shield-check text-blue-600 w-3"></i> Validasi Sistem Resmi
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- QR CODE BOX -->
-                            <div class="bg-white p-1.5 rounded-xl border-2 border-emerald-200 shadow-sm flex flex-col items-center flex-shrink-0">
-                                <img src="<%= s.qrImage %>" alt="QR <%= s.nama %>" class="w-20 h-20">
-                                <span class="text-[7px] text-slate-400 font-mono mt-0.5 font-bold">SCAN KARTU</span>
                             </div>
                         </div>
 
-                        <!-- FOOTER KARTU ID -->
-                        <div class="bg-slate-900 text-slate-300 px-3 py-1 flex justify-between items-center text-[7px] border-t border-emerald-500/40 relative z-10">
-                            <span>UPTD SD Negeri 1 Karya Mulya Sari</span>
-                            <span class="text-amber-400 font-bold">STATUS: AKTIF</span>
+                        <!-- QR Code Presensi -->
+                        <div class="text-center shrink-0">
+                            <div class="bg-white p-1 border-2 border-emerald-200 rounded-xl shadow-xs">
+                                <img src="<%= s.qrImage %>" class="w-13 h-13">
+                            </div>
+                            <span class="text-[5.5px] text-slate-500 font-mono font-bold uppercase block mt-0.5">SCAN PRESENSI</span>
                         </div>
-
                     </div>
-                <% }); %>
-            <% } else { %>
-                <div class="no-print w-full bg-white rounded-2xl p-8 text-center text-slate-400 italic border border-slate-200 shadow-sm">
-                    <i class="fa-solid fa-address-card text-3xl text-slate-300 mb-2 block"></i>
-                    Belum ada data siswa untuk dicetak kartu identitasnya.
+
+                    <!-- 3. FOOTER KARTU -->
+                    <div class="bg-slate-900 text-slate-300 text-[6.5px] px-2.5 py-0.5 flex justify-between items-center relative z-10 border-t border-emerald-500/40">
+                        <span>Tahun Ajaran Aktif</span>
+                        <span class="font-bold text-amber-400">Harap dibawa setiap hari sekolah</span>
+                    </div>
+
                 </div>
-            <% } %>
+            <% }); %>
         </div>
 
     </main>
 
-    <!-- SCRIPT FILTER KARTU -->
-    <script>
-        function filterKartuSiswa(kelasId) {
-            const items = document.querySelectorAll('.card-item-element');
-            items.forEach(item => {
-                const kId = item.getAttribute('data-kelas-id');
-                if (kelasId === 'SEMUANO' || kelasId === 'SEMUA' || kId === kelasId) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        }
-    </script>
-
-    <footer class="no-print bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
+    <footer class="no-print bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px] mt-6">
         <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
         <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-200">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
+
 </body>
 </html>
