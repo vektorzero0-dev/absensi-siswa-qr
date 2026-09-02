@@ -1,14 +1,11 @@
 const usePostgresAuthState = require('./usePostgresAuthState');
 const express = require('express');
-const express = require('express');
-const session = require('express-session'); // <-- WAJIB DIATAS
-const pgSession = require('connect-pg-simple')(session); // <-- BARU DIPANGGUL DI SINI
-const path = require('path');
-const pino = require('pino');
+const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 const fs = require('fs');
@@ -35,10 +32,16 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// PENGATURAN SESSION DEPOSIT NEON DB (SUPAYA TIDAK LEAK MEMORY)
 app.use(session({
+    store: new pgSession({
+        pool: pool,
+        tableName: 'user_sessions',
+        createTableIfMissing: true
+    }),
     secret: 'secret-key-presensi-sd',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: { secure: false }
 }));
 
