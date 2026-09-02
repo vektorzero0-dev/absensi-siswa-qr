@@ -5,80 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Wali Kelas - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
     
-    <!-- CSS Bootstrap 5 & Icons (Utama untuk Offcanvas Sidebar) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    
-    <!-- CSS Pendukung -->
+    <!-- CSS Tailwind & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        /* Perbaikan Z-Index agar Slide Menu muncul paling depan di atas Tailwind */
-        .offcanvas {
-            z-index: 1055 !important;
-        }
-        .offcanvas-backdrop {
-            z-index: 1050 !important;
-        }
-    </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
 <!-- NAVBAR HEADER ATAS -->
-<!-- NAVBAR HEADER ATAS -->
-<nav class="bg-blue-900 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b-2 border-amber-500">
+<nav class="bg-emerald-800 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b-2 border-emerald-500">
   <div class="flex items-center gap-3">
     <!-- Tombol Pembuka Slide Menu -->
-    <button type="button" onclick="bukaSidebar()" class="bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border border-blue-600 font-bold text-xs flex items-center gap-2 transition">
+    <button type="button" onclick="bukaSidebar()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg border border-emerald-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
       <i class="fa-solid fa-bars text-sm"></i> <span>Menu</span>
     </button>
     
-    <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
+    <span class="font-bold text-xs sm:text-sm tracking-wide text-emerald-100 uppercase truncate">
       UPTD SD NEGERI 1 KARYA MULYA SARI
     </span>
   </div>
 
-  <div class="text-xs text-blue-200 hidden sm:block">
-    <i class="fa-solid fa-user-shield text-amber-400"></i> Admin Panel
+  <!-- SUDAH DIPERBAIKI: Menampilkan Portal Wali Kelas (bukan Panel Admin) -->
+  <div class="text-xs text-emerald-100 hidden sm:block">
+    <i class="fa-solid fa-user-chalkboard text-emerald-300"></i> Portal Wali Kelas
   </div>
 </nav>
 
-<!-- SIDEBAR SLIDE (VANILLA PURE CSS) -->
+<!-- SIDEBAR SLIDE WALI KELAS -->
 <div id="sidebarMenu" class="fixed top-0 left-0 h-full w-[260px] bg-white text-slate-800 shadow-2xl z-50 transition-all duration-300 -translate-x-full flex flex-col justify-between border-r border-slate-200">
   <div>
     <!-- Header Sidebar -->
-    <div class="bg-blue-900 text-white p-4 flex justify-between items-center border-b border-blue-800">
+    <div class="bg-emerald-800 text-white p-4 flex justify-between items-center border-b border-emerald-700">
       <h5 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2">
-        <i class="fa-solid fa-shield-halved text-amber-400"></i> Menu Navigasi
+        <i class="fa-solid fa-graduation-cap text-amber-400"></i> Menu Navigasi
       </h5>
-      <button type="button" onclick="tutupSidebar()" class="text-blue-200 hover:text-white text-lg font-bold px-2">
+      <button type="button" onclick="tutupSidebar()" class="text-emerald-200 hover:text-white text-lg font-bold px-2">
         &times;
       </button>
     </div>
     
-    <!-- Link Navigasi -->
+    <!-- Link Navigasi Khusus Wali Kelas -->
     <div class="p-2 space-y-1 text-xs">
-      <a href="/admin?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
-        <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
+      <a href="/wali?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-emerald-50 text-emerald-900 rounded-xl">
+        <i class="fa-solid fa-house text-emerald-700"></i> Dashboard Utama
       </a>
       <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
       </a>
-      <a href="/admin/cetak-kartu" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
+      <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-brands fa-whatsapp text-emerald-600"></i> Status Bot WA
       </a>
-      <a href="#section-dapodik" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-file-excel text-emerald-600"></i> Impor Excel Dapodik
+      <a href="#section-rekap-bulanan" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-file-invoice text-blue-600"></i> Rekap Presensi Bulanan
       </a>
-      <a href="#section-rombel" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-school text-purple-600"></i> Kelola Rombel & Guru
+      <a href="#section-siswa-kelas" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-users text-blue-600"></i> Daftar Siswa Kelas
       </a>
-      <a href="#section-siswa" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-users text-blue-600"></i> Direktori Siswa
-      </a>
-      <a href="#section-presensi" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-clipboard-check text-amber-600"></i> Presensi Hari Ini
+      <a href="#section-absensi-today" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-clipboard-user text-amber-600"></i> Presensi Hari Ini
       </a>
     </div>
   </div>
@@ -296,7 +279,7 @@
             <% } %>
         </div>
 
-        <!-- Tabel Siswa Rombel -->
+        <!-- Tabel Siswa Rombel (ID DILENGKAPI: section-siswa-kelas) -->
         <div id="section-siswa-kelas" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -372,7 +355,7 @@
 
         <form id="formHapusSiswa" action="" method="POST" class="hidden"></form>
 
-        <!-- Tabel Log Absensi Hari Ini -->
+        <!-- Tabel Log Absensi Hari Ini (ID DILENGKAPI: section-absensi-today) -->
         <div id="section-absensi-today" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-2">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -457,10 +440,18 @@
         </div>
     </div>
 
-    <!-- SCRIPT JAVASCRIPT BOOTSTRAP (DITARUH TERAKHIR) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    <!-- SCRIPT CONTROL SIDEBAR PURE JAVASCRIPT -->
     <script>
+        function bukaSidebar() {
+            document.getElementById('sidebarMenu').classList.remove('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.remove('hidden');
+        }
+
+        function tutupSidebar() {
+            document.getElementById('sidebarMenu').classList.add('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.add('hidden');
+        }
+
         const currentUserId = "<%= userId %>";
 
         function cekStatusWA() {
@@ -606,15 +597,6 @@
                     tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
                 });
         }
-function bukaSidebar() {
-    document.getElementById('sidebarMenu').classList.remove('-translate-x-full');
-    document.getElementById('sidebarOverlay').classList.remove('hidden');
-}
-
-function tutupSidebar() {
-    document.getElementById('sidebarMenu').classList.add('-translate-x-full');
-    document.getElementById('sidebarOverlay').classList.add('hidden');
-}
     </script>
 
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-600">
