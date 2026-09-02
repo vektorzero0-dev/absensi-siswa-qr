@@ -12,25 +12,52 @@
         
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* BACKGOUND SERASI: TEMA DEEP SLATE NAVY WITH MESH PATTERN */
-        .bg-app-theme {
+        /* LATAR BELAKANG DEEP SLATE NAVY BERMOTIF MESH & DOT GRID */
+        .bg-login-gradient {
             background-color: #0f172a;
             background-image: 
-                radial-gradient(at 10% 10%, rgba(30, 58, 138, 0.3) 0px, transparent 50%),
-                radial-gradient(at 90% 90%, rgba(16, 185, 129, 0.2) 0px, transparent 50%),
+                radial-gradient(at 10% 10%, rgba(30, 58, 138, 0.35) 0px, transparent 50%),
+                radial-gradient(at 90% 90%, rgba(16, 185, 129, 0.25) 0px, transparent 50%),
                 radial-gradient(rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
             background-size: 100% 100%, 100% 100%, 22px 22px;
         }
 
+        /* ANIMASI BOLA CAHAYA ATAS HEADER */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.15); }
+        }
+        .animate-glow { animation: pulseGlow 4s infinite ease-in-out; }
+
+        /* KARTU LOGIN GLASSMORPHISM BERMOTIF & BERANIMASI */
         .glass-card {
             background: rgba(255, 255, 255, 0.96);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* MOTIF POLA GARIS DOT-GRID INTERNAL KARTU */
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+            background-size: 12px 12px;
+            pointer-events: none;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 20px rgba(30, 58, 138, 0.25);
+            border-color: rgba(30, 58, 138, 0.4);
         }
 
         @keyframes cardEnter {
-            from { opacity: 0; transform: translateY(14px) scale(0.98); }
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .animate-card { animation: cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -43,15 +70,20 @@
         }
 
         .btn-interactive { transition: all 0.2s ease-in-out; }
-        .btn-interactive:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -5px rgba(30, 58, 138, 0.4); }
+        .btn-interactive:hover { transform: translateY(-1px); box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.4); }
         .btn-interactive:active { transform: scale(0.98); }
     </style>
 </head>
-<body class="bg-app-theme text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased relative overflow-x-hidden">
+<body class="bg-login-gradient text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased relative overflow-x-hidden">
 
-    <!-- Header Resmi Sekolah -->
-    <header class="bg-slate-900/90 backdrop-blur-md text-white border-b border-slate-700/60 sticky top-0 z-20">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <!-- Header Resmi Sekolah Dengan Animasi Cahaya -->
+    <header class="bg-slate-900/90 backdrop-blur-md text-white border-b border-slate-700/60 sticky top-0 z-20 overflow-hidden">
+        
+        <!-- BOLA CAHAYA ANIMASI ATAS -->
+        <div class="absolute -top-12 left-1/4 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl animate-glow pointer-events-none"></div>
+        <div class="absolute -bottom-10 right-10 w-32 h-32 bg-amber-400/15 rounded-full blur-2xl animate-glow pointer-events-none" style="animation-delay: 2s;"></div>
+
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between relative z-10">
             <div class="flex items-center gap-3">
                 <div class="bg-gradient-to-tr from-amber-500 to-amber-300 p-2 rounded-xl text-slate-950 shadow-md">
                     <i class="fa-solid fa-graduation-cap text-xl"></i>
@@ -69,9 +101,9 @@
 
     <!-- Content Utama -->
     <main class="flex-1 flex items-center justify-center p-4 my-6 z-10">
-        <div class="w-full max-w-md glass-card rounded-3xl p-7 animate-card relative overflow-hidden">
+        <div class="w-full max-w-md glass-card rounded-3xl p-7 animate-card">
             
-            <div class="text-center mb-6">
+            <div class="text-center mb-6 relative z-10">
                 <div class="inline-flex bg-gradient-to-tr from-blue-900 via-blue-800 to-indigo-900 text-amber-400 p-3.5 rounded-2xl shadow-lg mb-2.5">
                     <i class="fa-solid fa-user-lock text-2xl"></i>
                 </div>
@@ -80,13 +112,13 @@
             </div>
 
             <% if (error) { %>
-                <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm">
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm relative z-10">
                     <i class="fa-solid fa-circle-exclamation text-rose-500 text-base flex-shrink-0"></i>
                     <span class="font-semibold"><%= error %></span>
                 </div>
             <% } %>
 
-            <form action="/login" method="POST" class="space-y-4">
+            <form action="/login" method="POST" class="space-y-4 relative z-10">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Pengguna (Username)</label>
                     <div class="relative">
