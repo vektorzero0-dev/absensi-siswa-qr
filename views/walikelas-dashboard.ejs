@@ -14,11 +14,11 @@
 
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* LATAR BELAKANG DASHBOARD WALI KELAS BERMOTIF (SERASI DENGAN LOGIN & ADMIN) */
+        /* LATAR BELAKANG DASHBOARD WALI KELAS BERMOTIF MESH & GRID */
         .bg-wali-theme {
-            background-color: #1e293b;
+            background-color: #0f172a;
             background-image: 
-                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.3) 0px, transparent 50%),
+                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.28) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(30, 58, 138, 0.25) 0px, transparent 50%),
                 radial-gradient(rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
             background-size: 100% 100%, 100% 100%, 22px 22px;
@@ -29,26 +29,51 @@
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-        /* KARTU PRO BERTEKSTUR GLASSMORPHISM LIGHT */
-        .card-pro {
-            background: rgba(255, 255, 255, 0.98);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        /* ANIMASI BOLA CAHAYA LINGKARAN ATAS (HEADER) */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.15); }
         }
+        .animate-glow {
+            animation: pulseGlow 4s infinite ease-in-out;
+        }
+
+        /* KARTU PRO DENGAN MOTIF INTERNAL & EFEK ANIMASI HOVER */
+        .card-pro {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* MOTIF POLA GARIS HALUS DI DALAM SETIAP KARTU */
+        .card-pro::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+            background-size: 12px 12px;
+            pointer-events: none;
+        }
+
+        /* ANIMASI HOVER EFEK SHIMMER & MELAYANG */
         .card-pro:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+            transform: translateY(-4px) scale(1.005);
+            box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.4), 0 0 15px rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.5);
         }
 
         @keyframes fadeInSoft {
-            from { opacity: 0; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in { animation: fadeInSoft 0.3s ease-out forwards; }
+        .animate-fade-in { animation: fadeInSoft 0.4s ease-out forwards; }
 
-        button, .btn-interactive { transition: all 0.15s ease-in-out; }
-        button:active, .btn-interactive:active { transform: scale(0.97); }
+        button, .btn-interactive { transition: all 0.2s ease-in-out; }
+        button:active, .btn-interactive:active { transform: scale(0.96); }
     </style>
 </head>
 <body class="bg-wali-theme text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
@@ -118,8 +143,14 @@
 <!-- Latar Belakang Gelap (Backdrop Overlay) -->
 <div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/60 z-40 hidden transition-opacity backdrop-blur-xs"></div>
 
-    <header class="bg-slate-900/80 backdrop-blur-md text-white shadow-md border-b-4 border-emerald-500">
-        <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <!-- HEADER RESMI SEKOLAH DENGAN ANIMASI CAHAYA LINGKARAN ATAS -->
+    <header class="bg-slate-900/80 backdrop-blur-md text-white shadow-md border-b-4 border-emerald-500 relative overflow-hidden">
+        
+        <!-- BOLA CAHAYA ANIMASI ATAS -->
+        <div class="absolute -top-12 left-1/4 w-40 h-40 bg-emerald-500/20 rounded-full blur-2xl animate-glow pointer-events-none"></div>
+        <div class="absolute -bottom-10 right-10 w-32 h-32 bg-amber-400/15 rounded-full blur-2xl animate-glow pointer-events-none" style="animation-delay: 2s;"></div>
+
+        <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
             <div class="flex items-center gap-3">
                 <div class="bg-gradient-to-tr from-amber-500 to-amber-300 p-2 rounded-xl text-slate-950 shadow-md">
                     <i class="fa-solid fa-graduation-cap text-2xl"></i>
@@ -142,9 +173,10 @@
 
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
+        <!-- BANNER PROFIL WALI KELAS -->
         <div class="card-pro rounded-2xl p-4 mb-6 shadow-md flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-emerald-100 text-emerald-800 p-3 rounded-xl border border-emerald-200">
+            <div class="flex items-center gap-3 relative z-10">
+                <div class="bg-emerald-100 text-emerald-800 p-3 rounded-xl border border-emerald-200 shadow-sm">
                     <i class="fa-solid fa-user-chalkboard text-xl"></i>
                 </div>
                 <div>
@@ -158,8 +190,8 @@
 
         <!-- WA Gateway Panel Dynamic -->
         <div id="section-wa-gateway" class="card-pro rounded-2xl p-5 mb-6 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <div class="flex items-center gap-3 relative z-10">
+                <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">
                     <i class="fa-brands fa-whatsapp text-2xl"></i>
                 </div>
                 <div>
@@ -170,7 +202,7 @@
                 </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto relative z-10">
                 <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
                     <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
                     <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
@@ -200,8 +232,8 @@
 
         <!-- Panel Filter, Pratinjau & Unduh Rekap Presensi Bulanan -->
         <div id="section-rekap-bulanan" class="card-pro rounded-2xl p-5 shadow-md mb-6">
-            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
-                <div class="bg-blue-50 text-blue-800 p-2.5 rounded-xl border border-blue-200">
+            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2 relative z-10">
+                <div class="bg-blue-50 text-blue-800 p-2.5 rounded-xl border border-blue-200 shadow-sm">
                     <i class="fa-solid fa-file-invoice text-lg"></i>
                 </div>
                 <div>
@@ -210,7 +242,7 @@
                 </div>
             </div>
 
-            <form id="filterForm" action="/api/absensi/export" method="GET" target="_blank" class="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-4">
+            <form id="filterForm" action="/api/absensi/export" method="GET" target="_blank" class="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-4 relative z-10">
                 <input type="hidden" name="kelas_id" id="kelasId" value="<%= user.kelas_id %>">
                 
                 <div>
@@ -261,7 +293,7 @@
                 </div>
             </form>
 
-            <div id="previewArea" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <div id="previewArea" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50 relative z-10">
                 <div class="flex justify-between items-center mb-3">
                     <h4 id="previewTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wide">
                         Hasil Pratinjau Rekapitulasi
@@ -289,16 +321,16 @@
 
         <!-- Form Tambah Siswa Rombel -->
         <div class="card-pro rounded-2xl p-5 shadow-md mb-6">
-            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-slate-100 pb-2 relative z-10">
                 <i class="fa-solid fa-user-plus text-emerald-600"></i> Registrasi Siswa Rombel (<%= user.nama_kelas %>)
             </h3>
             
             <% if (!user.kelas_id) { %>
-                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl">
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl relative z-10">
                     <i class="fa-solid fa-triangle-exclamation mr-1"></i> Akun Anda belum terhubung ke Rombongan Belajar tertentu. Silakan hubungi Administrator Sekolah.
                 </div>
             <% } else { %>
-                <form action="/api/siswa/tambah" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <form action="/api/siswa/tambah" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3 relative z-10">
                     <input type="hidden" name="kelas_id" value="<%= user.kelas_id %>">
                     
                     <div>
@@ -322,7 +354,7 @@
 
         <!-- Tabel Siswa Rombel -->
         <div id="section-siswa-kelas" class="card-pro rounded-2xl p-5 shadow-md mb-6">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3 relative z-10">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-users text-blue-600"></i> Daftar Peserta Didik (<%= user.nama_kelas %>)
                 </h3>
@@ -331,7 +363,7 @@
                 </button>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto relative z-10">
                 <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
                     <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
                         <tr>
@@ -398,7 +430,7 @@
 
         <!-- Tabel Log Absensi Hari Ini -->
         <div id="section-absensi-today" class="card-pro rounded-2xl p-5 shadow-md mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-2">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-2 relative z-10">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-clipboard-user text-emerald-600"></i> Rekapitulasi Presensi Kehadiran Hari Ini
                 </h3>
@@ -410,7 +442,7 @@
                 </form>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto relative z-10">
                 <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[400px]">
                     <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
                         <tr>
