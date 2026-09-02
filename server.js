@@ -396,15 +396,13 @@ app.post('/api/kelas/hapus/:id', async (req, res) => {
     }
 });
 
-app.post('/api/kelas/hapus-semua', async (req, res) => {
+app.post('/api/siswa/hapus-semua', async (req, res) => {
     try {
-        await pool.query('UPDATE users SET kelas_id = NULL');
-        await pool.query('UPDATE siswa SET kelas_id = NULL');
-        await pool.query('DELETE FROM kelas');
-        await pool.query("ALTER SEQUENCE kelas_id_seq RESTART WITH 1");
+        // FITUR HAPUS DI-DISABLE DEMI KEAMANAN DATA
+        console.log("⚠️ Fitur reset total diblokir demi keamanan data.");
         return res.redirect(`/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
-        return res.status(500).send("Gagal menghapus semua rombel: " + err.message);
+        return res.status(500).send("Gagal: " + err.message);
     }
 });
 
