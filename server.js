@@ -63,13 +63,8 @@ async function generateQRDataURL(text) {
 // ----------------- HYBRID AUTH STATE (LOKAL AUTH FOLDER) ----------------- //
 
 async function getAuthState(userId) {
-    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-    if (!fs.existsSync(authFolder)) {
-        fs.mkdirSync(authFolder, { recursive: true });
-    }
-    return await useMultiFileAuthState(authFolder);
+    return await usePostgresAuthState(userId);
 }
-
 async function connectToWhatsApp(userId, phoneNumber = null) {
     try {
         // Bersihkan timer pending jika ada request ulang
