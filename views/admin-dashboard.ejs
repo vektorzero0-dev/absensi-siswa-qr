@@ -29,9 +29,9 @@
 <nav class="navbar navbar-dark bg-primary sticky-top shadow-sm px-2">
   <div class="container-fluid flex items-center justify-between">
     <!-- Tombol Pembuka Slide Menu -->
-    <button class="btn btn-primary border border-white/30 text-white me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
-      <i class="bi bi-list fs-4"></i> <span class="d-none d-sm-inline ms-1 fw-bold">Menu</span>
-    </button>
+    <button class="btn btn-primary border border-white/30 text-white me-2" type="button" onclick="toggleSidebar()">
+  <i class="bi bi-list fs-4"></i> <span class="d-none d-sm-inline ms-1 fw-bold">Menu</span>
+</button>
     
     <span class="navbar-brand mb-0 h1 fw-bold fs-6 fs-md-5 text-truncate">
       UPTD SD NEGERI 1 KARYA MULYA SARI
@@ -44,12 +44,13 @@
 </nav>
 
 <!-- SLIDE MENU (OFFCANVAS SIDEBAR) -->
-<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel" style="width: 280px;">
+<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" style="width: 280px;">
   <div class="offcanvas-header bg-primary text-white">
-    <h5 class="offcanvas-title fw-bold" id="sidebarMenuLabel">
-      <i class="bi bi-shield-lock me-2"></i>Menu Admin
+    <h5 class="offcanvas-title fw-bold">
+      <i class="bi bi-shield-lock me-2"></i>Menu Navigation
     </h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <!-- Tombol Tutup Silang -->
+    <button type="button" class="btn-close btn-close-white" onclick="toggleSidebar()"></button>
   </div>
   
   <div class="offcanvas-body d-flex flex-column justify-content-between p-0">
@@ -60,24 +61,14 @@
       <a href="/scan?userId=<%= userId %>" class="list-group-item list-group-item-action border-0 py-3">
         <i class="bi bi-qr-code-scan me-3"></i>Buka Scanner QR
       </a>
-      <a href="/admin/cetak-kartu" class="list-group-item list-group-item-action border-0 py-3">
-        <i class="bi bi-card-heading me-3"></i>Cetak Kartu Siswa
+      <a href="#section-siswa" onclick="toggleSidebar()" class="list-group-item list-group-item-action border-0 py-3">
+        <i class="bi bi-people me-3"></i>Kelola Data Siswa
       </a>
-      <a href="#section-dapodik" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-file-earmark-excel me-3"></i>Impor Excel Dapodik
-      </a>
-      <a href="#section-rombel" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-door-open me-3"></i>Kelola Rombel & Guru
-      </a>
-      <a href="#section-siswa" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-people me-3"></i>Direktori Siswa & QR
-      </a>
-      <a href="#section-presensi" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-clipboard-check me-3"></i>Rekap Presensi Hari Ini
+      <a href="#section-rombel" onclick="toggleSidebar()" class="list-group-item list-group-item-action border-0 py-3">
+        <i class="bi bi-door-open me-3"></i>Kelola Rombel
       </a>
     </div>
 
-    <!-- Tombol Logout di Bagian Bawah -->
     <div class="p-3 border-top">
       <a href="/" class="btn btn-outline-danger w-100 py-2">
         <i class="bi bi-box-arrow-right me-2"></i>Keluar (Logout)
@@ -85,6 +76,9 @@
     </div>
   </div>
 </div>
+
+<!-- Backdrop Gelap Manual -->
+<div id="sidebarBackdrop" onclick="toggleSidebar()" class="hidden fixed inset-0 bg-slate-900/50 z-40"></div>
 
     <!-- Header Resmi Sekolah -->
     <header class="bg-blue-900 text-white shadow-md border-b-4 border-amber-500">
