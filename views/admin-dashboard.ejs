@@ -4,20 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Administrator - UPTD SD NEGERI 1 KARYA MULYA SARI</title>
+    
+    <!-- CSS Bootstrap 5 & Icons (Utama untuk Offcanvas Sidebar) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- CSS Pendukung -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        /* Perbaikan Z-Index agar Slide Menu muncul paling depan di atas Tailwind */
+        .offcanvas {
+            z-index: 1055 !important;
+        }
+        .offcanvas-backdrop {
+            z-index: 1050 !important;
+        }
+    </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
-<nav class="navbar navbar-dark bg-primary sticky-top shadow-sm">
-  <div class="container-fluid">
+
+<!-- NAVBAR HEADER ATAS -->
+<nav class="navbar navbar-dark bg-primary sticky-top shadow-sm px-2">
+  <div class="container-fluid flex items-center justify-between">
     <!-- Tombol Pembuka Slide Menu -->
-    <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
-      <span class="navbar-toggler-icon"></span>
+    <button class="btn btn-primary border border-white/30 text-white me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+      <i class="bi bi-list fs-4"></i> <span class="d-none d-sm-inline ms-1 fw-bold">Menu</span>
     </button>
     
-    <span class="navbar-brand mb-0 h1 fw-bold fs-6 fs-md-5">
+    <span class="navbar-brand mb-0 h1 fw-bold fs-6 fs-md-5 text-truncate">
       UPTD SD NEGERI 1 KARYA MULYA SARI
     </span>
     
@@ -26,7 +42,8 @@
     </div>
   </div>
 </nav>
-<!-- Offcanvas Sidebar Admin -->
+
+<!-- SLIDE MENU (OFFCANVAS SIDEBAR) -->
 <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel" style="width: 280px;">
   <div class="offcanvas-header bg-primary text-white">
     <h5 class="offcanvas-title fw-bold" id="sidebarMenuLabel">
@@ -46,17 +63,17 @@
       <a href="/admin/cetak-kartu" class="list-group-item list-group-item-action border-0 py-3">
         <i class="bi bi-card-heading me-3"></i>Cetak Kartu Siswa
       </a>
+      <a href="#section-dapodik" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
+        <i class="bi bi-file-earmark-excel me-3"></i>Impor Excel Dapodik
+      </a>
+      <a href="#section-rombel" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
+        <i class="bi bi-door-open me-3"></i>Kelola Rombel & Guru
+      </a>
       <a href="#section-siswa" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-people me-3"></i>Kelola Data Siswa
+        <i class="bi bi-people me-3"></i>Direktori Siswa & QR
       </a>
-      <a href="#section-kelas" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-door-open me-3"></i>Kelola Rombel / Kelas
-      </a>
-      <a href="#section-guru" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-person-badge me-3"></i>Kelola Wali Kelas
-      </a>
-      <a href="#section-rekap" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
-        <i class="bi bi-file-earmark-spreadsheet me-3"></i>Rekap Laporan
+      <a href="#section-presensi" class="list-group-item list-group-item-action border-0 py-3" data-bs-dismiss="offcanvas">
+        <i class="bi bi-clipboard-check me-3"></i>Rekap Presensi Hari Ini
       </a>
     </div>
 
@@ -68,6 +85,7 @@
     </div>
   </div>
 </div>
+
     <!-- Header Resmi Sekolah -->
     <header class="bg-blue-900 text-white shadow-md border-b-4 border-amber-500">
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -140,7 +158,7 @@
         </div>
 
         <!-- Panel Impor Massal Data Siswa Dapodik -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+        <div id="section-dapodik" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex items-center gap-3 mb-3 border-b border-slate-100 pb-2">
                 <div class="bg-emerald-50 text-emerald-700 p-2.5 rounded-xl border border-emerald-200">
                     <i class="fa-solid fa-file-excel text-lg"></i>
@@ -161,7 +179,7 @@
         </div>
 
         <!-- Form Tambah Rombel & Guru -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div id="section-rombel" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
             <!-- Form Rombel -->
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -306,7 +324,7 @@
         </div>
 
         <!-- Tabel Siswa & QR Code -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+        <div id="section-siswa" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -388,6 +406,57 @@
                                     <i class="fa-solid fa-folder-open text-2xl mb-1 block text-slate-300"></i>
                                     Belum ada siswa terdaftar. Silakan lakukan impor data Excel Dapodik atau tambah manual.
                                 </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabel Log Absensi Hari Ini -->
+        <div id="section-presensi" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-user text-emerald-600"></i> Rekapitulasi Presensi Kehadiran Hari Ini
+                    </h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Daftar log aktivitas scan kartu siswa yang tercatat hari ini.</p>
+                </div>
+
+                <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa, guru, dan rombel kelas TIDAK akan terhapus.');">
+                    <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold px-3.5 py-2 rounded-xl border border-amber-200 transition flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-broom text-amber-600"></i> Bersihkan Riwayat Uji Coba
+                    </button>
+                </form>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
+                        <tr>
+                            <th class="p-3">Nama Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3">Waktu Presensi</th>
+                            <th class="p-3 text-center">Status Kehadiran</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% if (typeof absensiHariIni !== 'undefined' && absensiHariIni && absensiHariIni.length > 0) { %>
+                            <% absensiHariIni.forEach(a => { %>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
+                                    <td class="p-3 text-slate-600"><%= a.nama_kelas %></td>
+                                    <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
+                                    <td class="p-3 text-center">
+                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded">
+                                            HADIR
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="4" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk untuk hari ini.</td>
                             </tr>
                         <% } %>
                     </tbody>
@@ -496,57 +565,9 @@
             </form>
         </div>
     </div>
-<!-- Tabel Log Absensi Hari Ini & Tombol Bersihkan Riwayat -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-user text-emerald-600"></i> Rekapitulasi Presensi Kehadiran Hari Ini
-                    </h3>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Daftar log aktivitas scan kartu siswa yang tercatat hari ini.</p>
-                </div>
 
-                <!-- TOMBOL BERSIHKAN RIWAYAT ABSEN UJI COBA -->
-                <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa, guru, dan rombel kelas TIDAK akan terhapus.');">
-                    <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold px-3.5 py-2 rounded-xl border border-amber-200 transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-broom text-amber-600"></i> Bersihkan Riwayat Uji Coba
-                    </button>
-                </form>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
-                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
-                        <tr>
-                            <th class="p-3">Nama Siswa</th>
-                            <th class="p-3">Rombel Kelas</th>
-                            <th class="p-3">Waktu Presensi</th>
-                            <th class="p-3 text-center">Status Kehadiran</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <% if (typeof absensiHariIni !== 'undefined' && absensiHariIni && absensiHariIni.length > 0) { %>
-                            <% absensiHariIni.forEach(a => { %>
-                                <tr class="hover:bg-slate-50">
-                                    <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
-                                    <td class="p-3 text-slate-600"><%= a.nama_kelas %></td>
-                                    <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
-                                    <td class="p-3 text-center">
-                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded">
-                                            HADIR
-                                        </span>
-                                    </td>
-                                </tr>
-                            <% }); %>
-                        <% } else { %>
-                            <tr>
-                                <td colspan="4" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk untuk hari ini.</td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- SCRIPT JAVASCRIPT BOOTSTRAP (DITARUH TERAKHIR) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         function prosesImportExcel(e) {
@@ -645,6 +666,5 @@
         <p>© UPTD SD Negeri 1 Karya Mulya Sari. Seluruh Hak Cipta Dilindungi.</p>
         <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-600">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-blue-700 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
