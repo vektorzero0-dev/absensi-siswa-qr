@@ -3,11 +3,12 @@ const session = require('express-session');
 const path = require('path');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 const fs = require('fs');
 const pool = require('./db');
+const usePostgresAuthState = require('./usePostgresAuthState');
 
 // Package Import & Upload Excel
 const multer = require('multer');
@@ -44,11 +45,9 @@ const pairingCodes = {};
 
 function bersihkanGelar(nama) {
     if (!nama) return '';
-    // Menghapus gelar akademik umum tanpa merusak nama asli
     return nama.replace(/,?\s*\b(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\b\.?/gi, '').trim();
 }
 
-// System QR Safe Generator
 async function generateQRDataURL(text) {
     try {
         if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -59,14 +58,10 @@ async function generateQRDataURL(text) {
     }
 }
 
-// ----------------- HYBRID AUTH STATE ----------------- //
+// ----------------- POSTGRES AUTH STATE (NEON DB) ----------------- //
 
 async function getAuthState(userId) {
-    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-    if (!fs.existsSync(authFolder)) {
-        fs.mkdirSync(authFolder, { recursive: true });
-    }
-    return await useMultiFileAuthState(authFolder);
+    return await usePostgresAuthState(userId);
 }
 
 async function connectToWhatsApp(userId, phoneNumber = null) {
@@ -80,10 +75,10 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         delete qrCodes[userId];
         delete pairingCodes[userId];
 
-        const { state, saveCreds } = await getAuthState(userId);
+        const { state, saveCreds, clearCreds } = await getAuthState(userId);
         const { version } = await fetchLatestBaileysVersion();
 
-        console.log(`⚡ [User #${userId}] Inisialisasi WA Socket (Baileys v${version.join('.')})...`);
+        console.log(`⚡ [User #${userId}] Inisialisasi WA Socket via Neon DB (Baileys v${version.join('.')})...`);
 
         const sock = makeWASocket({
             logger: pino({ level: 'silent' }),
@@ -100,7 +95,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
-        // MINTA KODE PAIRING (JIKA DIPANGGUL DENGAN NOMOR HP)
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
@@ -146,27 +140,23 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                
+                const isExplicitLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
+
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
                 waStatus[userId] = 'TERPUTUS';
                 delete waSessions[userId];
-
-                // PERBAIKAN: Hanya hapus folder sesi jika DIBUTUHKAN / Di-logout manual dari HP (Status 401 eksplisit)
-                const isExplicitLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 if (!isExplicitLoggedOut) {
                     console.log(`🔄 Menyambung ulang WhatsApp secara otomatis tanpa Scan QR untuk User #${userId}...`);
                     setTimeout(() => connectToWhatsApp(userId), 3000);
                 } else {
-                    console.log(`🚪 User #${userId} secara resmi di-logout dari HP. Menghapus folder sesi...`);
+                    console.log(`🚪 User #${userId} secara resmi di-logout dari HP. Menghapus sesi DB...`);
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
-                    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-                    if (fs.existsSync(authFolder)) {
-                        fs.rmSync(authFolder, { recursive: true, force: true });
-                    }
+                    await clearCreds();
                 }
             }
+        });
     } catch (err) {
         console.error(`❌ WA Connect Error User #${userId}:`, err.message);
         waStatus[userId] = 'ERROR';
@@ -215,6 +205,27 @@ app.get('/admin', async (req, res) => {
         `);
         const kelasRes = await pool.query(`SELECT * FROM kelas ORDER BY id ASC`);
 
+        const absensiRes = await pool.query(`
+            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            ORDER BY a.waktu DESC
+        `);
+
+        const absensiFormatted = absensiRes.rows.map(row => {
+            const dateObj = new Date(row.waktu);
+            const waktuWIB = dateObj.toLocaleTimeString('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }).replace(/\./g, ':') + ' WIB';
+
+            return { ...row, waktu_formatted: waktuWIB };
+        });
+
         const usersCleaned = usersRes.rows.map(u => ({ ...u, nama: bersihkanGelar(u.nama) }));
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(s.id.toString());
@@ -225,6 +236,7 @@ app.get('/admin', async (req, res) => {
             users: usersCleaned,
             siswa: siswaData,
             kelas: kelasRes.rows || [],
+            absensiHariIni: absensiFormatted,
             userId: userId
         });
     } catch (err) {
@@ -233,14 +245,10 @@ app.get('/admin', async (req, res) => {
 });
 
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
-    // Utamakan userId dari query URL, lalu session
     const userId = parseInt(req.query.userId) || req.session.userId;
-    
-    // Jika tidak ada ID login, kembalikan ke halaman login utama
     if (!userId) return res.redirect('/');
 
     try {
-        // 1. Ambil data guru beserta ID kelas penugasannya
         const userRes = await pool.query(`
             SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Guru Mata Pelajaran (Semua Kelas)') AS nama_kelas
             FROM users u
@@ -253,9 +261,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         const userRaw = userRes.rows[0];
         userRaw.nama = bersihkanGelar(userRaw.nama);
 
-        // 2. Query Siswa:
-        // - Jika Wali Kelas (punya kelas_id): Tampilkan siswa di kelasnya saja
-        // - Jika Guru Mapel / Tanpa Penugasan (kelas_id NULL): Tampilkan SELURUH SISWA (seperti Admin)
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s 
@@ -271,9 +276,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // 3. Query Log Absensi Hari Ini:
-        // - Jika Wali Kelas: Tampilkan log presensi kelasnya saja
-        // - Jika Guru Mapel: Tampilkan SELURUH LOG PRESENSI HARI INI (seperti Admin)
         let absensiQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
@@ -303,7 +305,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // Generate QR Code untuk daftar siswa
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(s.id.toString());
             return { ...s, qrImage };
@@ -427,7 +428,8 @@ app.post('/api/siswa/tambah', async (req, res) => {
             'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
             [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId]
         );
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        const backUrl = req.headers.referer || `/admin?userId=${req.session.userId || 1}`;
+        return res.redirect(backUrl);
     } catch (err) {
         return res.status(500).send("Gagal menambah siswa: " + err.message);
     }
@@ -446,7 +448,8 @@ app.post('/api/siswa/edit/:id', async (req, res) => {
             [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId, siswaId]
         );
 
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        const backUrl = req.headers.referer || `/admin?userId=${req.session.userId || 1}`;
+        return res.redirect(backUrl);
     } catch (err) {
         return res.status(500).send("Gagal memperbarui data siswa: " + err.message);
     }
@@ -455,7 +458,8 @@ app.post('/api/siswa/edit/:id', async (req, res) => {
 app.post('/api/siswa/hapus/:id', async (req, res) => {
     try {
         await pool.query('DELETE FROM siswa WHERE id = $1', [parseInt(req.params.id)]);
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        const backUrl = req.headers.referer || `/admin?userId=${req.session.userId || 1}`;
+        return res.redirect(backUrl);
     } catch (err) {
         return res.status(500).send("Gagal menghapus siswa: " + err.message);
     }
@@ -564,7 +568,6 @@ app.get('/api/start-wa', async (req, res) => {
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
 
-// PERBAIKAN UTAMA: MENERUSKAN PHONE KE FUNGSINYA
 app.get('/api/request-pairing', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     const phone = req.query.phone;
@@ -573,7 +576,6 @@ app.get('/api/request-pairing', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
     }
 
-    // Panggil fungsi dengan nomor HP yang di-input dari prompt
     connectToWhatsApp(userId, phone);
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
@@ -598,10 +600,9 @@ app.get('/api/reset-wa', async (req, res) => {
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
-    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-    if (fs.existsSync(authFolder)) {
-        fs.rmSync(authFolder, { recursive: true, force: true });
-    }
+    const { clearCreds } = await getAuthState(userId);
+    await clearCreds();
+
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
@@ -683,15 +684,11 @@ app.post('/api/scan', async (req, res) => {
 // ---------------- API HAPUS RIWAYAT ABSENSI UJI COBA ---------------- //
 app.post('/api/absensi/reset-riwayat', async (req, res) => {
     try {
-        // 1. Menghapus semua baris di tabel absensi saja
         await pool.query('DELETE FROM absensi');
-        
-        // 2. Mereset urutan ID absensi kembali ke 1
         await pool.query('ALTER SEQUENCE absensi_id_seq RESTART WITH 1');
 
         console.log("🧹 Riwayat absensi uji coba berhasil dibersihkan.");
 
-        // 3. Mengarahkan kembali ke halaman asal (Admin atau Wali Kelas)
         const backUrl = req.headers.referer || `/admin?userId=${req.session.userId || 1}`;
         return res.redirect(backUrl);
     } catch (err) {
