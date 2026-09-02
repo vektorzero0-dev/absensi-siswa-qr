@@ -3,24 +3,29 @@ const pool = require('./db');
 
 async function usePostgresAuthState(userId) {
     const writeData = async (data, id) => {
-        const key = `user_${userId}_${id}`;
-        const value = JSON.stringify(data, BufferJSON.replacer);
-        await pool.query(
-            `INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
-             ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
-            [key, value]
-        );
+        try {
+            const key = `user_${userId}_${id}`;
+            const value = JSON.stringify(data, BufferJSON.replacer);
+            await pool.query(
+                `INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
+                 ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+                [key, value]
+            );
+        } catch (err) {
+            console.error(`⚠️ Gagal menyimpan auth key (${id}):`, err.message);
+        }
     };
 
     const readData = async (id) => {
         try {
             const key = `user_${userId}_${id}`;
             const res = await pool.query('SELECT data FROM wa_sessions WHERE id = $1', [key]);
-            if (res.rows.length > 0) {
+            if (res.rows.length > 0 && res.rows[0].data) {
                 return JSON.parse(res.rows[0].data, BufferJSON.reviver);
             }
             return null;
         } catch (error) {
+            console.error(`⚠️ Gagal membaca auth key (${id}):`, error.message);
             return null;
         }
     };
@@ -66,7 +71,9 @@ async function usePostgresAuthState(userId) {
         },
         saveCreds: () => writeData(creds, 'creds'),
         clearCreds: async () => {
-            await pool.query("DELETE FROM wa_sessions WHERE id LIKE $1", [`user_${userId}_%`]);
+            try {
+                await pool.query("DELETE FROM wa_sessions WHERE id LIKE $1", [`user_${userId}_%`]);
+            } catch (err) {}
         }
     };
 }
