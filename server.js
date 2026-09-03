@@ -55,7 +55,7 @@ async function generateQRDataURL(text) {
         return await QRCode.toDataURL(text.toString());
     } catch (err) {
         console.error("Gagal Generate QR:", err.message);
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
     }
 }
 
@@ -921,27 +921,7 @@ app.get('/api/absensi/export', async (req, res) => {
     }
 });
 
-// PUNGSI MEMUAT ULANG SESI WA DARI NEON DB SAAT SERVER RESTART / DEPLOY
-async function autoReconnectWA() {
-    try {
-        // Cari user_id yang punya data sesi tersimpan di Neon DB
-        const res = await pool.query(
-            "SELECT DISTINCT split_part(key_id, ':', 1) as user_id FROM wa_sessions WHERE key_id LIKE '%:creds:main'"
-        );
-        for (const row of res.rows) {
-            const uId = parseInt(row.user_id);
-            if (uId) {
-                console.log(`🔄 Memulihkan sesi WhatsApp tersimpan untuk User #${uId}...`);
-                connectToWhatsApp(uId);
-            }
-        }
-    } catch (e) {
-        console.error("Gagal auto-reconnect WA:", e.message);
-    }
-}
+// PING ENDPOINT UNTUK UPTIMEROBOT
+app.get('/ping', (req, res) => res.send('OK'));
 
-// JALANKAN SERVER TERIKAT DI 0.0.0.0 DAN PANGGUL AUTO RECONNECT
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server Presensi Aktif di Port ${PORT}`);
-    autoReconnectWA();
-});
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server Presensi Aktif di Port ${PORT}`));
