@@ -921,4 +921,27 @@ app.get('/api/absensi/export', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server Presensi Aktif di Port ${PORT}`));
+// PUNGSI MEMUAT ULANG SESI WA DARI NEON DB SAAT SERVER RESTART / DEPLOY
+async function autoReconnectWA() {
+    try {
+        // Cari user_id yang punya data sesi tersimpan di Neon DB
+        const res = await pool.query(
+            "SELECT DISTINCT split_part(key_id, ':', 1) as user_id FROM wa_sessions WHERE key_id LIKE '%:creds:main'"
+        );
+        for (const row of res.rows) {
+            const uId = parseInt(row.user_id);
+            if (uId) {
+                console.log(`🔄 Memulihkan sesi WhatsApp tersimpan untuk User #${uId}...`);
+                connectToWhatsApp(uId);
+            }
+        }
+    } catch (e) {
+        console.error("Gagal auto-reconnect WA:", e.message);
+    }
+}
+
+// JALANKAN SERVER TERIKAT DI 0.0.0.0 DAN PANGGUL AUTO RECONNECT
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server Presensi Aktif di Port ${PORT}`);
+    autoReconnectWA();
+});
