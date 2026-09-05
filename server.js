@@ -38,8 +38,56 @@ app.use(session({
 }));
 
 // ----------------- AUTO-CREATE TABLE DATABASE ----------------- //
+// ----------------- AUTO-CREATE & MIGRATED TABEL DATABASE ----------------- //
 async function initDB() {
     try {
+        // 1. Tabel Kelas
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS kelas (
+                id SERIAL PRIMARY KEY,
+                nama_kelas VARCHAR(50) NOT NULL
+            );
+        `);
+
+        // 2. Tabel Users (Admin & Wali Kelas)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                nama VARCHAR(100) NOT NULL,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'WALI_KELAS',
+                kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL
+            );
+        `);
+
+        // 3. Tabel Siswa
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS siswa (
+                id SERIAL PRIMARY KEY,
+                nama VARCHAR(100) NOT NULL,
+                nomor_wa_ortu VARCHAR(20),
+                kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL
+            );
+        `);
+
+        // 4. Tabel Absensi (dengan migrasi otomatis kolom tipe & scanned_by)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS absensi (
+                id SERIAL PRIMARY KEY,
+                siswa_id INT REFERENCES siswa(id) ON DELETE CASCADE,
+                waktu TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'HADIR',
+                scanned_by INT,
+                tipe VARCHAR(10) DEFAULT 'MASUK'
+            );
+            
+            -- Migrasi otomatis jika tabel absensi lama belum punya kolom tipe/scanned_by
+            ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';
+            ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;
+        `);
+
+        // 5. Tabel Settings
         await pool.query(`
             CREATE TABLE IF NOT EXISTS settings (
                 key VARCHAR(50) PRIMARY KEY,
@@ -51,9 +99,17 @@ async function initDB() {
                 ('nama_sekolah', 'UPTD SD NEGERI 1 KARYA MULYA SARI')
             ON CONFLICT (key) DO NOTHING;
         `);
-        console.log("✅ Database initialized: Tabel settings dipastikan siap.");
+
+        // Insert Admin Default jika belum ada
+        await pool.query(`
+            INSERT INTO users (id, nama, username, password, role)
+            VALUES (1, 'Administrator', 'admin', 'admin123', 'ADMIN')
+            ON CONFLICT (id) DO NOTHING;
+        `);
+
+        console.log("✅ Database Initialized & Migrated: Kolom tipe & scanned_by dipastikan siap!");
     } catch (err) {
-        console.error("❌ Gagal inisialisasi database:", err.message);
+        console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
     }
 }
 initDB();
