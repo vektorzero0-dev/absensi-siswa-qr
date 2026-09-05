@@ -654,17 +654,57 @@ app.get('/api/reset-wa', async (req, res) => {
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
+// ----------------- API SYSTEM SETTINGS (KHUSUS ADMIN) ----------------- //
+
+// Endpoint untuk Admin mengubah Opsi Pengirim WA
+app.post('/api/settings/wa-mode', async (req, res) => {
+    const { wa_sender_mode } = req.body; // 'TERPUSAT' atau 'WALI_KELAS'
+    try {
+        if (!['TERPUSAT', 'WALI_KELAS'].includes(wa_sender_mode)) {
+            return res.status(400).json({ success: false, message: 'Mode tidak valid.' });
+        }
+        await pool.query(
+            `INSERT INTO system_settings (key, value) VALUES ('wa_sender_mode', $1) 
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+            [wa_sender_mode]
+        );
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Gagal memperbarui pengaturan: ' + err.message });
+    }
+});
+
+// Endpoint untuk mengambil status mode pengirim WA
+app.get('/api/settings/wa-mode', async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT value FROM system_settings WHERE key = 'wa_sender_mode'`);
+        const mode = result.rows.length > 0 ? result.rows[0].value : 'TERPUSAT';
+        return res.json({ success: true, mode });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ----------------- API SCAN PRESENSI (MASUK & PULANG) ----------------- //
 app.post('/api/scan', async (req, res) => {
-    const { siswa_id, scanned_by } = req.body;
+    // Tambahkan parameter tipe ('MASUK' / 'PULANG'), default: 'MASUK'
+    const { siswa_id, scanned_by, tipe = 'MASUK' } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
 
     try {
         const parsedSiswaId = parseInt(siswa_id);
         const parsedScannedBy = parseInt(scanned_by) || 1;
+        const tipeAbsen = tipe.toUpperCase() === 'PULANG' ? 'PULANG' : 'MASUK';
 
+        // 1. Ambil data Siswa beserta ID Wali Kelasnya
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
-            FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id WHERE s.id = $1
+            SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
+                   COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                   u.id AS wali_kelas_user_id
+            FROM siswa s 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            LEFT JOIN users u ON u.kelas_id = s.kelas_id AND u.role = 'WALI_KELAS'
+            WHERE s.id = $1
         `, [parsedSiswaId]);
 
         if (siswaRes.rows.length === 0) {
@@ -673,43 +713,77 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
+        // 2. Cek Pengaturan Mode Pengirim WA yang Dikontrol Admin
+        const settingRes = await pool.query(`SELECT value FROM system_settings WHERE key = 'wa_sender_mode'`);
+        const waSenderMode = settingRes.rows.length > 0 ? settingRes.rows[0].value : 'TERPUSAT';
+
         const now = new Date();
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+        // 3. Simpan data absensi ke DB (termasuk kolom tipe)
         await pool.query(
-            `INSERT INTO absensi (siswa_id, status, scanned_by, waktu) VALUES ($1, 'HADIR', $2, NOW() AT TIME ZONE 'Asia/Jakarta')`,
-            [siswa.id, parsedScannedBy]
+            `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
+             VALUES ($1, 'HADIR', $2, $3, NOW() AT TIME ZONE 'Asia/Jakarta')`,
+            [siswa.id, parsedScannedBy, tipeAbsen]
         );
 
-        let waClient = waSessions[parsedScannedBy];
+        // 4. Logika Pemilihan Sesi WhatsApp Pengirim (Fleksibel)
+        let waClient = null;
+
+        if (waSenderMode === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
+            // Jika mode WALI_KELAS, prioritaskan koneksi WA milik Wali Kelas dari siswa tersebut
+            waClient = waSessions[siswa.wali_kelas_user_id];
+        }
+
+        // Jika mode TERPUSAT atau sesi Wali Kelas belum login/konek, gunakan akun Admin (User ID 1) atau sesi aktif mana pun
         if (!waClient) {
-            const keys = Object.keys(waSessions);
-            if (keys.length > 0) waClient = waSessions[keys[0]];
+            waClient = waSessions[1] || waSessions[parsedScannedBy];
+            if (!waClient) {
+                const availableKeys = Object.keys(waSessions);
+                if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
+            }
         }
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
+        // 5. Kirim Pesan Sesuai Tipe (MASUK vs PULANG)
         if (waClient && siswa.nomor_wa_ortu) {
             let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
             if (phone.startsWith('0')) phone = '62' + phone.slice(1);
             const formattedJid = phone + '@s.whatsapp.net';
 
-            const pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
-                          `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
-                          `_________________________________________\n\n` +
-                          `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
-                          `Diberitahukan bahwa putra/putri Anda telah tiba di sekolah dan melakukan presensi kehadiran:\n\n` +
-                          `• Nama Siswa : *${siswa.nama}*\n` +
-                          `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
-                          `• Waktu Scan : *${jamWib}*\n` +
-                          `• Tanggal : *${tglWib}*\n` +
-                          `• Status Kehadiran : *HADIR (Scan Kartu) ✅*\n\n` +
-                          `Terima kasih atas perhatian dan kerja samanya.\n\n` +
-                          `_Pesan otomatis ini dikirim oleh Sistem Presensi Terpadu UPTD SD Negeri 1 Karya Mulya Sari._`;
+            let pesan = '';
+            if (tipeAbsen === 'MASUK') {
+                pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
+                        `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
+                        `_________________________________________\n\n` +
+                        `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                        `Diberitahukan bahwa putra/putri Anda telah tiba di sekolah dan melakukan presensi masuk:\n\n` +
+                        `• Nama Siswa : *${siswa.nama}*\n` +
+                        `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                        `• Waktu Masuk : *${jamWib}*\n` +
+                        `• Tanggal : *${tglWib}*\n` +
+                        `• Status : *HADIR (Scan Masuk) ✅*\n\n` +
+                        `Terima kasih atas perhatian dan kerja samanya.\n\n` +
+                        `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+            } else {
+                pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
+                        `*PEMBERITAHUAN PRESENSI KEPULANGAN SISWA*\n` +
+                        `_________________________________________\n\n` +
+                        `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                        `Diberitahukan bahwa putra/putri Anda telah selesai mengikuti KBM dan melakukan presensi pulang:\n\n` +
+                        `• Nama Siswa : *${siswa.nama}*\n` +
+                        `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                        `• Waktu Pulang : *${jamWib}*\n` +
+                        `• Tanggal : *${tglWib}*\n` +
+                        `• Status : *PULANG (Scan Kepulangan) 🏠*\n\n` +
+                        `Hati-hati di jalan dan terima kasih.\n\n` +
+                        `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+            }
 
             waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error("Gagal Mengirim WA:", e.message));
-            statusWA = "Notifikasi WhatsApp Berhasil Dikirimkan ke Wali Murid ✅";
+            statusWA = `Notifikasi WA (${tipeAbsen}) Berhasil Dikirimkan ke Wali Murid ✅`;
         }
 
         return res.json({
@@ -719,7 +793,8 @@ app.post('/api/scan', async (req, res) => {
                 id: siswa.id,
                 nama: siswa.nama,
                 nama_kelas: siswa.nama_kelas,
-                waktu: jamWib
+                waktu: jamWib,
+                tipe: tipeAbsen
             }
         });
 
