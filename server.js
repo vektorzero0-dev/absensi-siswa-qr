@@ -276,6 +276,35 @@ app.get('/admin', async (req, res) => {
     }
 });
 
+// Ambil setting pengirim WA dari DB
+const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
+const pengirimWA = settingRes.rows.length > 0 ? settingRes.rows[0].value : 'ADMIN';
+
+res.render('admin-dashboard', {
+    users: usersCleaned,
+    siswa: siswaData,
+    kelas: kelasRes.rows || [],
+    absensiHariIni: absensiFormatted,
+    userId: userId,
+    statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
+    qrCodeWA: qrCodes[userId] || null,
+    pengirimWA: pengirimWA // <-- TAMBAHKAN INI
+});
+
+app.post('/api/settings/pengirim-wa', async (req, res) => {
+    const { pengirim_wa } = req.body;
+    try {
+        await pool.query(
+            `INSERT INTO settings (key, value) VALUES ('pengirim_wa', $1)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+            [pengirim_wa]
+        );
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menyimpan pengaturan: " + err.message);
+    }
+});
+
 // === SISIPKAN ROUTE KHUSUS CETAK KARTU INI DENGAN BENAR ===
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     try {
@@ -686,18 +715,38 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
+        // 2. Ambil Settingan Pengirim WA & Nama Sekolah dari DB
+        const settingWaRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
+        const modePengirim = settingWaRes.rows.length > 0 ? settingWaRes.rows[0].value : 'ADMIN';
+
+        const settingSekolahRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingSekolahRes.rows.length > 0 ? settingSekolahRes.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
+
         const now = new Date();
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // 2. Simpan data absensi ke DB (termasuk kolom tipe)
+        // 3. Simpan data absensi ke DB (termasuk kolom tipe)
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
              VALUES ($1, 'HADIR', $2, $3, NOW() AT TIME ZONE 'Asia/Jakarta')`,
             [siswa.id, parsedScannedBy, tipeAbsen]
         );
 
-        let waClient = waSessions[1] || waSessions[parsedScannedBy];
+        // 4. Penentuan Client WA Pengirim Berdasarkan Setting
+        let waClient = null;
+
+        if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
+            // Jika diset WALI_KELAS, prioritaskan WA Wali Kelas siswa tersebut
+            waClient = waSessions[siswa.wali_kelas_user_id];
+        }
+
+        // Fallback jika mode ADMIN atau WA Wali Kelas belum terhubung
+        if (!waClient) {
+            waClient = waSessions[1] || waSessions[parsedScannedBy];
+        }
+
+        // Fallback terakhir: Ambil sesi WA mana saja yang sedang terhubung di server
         if (!waClient) {
             const availableKeys = Object.keys(waSessions);
             if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
@@ -705,7 +754,7 @@ app.post('/api/scan', async (req, res) => {
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
-        // 3. Kirim Pesan Sesuai Tipe (MASUK vs PULANG)
+        // 5. Kirim Pesan Sesuai Tipe (MASUK vs PULANG)
         if (waClient && siswa.nomor_wa_ortu) {
             let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
             if (phone.startsWith('0')) phone = '62' + phone.slice(1);
@@ -713,7 +762,7 @@ app.post('/api/scan', async (req, res) => {
 
             let pesan = '';
             if (tipeAbsen === 'MASUK') {
-                pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
+                pesan = `*${namaSekolah.toUpperCase()}*\n` +
                         `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
                         `_________________________________________\n\n` +
                         `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
@@ -726,7 +775,7 @@ app.post('/api/scan', async (req, res) => {
                         `Terima kasih atas perhatian dan kerja samanya.\n\n` +
                         `_Pesan otomatis dikirim via Sistem Presensi SD._`;
             } else {
-                pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
+                pesan = `*${namaSekolah.toUpperCase()}*\n` +
                         `*PEMBERITAHUAN PRESENSI KEPULANGAN SISWA*\n` +
                         `_________________________________________\n\n` +
                         `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
@@ -755,6 +804,12 @@ app.post('/api/scan', async (req, res) => {
                 tipe: tipeAbsen
             }
         });
+
+    } catch (err) {
+        console.error("Kesalahan Scan:", err);
+        return res.status(500).json({ success: false, message: "Kendala Sistem: " + err.message });
+    }
+});
 
     } catch (err) {
         console.error("Kesalahan Scan:", err);
