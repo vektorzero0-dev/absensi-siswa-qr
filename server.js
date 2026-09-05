@@ -674,6 +674,35 @@ app.post('/api/settings/wa-mode', async (req, res) => {
     }
 });
 
+// GET: Ambil nama sekolah saat ini
+app.get('/api/settings/nama-sekolah', async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT value FROM system_settings WHERE key = 'nama_sekolah'`);
+        const namaSekolah = result.rows.length > 0 ? result.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
+        return res.json({ success: true, namaSekolah });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST: Simpan nama sekolah baru dari form Admin
+app.post('/api/settings/nama-sekolah', async (req, res) => {
+    const { nama_sekolah } = req.body;
+    try {
+        if (!nama_sekolah || !nama_sekolah.trim()) {
+            return res.status(400).send('Nama sekolah tidak boleh kosong.');
+        }
+        await pool.query(
+            `INSERT INTO system_settings (key, value) VALUES ('nama_sekolah', $1) 
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+            [nama_sekolah.trim()]
+        );
+        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send('Gagal memperbarui nama sekolah: ' + err.message);
+    }
+});
+
 // Endpoint untuk mengambil status mode pengirim WA
 app.get('/api/settings/wa-mode', async (req, res) => {
     try {
