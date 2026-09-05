@@ -37,6 +37,19 @@
     </header>
 
     <main class="max-w-xl mx-auto w-full p-4 flex-1">
+        <!-- Area Kamera Scanner -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
+
+        <!-- 🟢 SISIPKAN / TAMBAHKAN BLOK KODE BARU INI -->
+        <div class="mb-3 text-left">
+            <label for="tipeAbsen" class="block text-xs font-bold text-slate-700 mb-1">
+                <i class="fa-solid fa-list-check text-blue-800 mr-1"></i> Pilih Mode Presensi:
+            </label>
+            <select id="tipeAbsen" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                <option value="MASUK">🌅 Presensi Masuk</option>
+                <option value="PULANG">🏠 Presensi Pulang</option>
+            </select>
+        </div>
 
         <!-- Area Kamera Scanner -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
@@ -114,11 +127,18 @@
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(e => console.log('Audio error:', e));
 
+            // Ambil nilai tipe dari dropdown yang baru ditambahkan
+            const tipeSelected = document.getElementById('tipeAbsen').value;
+
             fetch('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ siswa_id: decodedText, scanned_by: userId })
-            })
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ 
+                   siswa_id: decodedText, 
+                   scanned_by: userId,
+                   tipe: tipeSelected // <-- Tambahkan parameter ini
+               })
+           })
             .then(res => res.json())
             .then(data => {
                 const resCard = document.getElementById('resultCard');
