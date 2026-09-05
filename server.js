@@ -157,6 +157,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
+                // Hanya hapus sesi jika di-logout resmi dari HP (401)
                 const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
@@ -164,6 +165,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                 delete waSessions[userId];
 
                 if (!isLoggedOut) {
+                    // Beri jeda 8 detik agar tidak looping kedap-kedip
                     console.log(`🔄 Sambung ulang User #${userId} dalam 8 detik...`);
                     if (!reconnectTimers[userId]) {
                         reconnectTimers[userId] = setTimeout(() => {
@@ -217,14 +219,10 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// 🟢 ROUTE ADMIN: DISAMAKAN PERSIS VARIABEL RENDERNYA DENGAN ROUTE WALI
+// ROUTE ADMIN (VARIABEL DISAMAKAN DENGAN WALI)
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     try {
-        // Ambil Nama Sekolah dari database
-        const resSekolah = await pool.query(`SELECT value FROM system_settings WHERE key = 'nama_sekolah'`);
-        const namaSekolah = resSekolah.rows.length > 0 ? resSekolah.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
-
         const usersRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
             FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id ORDER BY u.id ASC
@@ -236,7 +234,7 @@ app.get('/admin', async (req, res) => {
         const kelasRes = await pool.query(`SELECT * FROM kelas ORDER BY id ASC`);
 
         const absensiRes = await pool.query(`
-            SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
@@ -265,21 +263,20 @@ app.get('/admin', async (req, res) => {
         req.session.userId = userId;
 
         res.render('admin-dashboard', {
-            namaSekolah: namaSekolah,
             users: usersCleaned,
             siswa: siswaData,
             kelas: kelasRes.rows || [],
             absensiHariIni: absensiFormatted,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[userId] || null,
-            pairingCode: pairingCodes[userId] || null
+            qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
 
+// === SISIPKAN ROUTE KHUSUS CETAK KARTU INI DENGAN BENAR ===
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     try {
         const siswaRes = await pool.query(`
@@ -303,9 +300,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     if (!userId) return res.redirect('/');
 
     try {
-        const resSekolah = await pool.query(`SELECT value FROM system_settings WHERE key = 'nama_sekolah'`);
-        const namaSekolah = resSekolah.rows.length > 0 ? resSekolah.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
-
         const userRes = await pool.query(`
             SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Guru Mata Pelajaran (Semua Kelas)') AS nama_kelas
             FROM users u
@@ -334,7 +328,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
         let absensiQuery = `
-            SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
@@ -370,14 +364,12 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         req.session.userId = userId;
 
         res.render('walikelas-dashboard', {
-            namaSekolah: namaSekolah,
             user: userRaw,
             siswaList: siswaData,
             absensiHariIni: absensiFormatted,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[userId] || null,
-            pairingCode: pairingCodes[userId] || null
+            qrCodeWA: qrCodes[userId] || null
         });
     } catch (err) {
         console.error("Dashboard Error User #" + userId + ":", err);
@@ -667,62 +659,6 @@ app.get('/api/reset-wa', async (req, res) => {
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
-// ----------------- API SYSTEM SETTINGS (KHUSUS ADMIN) ----------------- //
-
-app.post('/api/settings/wa-mode', async (req, res) => {
-    const { wa_sender_mode } = req.body;
-    try {
-        if (!['TERPUSAT', 'WALI_KELAS'].includes(wa_sender_mode)) {
-            return res.status(400).json({ success: false, message: 'Mode tidak valid.' });
-        }
-        await pool.query(
-            `INSERT INTO system_settings (key, value) VALUES ('wa_sender_mode', $1) 
-             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-            [wa_sender_mode]
-        );
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
-    } catch (err) {
-        return res.status(500).json({ success: false, message: 'Gagal memperbarui pengaturan: ' + err.message });
-    }
-});
-
-app.get('/api/settings/nama-sekolah', async (req, res) => {
-    try {
-        const result = await pool.query(`SELECT value FROM system_settings WHERE key = 'nama_sekolah'`);
-        const namaSekolah = result.rows.length > 0 ? result.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
-        return res.json({ success: true, namaSekolah });
-    } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-app.post('/api/settings/nama-sekolah', async (req, res) => {
-    const { nama_sekolah } = req.body;
-    try {
-        if (!nama_sekolah || !nama_sekolah.trim()) {
-            return res.status(400).send('Nama sekolah tidak boleh kosong.');
-        }
-        await pool.query(
-            `INSERT INTO system_settings (key, value) VALUES ('nama_sekolah', $1) 
-             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-            [nama_sekolah.trim()]
-        );
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
-    } catch (err) {
-        return res.status(500).send('Gagal memperbarui nama sekolah: ' + err.message);
-    }
-});
-
-app.get('/api/settings/wa-mode', async (req, res) => {
-    try {
-        const result = await pool.query(`SELECT value FROM system_settings WHERE key = 'wa_sender_mode'`);
-        const mode = result.rows.length > 0 ? result.rows[0].value : 'TERPUSAT';
-        return res.json({ success: true, mode });
-    } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
-    }
-});
-
 // ----------------- API SCAN PRESENSI (MASUK & PULANG) ----------------- //
 app.post('/api/scan', async (req, res) => {
     const { siswa_id, scanned_by, tipe = 'MASUK' } = req.body;
@@ -733,6 +669,7 @@ app.post('/api/scan', async (req, res) => {
         const parsedScannedBy = parseInt(scanned_by) || 1;
         const tipeAbsen = tipe.toUpperCase() === 'PULANG' ? 'PULANG' : 'MASUK';
 
+        // 1. Ambil data Siswa beserta ID Wali Kelasnya
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -749,39 +686,26 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
 
-        // Ambil Nama Sekolah untuk Header Notifikasi WA
-        const resSekolah = await pool.query(`SELECT value FROM system_settings WHERE key = 'nama_sekolah'`);
-        const namaSekolah = resSekolah.rows.length > 0 ? resSekolah.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
-
-        const settingRes = await pool.query(`SELECT value FROM system_settings WHERE key = 'wa_sender_mode'`);
-        const waSenderMode = settingRes.rows.length > 0 ? settingRes.rows[0].value : 'TERPUSAT';
-
         const now = new Date();
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+        // 2. Simpan data absensi ke DB (termasuk kolom tipe)
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
              VALUES ($1, 'HADIR', $2, $3, NOW() AT TIME ZONE 'Asia/Jakarta')`,
             [siswa.id, parsedScannedBy, tipeAbsen]
         );
 
-        let waClient = null;
-
-        if (waSenderMode === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
-            waClient = waSessions[siswa.wali_kelas_user_id];
-        }
-
+        let waClient = waSessions[1] || waSessions[parsedScannedBy];
         if (!waClient) {
-            waClient = waSessions[1] || waSessions[parsedScannedBy];
-            if (!waClient) {
-                const availableKeys = Object.keys(waSessions);
-                if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
-            }
+            const availableKeys = Object.keys(waSessions);
+            if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
         }
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
+        // 3. Kirim Pesan Sesuai Tipe (MASUK vs PULANG)
         if (waClient && siswa.nomor_wa_ortu) {
             let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
             if (phone.startsWith('0')) phone = '62' + phone.slice(1);
@@ -789,7 +713,7 @@ app.post('/api/scan', async (req, res) => {
 
             let pesan = '';
             if (tipeAbsen === 'MASUK') {
-                pesan = `*${namaSekolah.toUpperCase()}*\n` +
+                pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
                         `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
                         `_________________________________________\n\n` +
                         `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
@@ -802,7 +726,7 @@ app.post('/api/scan', async (req, res) => {
                         `Terima kasih atas perhatian dan kerja samanya.\n\n` +
                         `_Pesan otomatis dikirim via Sistem Presensi SD._`;
             } else {
-                pesan = `*${namaSekolah.toUpperCase()}*\n` +
+                pesan = `*UPTD SD NEGERI 1 KARYA MULYA SARI*\n` +
                         `*PEMBERITAHUAN PRESENSI KEPULANGAN SISWA*\n` +
                         `_________________________________________\n\n` +
                         `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
@@ -890,9 +814,6 @@ app.get('/api/absensi/export', async (req, res) => {
     if (!bulan || !tahun) return res.status(400).send("Bulan dan Tahun wajib diisi.");
 
     try {
-        const resSekolah = await pool.query(`SELECT value FROM system_settings WHERE key = 'nama_sekolah'`);
-        const namaSekolah = resSekolah.rows.length > 0 ? resSekolah.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
-
         let query = `
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
@@ -920,7 +841,7 @@ app.get('/api/absensi/export', async (req, res) => {
             const worksheet = workbook.addWorksheet('Rekap Absensi');
 
             worksheet.mergeCells('A1:D1');
-            worksheet.getCell('A1').value = namaSekolah.toUpperCase();
+            worksheet.getCell('A1').value = `UPTD SD NEGERI 1 KARYA MULYA SARI`;
             worksheet.getCell('A1').font = { bold: true, size: 14 };
             worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
@@ -971,7 +892,7 @@ app.get('/api/absensi/export', async (req, res) => {
             const doc = new Document({
                 sections: [{
                     children: [
-                        new Paragraph({ text: namaSekolah.toUpperCase(), heading: "Heading1", alignment: AlignmentType.CENTER }),
+                        new Paragraph({ text: "UPTD SD NEGERI 1 KARYA MULYA SARI", heading: "Heading1", alignment: AlignmentType.CENTER }),
                         new Paragraph({ text: judul, heading: "Heading2", alignment: AlignmentType.CENTER }),
                         new Paragraph({ text: "" }),
                         new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } })
@@ -991,7 +912,7 @@ app.get('/api/absensi/export', async (req, res) => {
             res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.pdf`);
 
             doc.pipe(res);
-            doc.fontSize(14).font('Helvetica-Bold').text(namaSekolah.toUpperCase(), { align: 'center' });
+            doc.fontSize(14).font('Helvetica-Bold').text('UPTD SD NEGERI 1 KARYA MULYA SARI', { align: 'center' });
             doc.fontSize(11).font('Helvetica').text(judul, { align: 'center' });
             doc.moveDown(1.5);
 
