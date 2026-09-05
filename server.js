@@ -219,7 +219,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// ROUTE ADMIN (VARIABEL DISAMAKAN DENGAN WALI)
+// ROUTE ADMIN
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     try {
@@ -241,6 +241,10 @@ app.get('/admin', async (req, res) => {
             WHERE DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
             ORDER BY a.waktu DESC
         `);
+
+        // Ambil setting pengirim WA dari DB
+        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
+        const pengirimWA = settingRes.rows.length > 0 ? settingRes.rows[0].value : 'ADMIN';
 
         const absensiFormatted = absensiRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
@@ -269,26 +273,12 @@ app.get('/admin', async (req, res) => {
             absensiHariIni: absensiFormatted,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[userId] || null
+            qrCodeWA: qrCodes[userId] || null,
+            pengirimWA: pengirimWA
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database: " + err.message);
     }
-});
-
-// Ambil setting pengirim WA dari DB
-const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
-const pengirimWA = settingRes.rows.length > 0 ? settingRes.rows[0].value : 'ADMIN';
-
-res.render('admin-dashboard', {
-    users: usersCleaned,
-    siswa: siswaData,
-    kelas: kelasRes.rows || [],
-    absensiHariIni: absensiFormatted,
-    userId: userId,
-    statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-    qrCodeWA: qrCodes[userId] || null,
-    pengirimWA: pengirimWA // <-- TAMBAHKAN INI
 });
 
 app.post('/api/settings/pengirim-wa', async (req, res) => {
@@ -305,7 +295,7 @@ app.post('/api/settings/pengirim-wa', async (req, res) => {
     }
 });
 
-// === SISIPKAN ROUTE KHUSUS CETAK KARTU INI DENGAN BENAR ===
+// === ROUTE CETAK KARTU ===
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     try {
         const siswaRes = await pool.query(`
@@ -804,12 +794,6 @@ app.post('/api/scan', async (req, res) => {
                 tipe: tipeAbsen
             }
         });
-
-    } catch (err) {
-        console.error("Kesalahan Scan:", err);
-        return res.status(500).json({ success: false, message: "Kendala Sistem: " + err.message });
-    }
-});
 
     } catch (err) {
         console.error("Kesalahan Scan:", err);
