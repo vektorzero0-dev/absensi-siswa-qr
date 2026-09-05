@@ -140,7 +140,7 @@
       <a href="/admin/cetak-kartu" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
       </a>
-      <a href="#section-wa" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+      <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-brands fa-whatsapp text-emerald-600"></i> Integrasi WhatsApp
       </a>
       <a href="#section-dapodik" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
@@ -240,77 +240,8 @@
                 </div>
             </div>
         </div>
-<!-- 🟢 SELIPKAN DI SINI: KOTAK PENGATURAN NAMA SEKOLAH -->
-        <div class="card-pro card-amber-theme p-5 mb-6">
-            <div class="flex items-center gap-3 mb-3 border-b border-amber-200/60 pb-2 relative z-10">
-                <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
-                    <i class="fa-solid fa-school text-lg"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Pengaturan Nama Instansi / Sekolah</h3>
-                    <p class="text-[11px] text-slate-600">Ubah nama sekolah yang tampil pada kop header, kartu siswa, dan notifikasi WhatsApp.</p>
-                </div>
-            </div>
 
-            <form action="/api/settings/nama-sekolah" method="POST" class="flex flex-col sm:flex-row items-center gap-3 relative z-10">
-                <input type="text" 
-                       name="nama_sekolah" 
-                       value="<%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'UPTD SD NEGERI 1 KARYA MULYA SARI' %>" 
-                       required 
-                       placeholder="Masukkan Nama Sekolah / Instansi" 
-                       class="flex-1 bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-600">
-                
-                <button type="submit" class="btn-interactive w-full sm:w-auto bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs px-5 py-2 rounded-xl transition shadow-md">
-                    <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Nama Sekolah
-                </button>
-            </form>
-        </div>
-
-        <!-- KOTAK INTEGRASI & STATUS PERANGKAT WHATSAPP ADMIN -->
-        <div id="section-wa" class="card-pro card-emerald-theme p-5 mb-6">
-
-        <!-- 🟢 KOTAK INTEGRASI & STATUS PERANGKAT WHATSAPP ADMIN (DITAMBAHKAN SEPERTI DI DASHBOARD WALI) -->
-        <div id="section-wa" class="card-pro card-emerald-theme p-5 mb-6">
-            <div class="flex items-center justify-between border-b border-emerald-200/60 pb-3 mb-4 relative z-10">
-                <div class="flex items-center gap-3">
-                    <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
-                        <i class="fa-brands fa-whatsapp text-lg"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Perangkat WhatsApp Pengirim Admin Utama</h3>
-                        <p class="text-[11px] text-slate-600">Tautkan akun WhatsApp Admin untuk pengiriman notifikasi terpusat.</p>
-                    </div>
-                </div>
-
-                <div id="waStatusBadge" class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
-                    <i class="fa-solid fa-circle-notch fa-spin text-slate-500"></i> Memeriksa Status...
-                </div>
-            </div>
-
-            <!-- AREA QR CODE & PENAUTAN PERANGKAT -->
-            <div id="waQrSection" class="flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10 bg-white/80 p-4 rounded-xl border border-emerald-200/80">
-                <div class="flex items-center gap-4">
-                    <div id="waQrContainer" class="bg-white p-2 rounded-xl border border-slate-300 shadow-xs flex items-center justify-center min-w-[120px] min-h-[120px]">
-                        <i class="fa-solid fa-qrcode text-4xl text-slate-300"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-slate-900 mb-1">Pindai Kode QR WhatsApp</h4>
-                        <p class="text-[11px] text-slate-600 max-w-md">Buka aplikasi WhatsApp di HP Admin Utama > **Perangkat Tertaut** > **Tautkan Perangkat**, lalu arahkan kamera HP ke Kode QR di samping.</p>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-2 w-full sm:w-auto">
-                    <button type="button" onclick="muatQRWhatsApp()" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-arrows-rotate"></i> Muat Ulang QR Code
-                    </button>
-                    <button type="button" id="btnLogoutWA" onclick="logoutWhatsApp()" class="btn-interactive hidden bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-power-off"></i> Putuskan Perangkat WA
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 🟢 KOTAK INTEGRASI WA ADMIN (DISESUAIKAN DENGAN STRUKTUR WALI KELAS) -->
+        <!-- KOTAK INTEGRASI WA ADMIN (DISESUAIKAN DENGAN STRUKTUR DASHBOARD WALI) -->
         <div id="section-wa-gateway" class="card-pro card-emerald-theme p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3 relative z-10">
                 <div class="p-3 rounded-xl bg-emerald-600 text-white shadow-md">
@@ -768,63 +699,97 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const CURRENT_USER_ID = "<%= userId %>";
+        const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
 
-        // SKRIP LOGIKA PENAUTAN WHATSAPP GATEWAY ADMIN
-        function muatQRWhatsApp() {
-            const qrContainer = document.getElementById('waQrContainer');
-            const statusBadge = document.getElementById('waStatusBadge');
-            const btnLogout = document.getElementById('btnLogoutWA');
-
-            statusBadge.className = "bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5";
-            statusBadge.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Menghubungkan...`;
-            
-            qrContainer.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-3xl text-emerald-600"></i>`;
-
-            fetch(`/api/wa/qr/${CURRENT_USER_ID}`)
+        function cekStatusWA() {
+            fetch(`/api/wa-status?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.connected) {
-                        statusBadge.className = "bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5";
-                        statusBadge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> Terhubung & Aktif`;
-                        qrContainer.innerHTML = `<i class="fa-solid fa-circle-check text-5xl text-emerald-600"></i>`;
-                        btnLogout.classList.remove('hidden');
-                    } else if (data.qr) {
-                        statusBadge.className = "bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5";
-                        statusBadge.innerHTML = `<i class="fa-solid fa-qrcode"></i> Menunggu Pemindaian QR`;
-                        qrContainer.innerHTML = `<img src="${data.qr}" alt="WA QR Code" class="w-28 h-28">`;
-                        btnLogout.classList.add('hidden');
+                    const statusText = document.getElementById('waStatusText');
+                    const qrContainer = document.getElementById('qrContainer');
+                    const qrImage = document.getElementById('qrImageWA');
+                    const pairingContainer = document.getElementById('pairingContainer');
+                    const pairingCodeText = document.getElementById('pairingCodeText');
+
+                    if (!statusText) return;
+
+                    if (data.statusWA === 'TERHUBUNG') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
+                    } else if (data.pairingCode) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
+                        pairingCodeText.innerText = data.pairingCode;
+                        pairingContainer.classList.remove('hidden');
+                        qrContainer.classList.add('hidden');
+                    } else if (data.qrCodeWA) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
+                        qrImage.src = data.qrCodeWA;
+                        qrContainer.classList.remove('hidden');
+                        pairingContainer.classList.add('hidden');
+                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'MENUNGGU_SCAN') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan... ⏳</span>`;
                     } else {
-                        statusBadge.className = "bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5";
-                        statusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Terputus`;
-                        qrContainer.innerHTML = `<i class="fa-solid fa-plug-circle-xmark text-4xl text-rose-400"></i>`;
-                        btnLogout.classList.add('hidden');
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
                     }
                 })
-                .catch(err => {
-                    console.error("Error WA Gateway:", err);
-                    statusBadge.className = "bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5";
-                    statusBadge.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Server WA Luring`;
-                    qrContainer.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-4xl text-amber-500"></i>`;
+                .catch(err => console.error("Gagal cek WA status:", err));
+        }
+
+        function mintaQRWA() {
+            const btn = document.getElementById('btnGenerateWA');
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+                btn.disabled = true;
+            }
+
+            fetch(`/api/start-wa?userId=${currentUserId}`)
+                .then(() => {
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
+                            btn.disabled = false;
+                        }
+                        cekStatusWA();
+                    }, 2000);
                 });
         }
 
-        function logoutWhatsApp() {
-            if (!confirm("Apakah Anda yakin ingin memutuskan penautan WhatsApp Admin Utama ini?")) return;
+        function mintaPairingWA() {
+            const noHp = prompt("Masukkan Nomor WhatsApp Admin (Contoh: 082371729760):");
+            if (!noHp) return;
 
-            fetch(`/api/wa/logout/${CURRENT_USER_ID}`, { method: 'POST' })
+            const btn = document.getElementById('btnPairingWA');
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+                btn.disabled = true;
+            }
+
+            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
                 .then(res => res.json())
                 .then(data => {
-                    alert(data.message || "WhatsApp berhasil diputuskan.");
-                    muatQRWhatsApp();
-                })
-                .catch(err => alert("Gagal memutuskan koneksi WhatsApp."));
+                    alert("Mempersiapkan kode tautan. Silakan tunggu 3-5 detik...");
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                            btn.disabled = false;
+                        }
+                        cekStatusWA();
+                    }, 3000);
+                });
         }
 
-        // Jalankan pengecekan status WA otomatis saat halaman pertama dibuka
-        document.addEventListener("DOMContentLoaded", () => {
-            muatQRWhatsApp();
-        });
+        function resetWA() {
+            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp Admin?')) return;
+            fetch(`/api/reset-wa?userId=${currentUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    cekStatusWA();
+                });
+        }
 
         function prosesImportExcel(e) {
             e.preventDefault();
@@ -926,6 +891,10 @@
             document.getElementById('sidebarMenu').classList.add('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.add('hidden');
         }
+
+        // Jalankan pengecekan otomatis per 2 detik
+        setInterval(cekStatusWA, 2000);
+        document.addEventListener("DOMContentLoaded", cekStatusWA);
     </script>
 
     <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
