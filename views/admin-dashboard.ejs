@@ -268,6 +268,35 @@
                     <strong id="pairingCodeText" class="text-xl font-mono text-blue-900 tracking-widest my-1 block">-</strong>
                     <span class="text-[9px] text-blue-700 block">Masukkan di WA HP (Tautkan dg nomor)</span>
                 </div>
+                <!-- KOTAK OPSI PENGIRIM NOTIFIKASI WA -->
+<div class="card-pro card-emerald-theme p-4 mb-6">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-emerald-700 text-white shadow-md">
+                <i class="fa-solid fa-paper-plane text-lg"></i>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Pengirim Notifikasi Presensi WhatsApp</h4>
+                <p class="text-[11px] text-slate-600">Pilih akun WhatsApp yang bertugas mengirim pesan otomatis saat siswa melakukan scan.</p>
+            </div>
+        </div>
+
+        <form action="/api/settings/pengirim-wa" method="POST" class="flex items-center gap-2 w-full sm:w-auto">
+            <select name="pengirim_wa" class="bg-white border border-emerald-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                <option value="ADMIN" <%= (typeof pengirimWA !== 'undefined' && pengirimWA === 'ADMIN') ? 'selected' : '' %>>
+                    Nomor WhatsApp Admin Utama
+                </option>
+                <option value="WALI_KELAS" <%= (typeof pengirimWA !== 'undefined' && pengirimWA === 'WALI_KELAS') ? 'selected' : '' %>>
+                    Nomor Wali Kelas Masing-Masing
+                </option>
+            </select>
+            <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap">
+                <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan
+            </button>
+        </form>
+    </div>
+</div>
+
 
                 <!-- TOMBOL-TOMBOL AKSI -->
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
