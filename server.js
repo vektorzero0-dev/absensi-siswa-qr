@@ -274,8 +274,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
 // ---------------- ROUTES HALAMAN ---------------- //
 
-app.get('/', (req, res) => res.render('login', { error: null }));
-
 // 1. SAAT HALAMAN LOGIN PERTAMA KALI DIBUKA (HTTP GET)
 app.get(['/', '/login'], async (req, res) => {
     try {
