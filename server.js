@@ -276,10 +276,31 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
 app.get('/', (req, res) => res.render('login', { error: null }));
 
+// 1. SAAT HALAMAN LOGIN PERTAMA KALI DIBUKA (HTTP GET)
+app.get(['/', '/login'], async (req, res) => {
+    try {
+        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
+            ? settingRes.rows[0].value 
+            : 'NAMA SEKOLAH BELUM DIATUR';
+
+        res.render('login', { 
+            error: null, 
+            namaSekolah: namaSekolah // <-- Ini yang bikin nama sekolah muncul saat pertama kali muat halaman
+        });
+    } catch (err) {
+        console.error("Error GET Login:", err);
+        res.render('login', { 
+            error: null, 
+            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' 
+        });
+    }
+});
+
+// 2. SAAT USER MENGIRIM FORM LOGIN (HTTP POST)
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        // Ambil nama sekolah untuk jaga-jaga jika login gagal dan butuh render ulang
         const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
             ? settingRes.rows[0].value 
@@ -288,7 +309,7 @@ app.post('/login', async (req, res) => {
         if (!username || !password) {
             return res.render('login', { 
                 error: 'Username dan kata sandi wajib diisi.',
-                namaSekolah: namaSekolah // <-- Dikirim ke EJS
+                namaSekolah: namaSekolah
             });
         }
 
@@ -300,7 +321,7 @@ app.post('/login', async (req, res) => {
         if (result.rows.length === 0) {
             return res.render('login', { 
                 error: 'Username atau kata sandi tidak valid.',
-                namaSekolah: namaSekolah // <-- Dikirim ke EJS
+                namaSekolah: namaSekolah
             });
         }
 
@@ -315,7 +336,7 @@ app.post('/login', async (req, res) => {
     } catch (err) {
         return res.render('login', { 
             error: 'Kesalahan Sistem Database: ' + err.message,
-            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' // <-- Fallback aman
+            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR'
         });
     }
 });
