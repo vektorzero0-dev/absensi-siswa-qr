@@ -314,8 +314,17 @@ app.get('/admin', async (req, res) => {
             ORDER BY a.waktu DESC
         `);
 
-        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
-        const pengirimWA = settingRes.rows.length > 0 ? settingRes.rows[0].value : 'ADMIN';
+        // --- TAMBAHAN: AMBIL NAMA SEKOLAH & PENGIRIM WA DARI SETTINGS ---
+        const settingsAll = await pool.query("SELECT key, value FROM settings WHERE key IN ('pengirim_wa', 'nama_sekolah')");
+        
+        let pengirimWA = 'ADMIN';
+        let namaSekolah = 'NAMA SEKOLAH BELUM DIATUR';
+
+        settingsAll.rows.forEach(row => {
+            if (row.key === 'pengirim_wa') pengirimWA = row.value;
+            if (row.key === 'nama_sekolah') namaSekolah = row.value;
+        });
+        // ------------------------------------------------------------------
 
         const absensiFormatted = absensiRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
@@ -345,7 +354,8 @@ app.get('/admin', async (req, res) => {
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
-            pengirimWA: pengirimWA
+            pengirimWA: pengirimWA,
+            namaSekolah: namaSekolah // <-- TAMBAHKAN VARIABEL INI BIAR DIBACA EJS
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database: " + err.message);
