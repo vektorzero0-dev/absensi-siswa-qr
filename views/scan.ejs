@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pemindai Presensi Kartu Siswa - SISTEM ABSENSI DIGITAL</title>
     
-    <!-- 🟢 DUKUNGAN PWA (PROGRESSIVE WEB APP) -->
+    <!-- DUKUNGAN PWA (PROGRESSIVE WEB APP) -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0284c7">
     <meta name="mobile-web-app-capable" content="yes">
@@ -27,7 +27,9 @@
                 </div>
                 <div>
                     <h1 class="text-sm font-bold uppercase tracking-wide">Pemindai Presensi Siswa</h1>
-                    <p class="text-[11px] text-blue-200">UPTD SD Negeri 1 Karya Mulya Sari</p>
+                    <p class="text-[11px] text-blue-200">
+                        <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'NAMA SEKOLAH BELUM DIATUR' %>
+                    </p>
                 </div>
             </div>
             <a href="javascript:history.back()" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1.5">
@@ -38,26 +40,25 @@
 
     <main class="max-w-xl mx-auto w-full p-4 flex-1">
         <!-- Area Kamera Scanner -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
-
-        <!-- 🟢 SISIPKAN / TAMBAHKAN BLOK KODE BARU INI -->
-        <div class="mb-3 text-left">
-            <label for="tipeAbsen" class="block text-xs font-bold text-slate-700 mb-1">
-                <i class="fa-solid fa-list-check text-blue-800 mr-1"></i> Pilih Mode Presensi:
-            </label>
-            <select id="tipeAbsen" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                <option value="MASUK">🌅 Presensi Masuk</option>
-                <option value="PULANG">🏠 Presensi Pulang</option>
-            </select>
-        </div>
-
-        <!-- Area Kamera Scanner -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
+
+            <!-- OPSI TIPE PRESENSI -->
+            <div class="mb-3 text-left">
+                <label for="tipeAbsen" class="block text-xs font-bold text-slate-700 mb-1">
+                    <i class="fa-solid fa-list-check text-blue-800 mr-1"></i> Pilih Mode Presensi:
+                </label>
+                <select id="tipeAbsen" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                    <option value="MASUK">Presensi Masuk</option>
+                    <option value="PULANG">Presensi Pulang</option>
+                </select>
+            </div>
+
+            <!-- Area Kamera Scanner -->
             <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3 min-h-[250px] flex items-center justify-center">
                 <div id="reader" class="w-full"></div>
             </div>
 
-            <!-- Pilihan Switch Kamera jika Perangkat Memiliki Lebih dari 1 Kamera -->
+            <!-- Pilihan Switch Kamera -->
             <div id="cameraSelectContainer" class="hidden mb-3">
                 <select id="cameraSelect" onchange="gantiKamera(this.value)" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-xl p-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                 </select>
@@ -127,7 +128,6 @@
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(e => console.log('Audio error:', e));
 
-            // Ambil nilai tipe dari dropdown yang baru ditambahkan
             const tipeSelected = document.getElementById('tipeAbsen').value;
 
             fetch('/api/scan', {
@@ -136,7 +136,7 @@
                body: JSON.stringify({ 
                    siswa_id: decodedText, 
                    scanned_by: userId,
-                   tipe: tipeSelected // <-- Tambahkan parameter ini
+                   tipe: tipeSelected
                })
            })
             .then(res => res.json())
@@ -188,7 +188,6 @@
             });
         }
 
-        // Inisialisasi Pembukaan Kamera Otomatis
         document.addEventListener("DOMContentLoaded", () => {
             const cameraStatus = document.getElementById('cameraStatusText');
             const cameraSelectContainer = document.getElementById('cameraSelectContainer');
@@ -198,7 +197,6 @@
                 if (devices && devices.length > 0) {
                     let selectedCameraId = devices[0].id;
 
-                    // Isi Pilihan Opsi Kamera
                     if (devices.length > 1) {
                         cameraSelect.innerHTML = '';
                         devices.forEach((dev, idx) => {
@@ -210,7 +208,6 @@
                         cameraSelectContainer.classList.remove('hidden');
                     }
 
-                    // Otomatis cari kamera belakang
                     const backCam = devices.find(d => 
                         d.label.toLowerCase().includes('back') || 
                         d.label.toLowerCase().includes('belakang') ||
