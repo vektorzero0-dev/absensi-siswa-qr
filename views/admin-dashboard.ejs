@@ -299,19 +299,23 @@
 
 
                 <!-- TOMBOL-TOMBOL AKSI -->
-<div class="card p-4 my-4" style="background: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb;">
-    <h3 style="font-weight: 600; margin-bottom: 12px;">Pengaturan Sekolah</h3>
-    <form id="formSettings">
-        <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 500;">Nama Sekolah:</label>
-            <input type="text" id="namaSekolahInput" name="nama_sekolah" placeholder="Contoh: SD NEGERI 2 KARYA MULYA" required style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px;">
-        </div>
-        <button type="submit" style="background-color: #1d4ed8; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
-            Simpan Nama Sekolah
-        </button>
-    </form>
+<!-- KOTAK PENGATURAN SEKOLAH (RAPI & LEBAR) -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; background: #ffffff;">
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-3" style="color: #1e293b;">Pengaturan Sekolah</h5>
+        <form id="formSettings" class="row g-3 align-items-center">
+            <div class="col-md-8">
+                <label for="namaSekolahInput" class="form-label fw-semibold text-secondary">Nama Sekolah</label>
+                <input type="text" id="namaSekolahInput" name="nama_sekolah" class="form-control" placeholder="Contoh: SD NEGERI 2 KARYA MULYA" required style="padding: 10px 14px; border-radius: 8px;">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold" style="padding: 10px; border-radius: 8px; background-color: #2563eb;">
+                    Simpan Nama Sekolah
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
-
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
                     <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-qrcode"></i> Scan QR
