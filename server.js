@@ -611,6 +611,7 @@ app.post('/api/siswa/hapus-semua', async (req, res) => {
 });
 
 app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res) => {
+    const client = await pool.connect();
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: "Berkas Excel/CSV wajib diunggah!" });
@@ -624,7 +625,8 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
             return res.status(400).json({ success: false, message: "Berkas Excel kosong atau tidak terbaca." });
         }
 
-        let totalBerhasil = 0;
+        // Siapkan penampung data
+        const rowsToInsert = [];
 
         for (const row of sheetData) {
             let namaSiswa = "";
@@ -651,39 +653,56 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
 
                 if (namaKelas) {
                     const cleanNamaKelas = namaKelas.toString().replace(/\s+/g, ' ').trim();
-                    let kRes = await pool.query('SELECT id FROM kelas WHERE LOWER(TRIM(nama_kelas)) = LOWER($1)', [cleanNamaKelas]);
+                    let kRes = await client.query('SELECT id FROM kelas WHERE LOWER(TRIM(nama_kelas)) = LOWER($1)', [cleanNamaKelas]);
                     
                     if (kRes.rows.length > 0) {
                         kelasId = kRes.rows[0].id;
                     } else {
-                        let newKRes = await pool.query('INSERT INTO kelas (nama_kelas) VALUES ($1) RETURNING id', [cleanNamaKelas]);
+                        let newKRes = await client.query('INSERT INTO kelas (nama_kelas) VALUES ($1) RETURNING id', [cleanNamaKelas]);
                         kelasId = newKRes.rows[0].id;
                     }
                 }
 
-                await pool.query(
-                    `INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)`,
-                    [namaSiswa, nomorWa, kelasId]
-                );
-                totalBerhasil++;
+                rowsToInsert.push({ nama: namaSiswa, wa: nomorWa, kelasId: kelasId });
             }
         }
 
-        if (totalBerhasil === 0) {
+        if (rowsToInsert.length === 0) {
             return res.json({
                 success: false,
                 message: "Gagal membaca data. Pastikan ada kolom 'Nama' atau 'Nama Siswa' di baris pertama Excel."
             });
         }
 
+        // --- BATCH INSERT (1 Query Transaksi untuk Semua Data) ---
+        await client.query('BEGIN');
+
+        const valueStrings = [];
+        const valueParams = [];
+        let paramIndex = 1;
+
+        rowsToInsert.forEach(item => {
+            valueStrings.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2})`);
+            valueParams.push(item.nama, item.wa, item.kelasId);
+            paramIndex += 3;
+        });
+
+        const queryText = `INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ${valueStrings.join(', ')}`;
+        await client.query(queryText, valueParams);
+
+        await client.query('COMMIT'); // Kunci transaksi di Neon
+
         return res.json({
             success: true,
-            message: `Berhasil mengimpor ${totalBerhasil} data siswa dari Dapodik!`
+            message: `Berhasil mengimpor ${rowsToInsert.length} data siswa dari Dapodik!`
         });
 
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("Import Excel Error:", err);
         return res.status(500).json({ success: false, message: "Gagal memproses berkas: " + err.message });
+    } finally {
+        client.release(); // Lepas koneksi secara bersih
     }
 });
 
