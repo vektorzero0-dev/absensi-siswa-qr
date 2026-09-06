@@ -299,6 +299,19 @@
 
 
                 <!-- TOMBOL-TOMBOL AKSI -->
+<div class="card p-4 my-4" style="background: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb;">
+    <h3 style="font-weight: 600; margin-bottom: 12px;">Pengaturan Sekolah</h3>
+    <form id="formSettings">
+        <div style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 500;">Nama Sekolah:</label>
+            <input type="text" id="namaSekolahInput" name="nama_sekolah" placeholder="Contoh: SD NEGERI 2 KARYA MULYA" required style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px;">
+        </div>
+        <button type="submit" style="background-color: #1d4ed8; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">
+            Simpan Nama Sekolah
+        </button>
+    </form>
+</div>
+
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
                     <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-qrcode"></i> Scan QR
