@@ -1,6 +1,6 @@
 {
-  "name": "Presensi SD Negeri 1 Karya Mulya Sari",
-  "short_name": "Presensi SD",
+  "name": "Presensi Siswa QR",
+  "short_name": "Presensi Siswa",
   "start_url": "/scan",
   "display": "standalone",
   "background_color": "#0f172a",
