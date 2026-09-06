@@ -366,6 +366,21 @@ app.post('/api/settings/pengirim-wa', async (req, res) => {
     }
 });
 
+// Endpoint API untuk Mengubah Nama Sekolah di Settings
+app.post('/api/settings', async (req, res) => {
+    const { nama_sekolah } = req.body;
+    try {
+        await pool.query(`
+            INSERT INTO settings (key, value) 
+            VALUES ('nama_sekolah', $1)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+        `, [nama_sekolah]);
+        
+        res.json({ success: true, message: 'Nama sekolah berhasil diperbarui!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Gagal memperbarui pengaturan: ' + err.message });
+    }
+});
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     try {
         const siswaRes = await pool.query(`
