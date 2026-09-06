@@ -2,16 +2,17 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
-});
-
-// Paksa koneksi PostgreSQL menggunakan WIB (Asia/Jakarta)
-pool.on('connect', (client) => {
-    client.query("SET timezone = 'Asia/Jakarta'");
+    ssl: {
+        rejectUnauthorized: false
+    },
+    // Konfigurasi agar koneksi tidak mati menggantung
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {
-    console.error('❌ Database Error:', err.message);
+    console.error('❌ Unexpected error on idle client:', err);
 });
 
 module.exports = pool;
