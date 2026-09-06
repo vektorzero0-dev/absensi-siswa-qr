@@ -415,7 +415,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <input type="password" name="password" required placeholder="Kata Sandi" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                         <select name="kelas_id" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                            <option value="">-- Penugasan Rombel --</option>
+                            <option value="">-- Tanpa Penugasan / Guru Mapel (Semua Kelas) --</option>
                             <% kelas.forEach(k => { %>
                                 <option value="<%= k.id %>"><%= k.nama_kelas %></option>
                             <% }); %>
@@ -426,7 +426,6 @@
                     </button>
                 </form>
             </div>
-        </div>
 
         <!-- KOTAK REGISTRASI SISWA MANUAL (AMBER THEME) -->
         <div class="card-pro card-amber-theme p-5 mb-6">
