@@ -128,7 +128,16 @@ function bersihkanGelar(nama) {
     if (!nama) return '';
     return nama.replace(/,?\s*\b(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\b\.?/gi, '').trim();
 }
-
+// Helper untuk mengambil nama sekolah dari tabel settings
+async function getNamaSekolah() {
+    try {
+        const res = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        return res.rows.length > 0 && res.rows[0].value ? res.rows[0].value : 'NAMA SEKOLAH BELUM DIATUR';
+    } catch (err) {
+        console.error("Gagal mengambil nama_sekolah:", err.message);
+        return 'NAMA SEKOLAH BELUM DIATUR';
+    }
+}
 async function generateQRDataURL(text) {
     try {
         if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
@@ -393,17 +402,28 @@ app.post('/api/settings', async (req, res) => {
 });
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     try {
+        // 1. Ambil nama sekolah dari tabel settings
+        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
+            ? settingRes.rows[0].value 
+            : 'NAMA SEKOLAH BELUM DIATUR';
+
+        // 2. Ambil data siswa
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.nama ASC
         `);
-
+            
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(s.id.toString());
             return { ...s, qrImage };
         }));
 
-        res.render('cetak-kartu', { siswa: siswaData });
+        // 3. Injeksi variabel namaSekolah ke template EJS
+        res.render('cetak-kartu', { 
+            siswa: siswaData,
+            namaSekolah: namaSekolah // <-- Variabel dikirim ke EJS
+        });
     } catch (err) {
         res.status(500).send("Gagal memuat kartu: " + err.message);
     }
@@ -414,6 +434,13 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     if (!userId) return res.redirect('/');
 
     try {
+        // --- TAMBAHAN: AMBIL NAMA SEKOLAH DARI SETTINGS ---
+        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
+            ? settingRes.rows[0].value 
+            : 'NAMA SEKOLAH BELUM DIATUR';
+        // -------------------------------------------------
+
         const userRes = await pool.query(`
             SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Guru Mata Pelajaran (Semua Kelas)') AS nama_kelas
             FROM users u
@@ -483,7 +510,8 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             absensiHariIni: absensiFormatted,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[userId] || null
+            qrCodeWA: qrCodes[userId] || null,
+            namaSekolah: namaSekolah // <-- TAMBAHKAN VARIABEL INI
         });
     } catch (err) {
         console.error("Dashboard Error User #" + userId + ":", err);
@@ -491,9 +519,26 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     }
 });
 
-app.get(['/scan', '/scanner'], (req, res) => {
+app.get(['/scan', '/scanner'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
-    res.render('scan', { userId: userId });
+    try {
+        // Ambil nama sekolah dari tabel settings
+        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
+            ? settingRes.rows[0].value 
+            : 'NAMA SEKOLAH BELUM DIATUR';
+
+        res.render('scan', { 
+            userId: userId,
+            namaSekolah: namaSekolah // <-- Variabel dikirim ke EJS
+        });
+    } catch (err) {
+        console.error("Error Scan Page:", err);
+        res.render('scan', { 
+            userId: userId, 
+            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' 
+        });
+    }
 });
 
 app.post('/api/kelas/tambah', async (req, res) => {
