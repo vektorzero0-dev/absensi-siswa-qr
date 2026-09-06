@@ -279,14 +279,30 @@ app.get('/', (req, res) => res.render('login', { error: null }));
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        if (!username || !password) return res.render('login', { error: 'Username dan kata sandi wajib diisi.' });
+        // Ambil nama sekolah untuk jaga-jaga jika login gagal dan butuh render ulang
+        const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
+            ? settingRes.rows[0].value 
+            : 'NAMA SEKOLAH BELUM DIATUR';
+
+        if (!username || !password) {
+            return res.render('login', { 
+                error: 'Username dan kata sandi wajib diisi.',
+                namaSekolah: namaSekolah // <-- Dikirim ke EJS
+            });
+        }
 
         const result = await pool.query(
             'SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND password = $2',
             [username.trim(), password.trim()]
         );
 
-        if (result.rows.length === 0) return res.render('login', { error: 'Username atau kata sandi tidak valid.' });
+        if (result.rows.length === 0) {
+            return res.render('login', { 
+                error: 'Username atau kata sandi tidak valid.',
+                namaSekolah: namaSekolah // <-- Dikirim ke EJS
+            });
+        }
 
         const user = result.rows[0];
         req.session.userId = user.id;
@@ -297,7 +313,10 @@ app.post('/login', async (req, res) => {
             return res.redirect(`/wali?userId=${user.id}`);
         }
     } catch (err) {
-        return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message });
+        return res.render('login', { 
+            error: 'Kesalahan Sistem Database: ' + err.message,
+            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' // <-- Fallback aman
+        });
     }
 });
 
