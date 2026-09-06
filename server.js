@@ -37,8 +37,7 @@ app.use(session({
     cookie: { secure: false }
 }));
 
-// ----------------- AUTO-CREATE TABLE DATABASE ----------------- //
-// ----------------- AUTO-CREATE & MIGRATED TABEL DATABASE ----------------- //
+// ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE ----------------- //
 async function initDB() {
     try {
         // 1. Tabel Kelas
@@ -69,6 +68,9 @@ async function initDB() {
                 nomor_wa_ortu VARCHAR(20),
                 kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL
             );
+
+            -- Migrasi otomatis jika tabel siswa lama belum punya kolom nomor_wa_ortu
+            ALTER TABLE siswa ADD COLUMN IF NOT EXISTS nomor_wa_ortu VARCHAR(20);
         `);
 
         // 4. Tabel Absensi (dengan migrasi otomatis kolom tipe & scanned_by)
@@ -96,18 +98,20 @@ async function initDB() {
             INSERT INTO settings (key, value) 
             VALUES 
                 ('pengirim_wa', 'ADMIN'),
-                ('nama_sekolah', 'UPTD SD NEGERI 1 KARYA MULYA SARI')
+                ('nama_sekolah', 'NAMA SEKOLAH BELUM DIATUR')
             ON CONFLICT (key) DO NOTHING;
         `);
 
-        // Insert Admin Default jika belum ada
+        // Insert Admin Default & reset sequence ID
         await pool.query(`
             INSERT INTO users (id, nama, username, password, role)
             VALUES (1, 'Administrator', 'admin', 'admin123', 'ADMIN')
             ON CONFLICT (id) DO NOTHING;
+
+            SELECT setval('users_id_seq', (SELECT GREATEST(MAX(id), 1) FROM users));
         `);
 
-        console.log("✅ Database Initialized & Migrated: Kolom tipe & scanned_by dipastikan siap!");
+        console.log("✅ Database Initialized & Migrated: Seluruh tabel & migrasi aman!");
     } catch (err) {
         console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
     }
