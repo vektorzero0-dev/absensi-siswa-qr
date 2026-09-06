@@ -96,7 +96,9 @@
                     <i class="fa-solid fa-graduation-cap text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xs sm:text-sm font-extrabold tracking-wide uppercase text-slate-100">SISTEM ABSENSI DIGITAL</h1>
+                    <h1 class="text-xs sm:text-sm font-extrabold tracking-wide uppercase text-slate-100">
+                        <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'NAMA SEKOLAH BELUM DIATUR' %>
+                    </h1>
                     <p class="text-[10px] text-blue-200 font-medium">Sistem Informasi Manajemen Presensi Terpadu Siswa</p>
                 </div>
             </div>
@@ -118,7 +120,7 @@
                 <p class="text-xs text-slate-600">Silakan masukkan akun resmi tenaga pendidik / administrator Anda.</p>
             </div>
 
-            <% if (error) { %>
+            <% if (typeof error !== 'undefined' && error) { %>
                 <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm relative z-10">
                     <i class="fa-solid fa-circle-exclamation text-rose-500 text-base flex-shrink-0"></i>
                     <span class="font-semibold"><%= error %></span>
