@@ -943,5 +943,28 @@
         <p>&copy; <%= new Date().getFullYear() %> Sistem Presensi QR Code.</p>
         <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-200">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
+<script>
+document.getElementById('formSettings')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nama_sekolah = document.getElementById('namaSekolahInput').value;
+    
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nama_sekolah })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert(data.message);
+            location.reload(); // Refresh otomatis agar nama sekolah langsung terupdate di layar
+        } else {
+            alert(data.message);
+        }
+    } catch(err) {
+        alert('Terjadi kesalahan koneksi!');
+    }
+});
+</script>
 </body>
 </html>
