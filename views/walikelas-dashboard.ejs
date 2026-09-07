@@ -540,7 +540,12 @@
 
         const currentUserId = "<%= userId %>";
 
+        let isFetchingWA = false;
+
         function cekStatusWA() {
+            if (isFetchingWA) return; // Mencegah request bertabrakan jika server render lambat
+            isFetchingWA = true;
+
             fetch(`/api/wa-status?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -549,6 +554,8 @@
                     const qrImage = document.getElementById('qrImageWA');
                     const pairingContainer = document.getElementById('pairingContainer');
                     const pairingCodeText = document.getElementById('pairingCodeText');
+
+                    if (!statusText) return;
 
                     if (data.statusWA === 'TERHUBUNG') {
                         statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
@@ -570,10 +577,22 @@
                         statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
                         qrContainer.classList.add('hidden');
                         pairingContainer.classList.add('hidden');
+                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'PROSES_INIT') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan... ⏳</span>`;
+                    } else {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
                     }
                 })
-                .catch(err => console.error("Gagal cek WA status:", err));
-        }
+                .catch(err => {
+                    isFetchingWA = false;
+                    console.error("Gagal cek WA status:", err);
+                });
+
+                // Ubah dari 2000ms (2 detik) jadi 4000ms (4 detik) agar tidak kedap-kedip lagi
+        setInterval(cekStatusWA, 4000);
+        document.addEventListener("DOMContentLoaded", cekStatusWA);
 
         function mintaQRWA() {
             const btn = document.getElementById('btnGenerateWA');
