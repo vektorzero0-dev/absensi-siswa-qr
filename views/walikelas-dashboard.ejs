@@ -133,6 +133,9 @@
       <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
       </a>
+         <a href="/admin/cetak-kartu" target="_blank" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
+      </a>
       <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-brands fa-whatsapp text-emerald-600"></i> Status Bot WA
       </a>
@@ -371,9 +374,9 @@
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-users text-blue-700"></i> Daftar Peserta Didik (<%= user.nama_kelas %>)
                 </h3>
-                <button type="button" onclick="window.print()" class="btn-interactive bg-white hover:bg-slate-50 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-blue-200 font-medium transition flex items-center gap-1.5 shadow-xs">
-                    <i class="fa-solid fa-print"></i> Cetak Kartu Identitas
-                </button>
+                <a href="/admin/cetak-kartu" target="_blank" class="btn-interactive bg-white hover:bg-slate-50 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-blue-200 font-medium transition flex items-center gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Identitas
+                </a>
             </div>
 
             <div class="overflow-x-auto relative z-10">
