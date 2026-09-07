@@ -540,10 +540,16 @@
 
         const currentUserId = "<%= userId %>";
 
-function cekStatusWA() {
+      let isFetchingWA = false;
+
+        function cekStatusWA() {
+            if (isFetchingWA) return; // Cegah tumpukan request jika server Render lambat
+            isFetchingWA = true;
+
             fetch(`/api/wa-status?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
+                    isFetchingWA = false;
                     const statusText = document.getElementById('waStatusText');
                     const qrContainer = document.getElementById('qrContainer');
                     const qrImage = document.getElementById('qrImageWA');
@@ -574,7 +580,10 @@ function cekStatusWA() {
                         pairingContainer.classList.add('hidden');
                     }
                 })
-                .catch(err => console.error("Gagal cek WA status:", err));
+                .catch(err => {
+                    isFetchingWA = false;
+                    console.error("Gagal cek WA status:", err);
+                });
         }
 
         function mintaQRWA() {
@@ -601,7 +610,8 @@ function cekStatusWA() {
         }
 
         function mintaPairingWA() {
-            const noHp = prompt("Masukkan Nomor WhatsApp Admin (Contoh: 082371729760):");
+            // Teks prompt sudah disesuaikan untuk Wali Kelas
+            const noHp = prompt("Masukkan Nomor WhatsApp Anda (Contoh: 082371729760):");
             if (!noHp) return;
 
             const btn = document.getElementById('btnPairingWA');
@@ -623,7 +633,7 @@ function cekStatusWA() {
                             btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
                             btn.disabled = false;
                         }
-                        cekStatusWA();
+                        cekStatusWA(); // Panggil langsung agar kode 8 digit tampil di kotak biru
                     }, 4000);
                 })
                 .catch(err => {
@@ -637,7 +647,7 @@ function cekStatusWA() {
         }
 
         function resetWA() {
-            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp Admin?')) return;
+            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp?')) return;
             fetch(`/api/reset-wa?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -645,6 +655,10 @@ function cekStatusWA() {
                     cekStatusWA();
                 });
         }
+
+        // Pemicu otomatis setiap 4 detik sekali agar kode/status langsung muncul di layar
+        setInterval(cekStatusWA, 4000);
+        document.addEventListener("DOMContentLoaded", cekStatusWA);
      
 
         function bukaModalEditSiswa(btn) {
