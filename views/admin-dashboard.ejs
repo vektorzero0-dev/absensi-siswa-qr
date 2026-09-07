@@ -803,9 +803,14 @@
 
         function mintaQRWA() {
             const btn = document.getElementById('btnGenerateWA');
+            const statusText = document.getElementById('waStatusText');
+
             if (btn) {
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
                 btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
             }
 
             fetch(`/api/start-wa?userId=${currentUserId}`)
@@ -825,15 +830,20 @@
             if (!noHp) return;
 
             const btn = document.getElementById('btnPairingWA');
+            const statusText = document.getElementById('waStatusText');
+
+            // LANGSUNG UBAH TEKS UI KE "MENYIAPKAN TAUTAN" SESAAT SETELAH TIK KODE
             if (btn) {
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
                 btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
             }
 
             fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
                 .then(res => res.json())
                 .then(data => {
-                    alert("Mempersiapkan kode tautan. Silakan tunggu 5 detik...");
                     setTimeout(() => {
                         if (btn) {
                             btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
@@ -841,13 +851,20 @@
                         }
                         cekStatusWA();
                     }, 5000);
+                })
+                .catch(err => {
+                    console.error("Gagal minta pairing:", err);
+                    if (btn) {
+                        btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                        btn.disabled = false;
+                    }
+                    cekStatusWA();
                 });
         }
 
         function resetWA() {
             if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp Admin?')) return;
 
-            // Paksa bersihkan tampilan UI di browser saat tombol reset diklik
             const pairingCodeText = document.getElementById('pairingCodeText');
             const pairingContainer = document.getElementById('pairingContainer');
             const qrContainer = document.getElementById('qrContainer');
@@ -864,6 +881,10 @@
                 })
                 .catch(err => console.error("Gagal reset WA:", err));
         }
+
+        // DUA BARIS INI WAJIB ADA AGAR STATUS OTOMATIS BERUBAH MENJADI HIJAU SAAT TERHUBUNG
+        setInterval(cekStatusWA, 3000);
+        document.addEventListener('DOMContentLoaded', cekStatusWA);
     </script>
 
         function prosesImportExcel(e) {
