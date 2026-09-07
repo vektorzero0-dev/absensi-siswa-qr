@@ -185,27 +185,21 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
         // PENANGANAN KHUSUS PAIRING CODE
         if (phoneNumber && !sock.authState.creds.registered) {
-            let cleanPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
-            if (cleanPhone.startsWith('0')) {
-                cleanPhone = '62' + cleanPhone.slice(1);
-            }
-
             setTimeout(async () => {
                 try {
+                    let cleanPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
+                    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+                    
                     console.log(`📱 Meminta Pairing Code WA untuk nomor: ${cleanPhone}`);
                     const code = await sock.requestPairingCode(cleanPhone);
-                    const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-                    
-                    pairingCodes[userId] = formattedCode;
-                    delete qrCodes[userId]; // Sembunyikan QR Code saat meminta Pairing Code
+                    pairingCodes[userId] = code;
                     waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
-                    console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${formattedCode}`);
+                    console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${code}`);
                 } catch (pErr) {
                     console.error("Gagal Request Pairing Code:", pErr.message);
                     waStatus[userId] = 'ERROR_PAIRING';
-                    delete pairingCodes[userId];
                 }
-            }, 4000);
+            }, 5000);
         }
 
         sock.ev.on('connection.update', async (update) => {
@@ -239,6 +233,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
+                // Hanya hapus sesi jika di-logout resmi dari HP (401)
                 const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
@@ -246,6 +241,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                 delete waSessions[userId];
 
                 if (!isLoggedOut) {
+                    // Beri jeda 8 detik agar tidak looping kedap-kedip
                     console.log(`🔄 Sambung ulang User #${userId} dalam 8 detik...`);
                     if (!reconnectTimers[userId]) {
                         reconnectTimers[userId] = setTimeout(() => {
@@ -797,31 +793,20 @@ app.get('/api/request-pairing', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
     }
 
-    // Bersihkan sesi lama agar tidak saling ganggu
-    delete qrCodes[userId];
-    delete pairingCodes[userId];
-    waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
 
     connectToWhatsApp(userId, phone);
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
 
 app.get('/api/wa-status', (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
-    const currentPairing = pairingCodes[userId] || null;
-    const currentQr = qrCodes[userId] || null;
-
+    const userId = parseInt(req.query.userId) || req.session.userId || 1;
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        // Paksa QR Code bernilai null jika Pairing Code sedang aktif
-        qrCodeWA: currentPairing ? null : currentQr,
-        pairingCode: currentPairing
-    });
-});
-
+        qrCodeWA: qrCodes[userId] || null,
+        pairingCode: pairingCodes[userId] || null
 app.get('/api/reset-wa', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session.userId || 1;
     if (reconnectTimers[userId]) {
         clearTimeout(reconnectTimers[userId]);
         delete reconnectTimers[userId];
@@ -839,6 +824,14 @@ app.get('/api/reset-wa', async (req, res) => {
         fs.rmSync(authFolder, { recursive: true, force: true });
     }
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
+});
+    res.json({
+        success: true,
+        statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
+        // Paksa QR Code bernilai null jika Pairing Code sedang aktif
+        qrCodeWA: currentPairing ? null : currentQr,
+        pairingCode: currentPairing
+    });
 });
 
 app.post('/api/scan', async (req, res) => {
