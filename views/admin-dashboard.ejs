@@ -748,144 +748,142 @@
     </div>
 
     <!-- SCRIPT JAVASCRIPT BOOTSTRAP -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-        const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
+<script>
+    const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
 
-        function cekStatusWA() {
-            fetch(`/api/wa-status?userId=${currentUserId}`)
-                .then(res => res.json())
-                .then(data => {
-                    const statusText = document.getElementById('waStatusText');
-                    const qrContainer = document.getElementById('qrContainer');
-                    const qrImage = document.getElementById('qrImageWA');
-                    const pairingContainer = document.getElementById('pairingContainer');
-                    const pairingCodeText = document.getElementById('pairingCodeText');
+    function cekStatusWA() {
+        fetch(`/api/wa-status?userId=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                const statusText = document.getElementById('waStatusText');
+                const qrContainer = document.getElementById('qrContainer');
+                const qrImage = document.getElementById('qrImageWA');
+                const pairingContainer = document.getElementById('pairingContainer');
+                const pairingCodeText = document.getElementById('pairingCodeText');
 
-                    if (!statusText) return;
+                if (!statusText) return;
 
-                    // 1. JIKA SUDAH TERHUBUNG KE WHATSAPP
-                    if (data.statusWA === 'TERHUBUNG') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
-                        if (qrContainer) qrContainer.classList.add('hidden');
-                        if (pairingContainer) pairingContainer.classList.add('hidden');
-                        if (pairingCodeText) pairingCodeText.innerText = '-';
-                    } 
-                    // 2. JIKA KODE PAIRING AKTIF TERBIT DARI SERVER
-                    else if (data.pairingCode) {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
-                        if (pairingCodeText) pairingCodeText.innerText = data.pairingCode;
-                        if (pairingContainer) pairingContainer.classList.remove('hidden');
-                        if (qrContainer) qrContainer.classList.add('hidden');
-                    } 
-                    // 3. JIKA ADA QR CODE
-                    else if (data.qrCodeWA) {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
-                        if (qrImage) qrImage.src = data.qrCodeWA;
-                        if (qrContainer) qrContainer.classList.remove('hidden');
-                        if (pairingContainer) pairingContainer.classList.add('hidden');
-                    } 
-                    // 4. PROSES INISIALISASI / SEMENTARA MEMINTA KODE
-                    else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'PROSES_INIT') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
-                    } 
-                    // 5. STATUS BELUM TERHUBUNG / RESET (BERSIHKAN TOTAL TAMPILAN)
-                    else {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
-                        if (qrContainer) qrContainer.classList.add('hidden');
-                        if (pairingContainer) pairingContainer.classList.add('hidden');
-                        if (pairingCodeText) pairingCodeText.innerText = '-';
+                // 1. JIKA SUDAH TERHUBUNG KE WHATSAPP
+                if (data.statusWA === 'TERHUBUNG') {
+                    statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
+                    if (qrContainer) qrContainer.classList.add('hidden');
+                    if (pairingContainer) pairingContainer.classList.add('hidden');
+                    if (pairingCodeText) pairingCodeText.innerText = '-';
+                } 
+                // 2. PRIORITY: JIKA KODE PAIRING TERBIT DARI SERVER (KUNCI PAIRING CODE)
+                else if (data.pairingCode) {
+                    statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
+                    if (pairingCodeText) pairingCodeText.innerText = data.pairingCode;
+                    if (pairingContainer) pairingContainer.classList.remove('hidden');
+                    if (qrContainer) qrContainer.classList.add('hidden'); // SEMBUNYIKAN QR BILA PAKAI KODE
+                } 
+                // 3. PROSES INISIALISASI / SEMENTARA MEMINTA KODE
+                else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'PROSES_INIT') {
+                    statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
+                } 
+                // 4. JIKA TIDAK MEMINTA PAIRING, BARU TAMPILKAN QR CODE
+                else if (data.qrCodeWA && (!pairingCodeText || pairingCodeText.innerText === '-')) {
+                    statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
+                    if (qrImage) qrImage.src = data.qrCodeWA;
+                    if (qrContainer) qrContainer.classList.remove('hidden');
+                    if (pairingContainer) pairingContainer.classList.add('hidden');
+                } 
+                // 5. STATUS BELUM TERHUBUNG / RESET
+                else {
+                    statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                    if (qrContainer) qrContainer.classList.add('hidden');
+                    if (pairingContainer) pairingContainer.classList.add('hidden');
+                    if (pairingCodeText) pairingCodeText.innerText = '-';
+                }
+            })
+            .catch(err => console.error("Gagal cek WA status:", err));
+    }
+
+    function mintaQRWA() {
+        const btn = document.getElementById('btnGenerateWA');
+        const statusText = document.getElementById('waStatusText');
+
+        if (btn) {
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+            btn.disabled = true;
+        }
+        if (statusText) {
+            statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
+        }
+
+        fetch(`/api/start-wa?userId=${currentUserId}`)
+            .then(() => {
+                setTimeout(() => {
+                    if (btn) {
+                        btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
+                        btn.disabled = false;
                     }
-                })
-                .catch(err => console.error("Gagal cek WA status:", err));
+                    cekStatusWA();
+                }, 2000);
+            });
+    }
+
+    function mintaPairingWA() {
+        const noHp = prompt("Masukkan Nomor WhatsApp (Contoh: 082371729760):");
+        if (!noHp) return;
+
+        const btn = document.getElementById('btnPairingWA');
+        const statusText = document.getElementById('waStatusText');
+
+        if (btn) {
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+            btn.disabled = true;
+        }
+        if (statusText) {
+            statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
         }
 
-        function mintaQRWA() {
-            const btn = document.getElementById('btnGenerateWA');
-            const statusText = document.getElementById('waStatusText');
-
-            if (btn) {
-                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
-                btn.disabled = true;
-            }
-            if (statusText) {
-                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
-            }
-
-            fetch(`/api/start-wa?userId=${currentUserId}`)
-                .then(() => {
-                    setTimeout(() => {
-                        if (btn) {
-                            btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
-                            btn.disabled = false;
-                        }
-                        cekStatusWA();
-                    }, 2000);
-                });
-        }
-
-        function mintaPairingWA() {
-            const noHp = prompt("Masukkan Nomor WhatsApp Admin (Contoh: 082371729760):");
-            if (!noHp) return;
-
-            const btn = document.getElementById('btnPairingWA');
-            const statusText = document.getElementById('waStatusText');
-
-            // LANGSUNG UBAH TEKS UI KE "MENYIAPKAN TAUTAN" SESAAT SETELAH TIK KODE
-            if (btn) {
-                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
-                btn.disabled = true;
-            }
-            if (statusText) {
-                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
-            }
-
-            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
-                .then(res => res.json())
-                .then(data => {
-                    setTimeout(() => {
-                        if (btn) {
-                            btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
-                            btn.disabled = false;
-                        }
-                        cekStatusWA();
-                    }, 5000);
-                })
-                .catch(err => {
-                    console.error("Gagal minta pairing:", err);
+        fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
+            .then(res => res.json())
+            .then(data => {
+                setTimeout(() => {
                     if (btn) {
                         btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
                         btn.disabled = false;
                     }
                     cekStatusWA();
-                });
-        }
+                }, 5000);
+            })
+            .catch(err => {
+                console.error("Gagal minta pairing:", err);
+                if (btn) {
+                    btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                    btn.disabled = false;
+                }
+                cekStatusWA();
+            });
+    }
 
-        function resetWA() {
-            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp Admin?')) return;
+    function resetWA() {
+        if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp?')) return;
 
-            const pairingCodeText = document.getElementById('pairingCodeText');
-            const pairingContainer = document.getElementById('pairingContainer');
-            const qrContainer = document.getElementById('qrContainer');
-            
-            if (pairingCodeText) pairingCodeText.innerText = '-';
-            if (pairingContainer) pairingContainer.classList.add('hidden');
-            if (qrContainer) qrContainer.classList.add('hidden');
+        const pairingCodeText = document.getElementById('pairingCodeText');
+        const pairingContainer = document.getElementById('pairingContainer');
+        const qrContainer = document.getElementById('qrContainer');
+        
+        if (pairingCodeText) pairingCodeText.innerText = '-';
+        if (pairingContainer) pairingContainer.classList.add('hidden');
+        if (qrContainer) qrContainer.classList.add('hidden');
 
-            fetch(`/api/reset-wa?userId=${currentUserId}`)
-                .then(res => res.json())
-                .then(data => {
-                    alert(data.message);
-                    cekStatusWA();
-                })
-                .catch(err => console.error("Gagal reset WA:", err));
-        }
+        fetch(`/api/reset-wa?userId=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                cekStatusWA();
+            })
+            .catch(err => console.error("Gagal reset WA:", err));
+    }
 
-        // DUA BARIS INI WAJIB ADA AGAR STATUS OTOMATIS BERUBAH MENJADI HIJAU SAAT TERHUBUNG
-        setInterval(cekStatusWA, 3000);
-        document.addEventListener('DOMContentLoaded', cekStatusWA);
-    </script>
+    setInterval(cekStatusWA, 3000);
+    document.addEventListener('DOMContentLoaded', cekStatusWA);
+</script>
 
         function prosesImportExcel(e) {
             e.preventDefault();
