@@ -540,9 +540,7 @@
 
         const currentUserId = "<%= userId %>";
 
-        let isFetchingWA = false;
-
-        function cekStatusWA() {
+function cekStatusWA() {
             fetch(`/api/wa-status?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -581,41 +579,65 @@
 
         function mintaQRWA() {
             const btn = document.getElementById('btnGenerateWA');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
-            btn.disabled = true;
+            const statusText = document.getElementById('waStatusText');
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+                btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
+            }
 
             fetch(`/api/start-wa?userId=${currentUserId}`)
                 .then(() => {
                     setTimeout(() => {
-                        btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
-                        btn.disabled = false;
-                        cekStatusWA();
-                    }, 2000);
-                });
-        }
-
-        function mintaPairingWA() {
-            const noHp = prompt("Masukkan Nomor WhatsApp Anda (Contoh: 082371729760):");
-            if (!noHp) return;
-
-            const btn = document.getElementById('btnPairingWA');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
-            btn.disabled = true;
-
-            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
-                .then(res => res.json())
-                .then(data => {
-                    alert("Mempersiapkan kode tautan. Silakan tunggu 3-5 detik...");
-                    setTimeout(() => {
-                        btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
-                        btn.disabled = false;
+                        if (btn) {
+                            btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
+                            btn.disabled = false;
+                        }
                         cekStatusWA();
                     }, 3000);
                 });
         }
 
+        function mintaPairingWA() {
+            const noHp = prompt("Masukkan Nomor WhatsApp Admin (Contoh: 082371729760):");
+            if (!noHp) return;
+
+            const btn = document.getElementById('btnPairingWA');
+            const statusText = document.getElementById('waStatusText');
+            
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+                btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
+            }
+
+            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
+                .then(res => res.json())
+                .then(data => {
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                            btn.disabled = false;
+                        }
+                        cekStatusWA();
+                    }, 4000);
+                })
+                .catch(err => {
+                    console.error("Error minta pairing:", err);
+                    if (btn) {
+                        btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                        btn.disabled = false;
+                    }
+                    cekStatusWA();
+                });
+        }
+
         function resetWA() {
-            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp?')) return;
+            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp Admin?')) return;
             fetch(`/api/reset-wa?userId=${currentUserId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -623,9 +645,7 @@
                     cekStatusWA();
                 });
         }
-
-        setInterval(cekStatusWA, 2000);
-        cekStatusWA();
+     
 
         function bukaModalEditSiswa(btn) {
             const id = btn.getAttribute('data-id');
