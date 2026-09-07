@@ -40,7 +40,6 @@ app.use(session({
 // ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE ----------------- //
 async function initDB() {
     try {
-        // 1. Tabel Kelas
         await pool.query(`
             CREATE TABLE IF NOT EXISTS kelas (
                 id SERIAL PRIMARY KEY,
@@ -48,7 +47,6 @@ async function initDB() {
             );
         `);
 
-        // 2. Tabel Users (Admin & Wali Kelas)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -60,7 +58,6 @@ async function initDB() {
             );
         `);
 
-        // 3. Tabel Siswa
         await pool.query(`
             CREATE TABLE IF NOT EXISTS siswa (
                 id SERIAL PRIMARY KEY,
@@ -68,12 +65,9 @@ async function initDB() {
                 nomor_wa_ortu VARCHAR(20),
                 kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL
             );
-
-            -- Migrasi otomatis jika tabel siswa lama belum punya kolom nomor_wa_ortu
             ALTER TABLE siswa ADD COLUMN IF NOT EXISTS nomor_wa_ortu VARCHAR(20);
         `);
 
-        // 4. Tabel Absensi (dengan migrasi otomatis kolom tipe & scanned_by)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS absensi (
                 id SERIAL PRIMARY KEY,
@@ -83,13 +77,10 @@ async function initDB() {
                 scanned_by INT,
                 tipe VARCHAR(10) DEFAULT 'MASUK'
             );
-            
-            -- Migrasi otomatis jika tabel absensi lama belum punya kolom tipe/scanned_by
             ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';
             ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;
         `);
 
-        // 5. Tabel Settings
         await pool.query(`
             CREATE TABLE IF NOT EXISTS settings (
                 key VARCHAR(50) PRIMARY KEY,
@@ -102,7 +93,6 @@ async function initDB() {
             ON CONFLICT (key) DO NOTHING;
         `);
 
-        // Insert Admin Default & reset sequence ID
         await pool.query(`
             INSERT INTO users (id, nama, username, password, role)
             VALUES (1, 'Administrator', 'admin', 'admin123', 'ADMIN')
@@ -128,7 +118,7 @@ function bersihkanGelar(nama) {
     if (!nama) return '';
     return nama.replace(/,?\s*\b(S\.Pd|M\.Pd|S\.Ag|S\.T|S\.Kom|M\.Si|S\.Sos|S\.SE|M\.M|A\.Ma|Sd)\b\.?/gi, '').trim();
 }
-// Helper untuk mengambil nama sekolah dari tabel settings
+
 async function getNamaSekolah() {
     try {
         const res = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
@@ -138,6 +128,7 @@ async function getNamaSekolah() {
         return 'NAMA SEKOLAH BELUM DIATUR';
     }
 }
+
 async function generateQRDataURL(text) {
     try {
         if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
@@ -192,22 +183,29 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
+        // PENANGANAN KHUSUS PAIRING CODE
         if (phoneNumber && !sock.authState.creds.registered) {
+            let cleanPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
+            if (cleanPhone.startsWith('0')) {
+                cleanPhone = '62' + cleanPhone.slice(1);
+            }
+
             setTimeout(async () => {
                 try {
-                    let cleanPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
-                    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-                    
                     console.log(`📱 Meminta Pairing Code WA untuk nomor: ${cleanPhone}`);
                     const code = await sock.requestPairingCode(cleanPhone);
-                    pairingCodes[userId] = code;
+                    const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+                    
+                    pairingCodes[userId] = formattedCode;
+                    delete qrCodes[userId]; // Sembunyikan QR Code saat meminta Pairing Code
                     waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
-                    console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${code}`);
+                    console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${formattedCode}`);
                 } catch (pErr) {
                     console.error("Gagal Request Pairing Code:", pErr.message);
                     waStatus[userId] = 'ERROR_PAIRING';
+                    delete pairingCodes[userId];
                 }
-            }, 5000);
+            }, 4000);
         }
 
         sock.ev.on('connection.update', async (update) => {
@@ -274,9 +272,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
 
 // ---------------- ROUTES HALAMAN ---------------- //
 
-app.get('/', (req, res) => res.render('login', { error: null }));
-
-// 1. SAAT HALAMAN LOGIN PERTAMA KALI DIBUKA (HTTP GET)
 app.get(['/', '/login'], async (req, res) => {
     try {
         const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
@@ -284,20 +279,13 @@ app.get(['/', '/login'], async (req, res) => {
             ? settingRes.rows[0].value 
             : 'NAMA SEKOLAH BELUM DIATUR';
 
-        res.render('login', { 
-            error: null, 
-            namaSekolah: namaSekolah // <-- Ini yang bikin nama sekolah muncul saat pertama kali muat halaman
-        });
+        res.render('login', { error: null, namaSekolah });
     } catch (err) {
         console.error("Error GET Login:", err);
-        res.render('login', { 
-            error: null, 
-            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' 
-        });
+        res.render('login', { error: null, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
     }
 });
 
-// 2. SAAT USER MENGIRIM FORM LOGIN (HTTP POST)
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -307,10 +295,7 @@ app.post('/login', async (req, res) => {
             : 'NAMA SEKOLAH BELUM DIATUR';
 
         if (!username || !password) {
-            return res.render('login', { 
-                error: 'Username dan kata sandi wajib diisi.',
-                namaSekolah: namaSekolah
-            });
+            return res.render('login', { error: 'Username dan kata sandi wajib diisi.', namaSekolah });
         }
 
         const result = await pool.query(
@@ -319,10 +304,7 @@ app.post('/login', async (req, res) => {
         );
 
         if (result.rows.length === 0) {
-            return res.render('login', { 
-                error: 'Username atau kata sandi tidak valid.',
-                namaSekolah: namaSekolah
-            });
+            return res.render('login', { error: 'Username atau kata sandi tidak valid.', namaSekolah });
         }
 
         const user = result.rows[0];
@@ -334,10 +316,7 @@ app.post('/login', async (req, res) => {
             return res.redirect(`/wali?userId=${user.id}`);
         }
     } catch (err) {
-        return res.render('login', { 
-            error: 'Kesalahan Sistem Database: ' + err.message,
-            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR'
-        });
+        return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
     }
 });
 
@@ -363,7 +342,6 @@ app.get('/admin', async (req, res) => {
             ORDER BY a.waktu DESC
         `);
 
-        // --- TAMBAHAN: AMBIL NAMA SEKOLAH & PENGIRIM WA DARI SETTINGS ---
         const settingsAll = await pool.query("SELECT key, value FROM settings WHERE key IN ('pengirim_wa', 'nama_sekolah')");
         
         let pengirimWA = 'ADMIN';
@@ -373,7 +351,6 @@ app.get('/admin', async (req, res) => {
             if (row.key === 'pengirim_wa') pengirimWA = row.value;
             if (row.key === 'nama_sekolah') namaSekolah = row.value;
         });
-        // ------------------------------------------------------------------
 
         const absensiFormatted = absensiRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
@@ -404,7 +381,7 @@ app.get('/admin', async (req, res) => {
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
             pengirimWA: pengirimWA,
-            namaSekolah: namaSekolah // <-- TAMBAHKAN VARIABEL INI BIAR DIBACA EJS
+            namaSekolah: namaSekolah
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database: " + err.message);
@@ -425,7 +402,6 @@ app.post('/api/settings/pengirim-wa', async (req, res) => {
     }
 });
 
-// Endpoint API untuk Mengubah Nama Sekolah di Settings
 app.post('/api/settings', async (req, res) => {
     const { nama_sekolah } = req.body;
     try {
@@ -440,15 +416,14 @@ app.post('/api/settings', async (req, res) => {
         res.status(500).json({ success: false, message: 'Gagal memperbarui pengaturan: ' + err.message });
     }
 });
+
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     try {
-        // 1. Ambil nama sekolah dari tabel settings
         const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
             ? settingRes.rows[0].value 
             : 'NAMA SEKOLAH BELUM DIATUR';
 
-        // 2. Ambil data siswa
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.nama ASC
@@ -459,11 +434,7 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
             return { ...s, qrImage };
         }));
 
-        // 3. Injeksi variabel namaSekolah ke template EJS
-        res.render('cetak-kartu', { 
-            siswa: siswaData,
-            namaSekolah: namaSekolah // <-- Variabel dikirim ke EJS
-        });
+        res.render('cetak-kartu', { siswa: siswaData, namaSekolah });
     } catch (err) {
         res.status(500).send("Gagal memuat kartu: " + err.message);
     }
@@ -474,12 +445,10 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     if (!userId) return res.redirect('/');
 
     try {
-        // --- TAMBAHAN: AMBIL NAMA SEKOLAH DARI SETTINGS ---
         const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
             ? settingRes.rows[0].value 
             : 'NAMA SEKOLAH BELUM DIATUR';
-        // -------------------------------------------------
 
         const userRes = await pool.query(`
             SELECT u.id, u.nama, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Guru Mata Pelajaran (Semua Kelas)') AS nama_kelas
@@ -551,7 +520,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
-            namaSekolah: namaSekolah // <-- TAMBAHKAN VARIABEL INI
+            namaSekolah
         });
     } catch (err) {
         console.error("Dashboard Error User #" + userId + ":", err);
@@ -562,22 +531,15 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 app.get(['/scan', '/scanner'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     try {
-        // Ambil nama sekolah dari tabel settings
         const settingRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const namaSekolah = settingRes.rows.length > 0 && settingRes.rows[0].value 
             ? settingRes.rows[0].value 
             : 'NAMA SEKOLAH BELUM DIATUR';
 
-        res.render('scan', { 
-            userId: userId,
-            namaSekolah: namaSekolah // <-- Variabel dikirim ke EJS
-        });
+        res.render('scan', { userId, namaSekolah });
     } catch (err) {
         console.error("Error Scan Page:", err);
-        res.render('scan', { 
-            userId: userId, 
-            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' 
-        });
+        res.render('scan', { userId, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
     }
 });
 
@@ -739,7 +701,6 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
             return res.status(400).json({ success: false, message: "Berkas Excel kosong atau tidak terbaca." });
         }
 
-        // Siapkan penampung data
         const rowsToInsert = [];
 
         for (const row of sheetData) {
@@ -788,7 +749,6 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
             });
         }
 
-        // --- BATCH INSERT (1 Query Transaksi untuk Semua Data) ---
         await client.query('BEGIN');
 
         const valueStrings = [];
@@ -804,7 +764,7 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
         const queryText = `INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ${valueStrings.join(', ')}`;
         await client.query(queryText, valueParams);
 
-        await client.query('COMMIT'); // Kunci transaksi di Neon
+        await client.query('COMMIT');
 
         return res.json({
             success: true,
@@ -816,40 +776,52 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
         console.error("Import Excel Error:", err);
         return res.status(500).json({ success: false, message: "Gagal memproses berkas: " + err.message });
     } finally {
-        client.release(); // Lepas koneksi secara bersih
+        client.release();
     }
 });
 
+// ----------------- PERBAIKAN PADA ENDPOINT WA ----------------- //
+
 app.get('/api/start-wa', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    delete pairingCodes[userId]; // Bersihkan kode pairing lama
     connectToWhatsApp(userId);
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
 
 app.get('/api/request-pairing', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
     const phone = req.query.phone;
 
     if (!phone) {
         return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
     }
 
+    // Bersihkan sesi lama agar tidak saling ganggu
+    delete qrCodes[userId];
+    delete pairingCodes[userId];
+    waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
+
     connectToWhatsApp(userId, phone);
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
 
 app.get('/api/wa-status', (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    const currentPairing = pairingCodes[userId] || null;
+    const currentQr = qrCodes[userId] || null;
+
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qrCodeWA: qrCodes[userId] || null,
-        pairingCode: pairingCodes[userId] || null
+        // Paksa QR Code bernilai null jika Pairing Code sedang aktif
+        qrCodeWA: currentPairing ? null : currentQr,
+        pairingCode: currentPairing
     });
 });
 
 app.get('/api/reset-wa', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
     if (reconnectTimers[userId]) {
         clearTimeout(reconnectTimers[userId]);
         delete reconnectTimers[userId];
