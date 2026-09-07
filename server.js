@@ -192,15 +192,25 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                     
                     console.log(`📱 Meminta Pairing Code WA untuk nomor: ${cleanPhone}`);
                     const code = await sock.requestPairingCode(cleanPhone);
+                    const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+                    
                     pairingCodes[userId] = code;
                     waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
                     console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${code}`);
-                } catch (pErr) {
-                    console.error("Gagal Request Pairing Code:", pErr.message);
-                    waStatus[userId] = 'ERROR_PAIRING';
-                }
-            }, 5000);
-        }
+
+                    // Tahan kode selama 3 menit (180.000 ms) sebelum terhapus otomatis
+                   setTimeout(() => {
+                       if (waStatus[userId] !== 'TERHUBUNG') {
+                           delete pairingCodes[userId];
+                     }
+                 }, 180000);
+                    
+            } catch (pErr) {
+                 console.error("Gagal Request Pairing Code:", pErr.message);
+                  waStatus[userId] = 'ERROR_PAIRING';
+            }
+        }, 5000);
+    }
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
@@ -241,6 +251,8 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                 delete waSessions[userId];
 
                 if (!isLoggedOut) {
+                    // JANGAN hapus pairingCodes[userId] di sini agar kode tetap bertahan di UI saat proses reconnect
+                    waStatus[userId] = pairingCodes[userId] ? 'MENUNGGU_PAIRING_CODE' : 'TERPUTUS';
                     // Beri jeda 8 detik agar tidak looping kedap-kedip
                     console.log(`🔄 Sambung ulang User #${userId} dalam 8 detik...`);
                     if (!reconnectTimers[userId]) {
