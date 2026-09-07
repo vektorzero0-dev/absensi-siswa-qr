@@ -21,7 +21,6 @@
         .offcanvas { z-index: 1055 !important; }
         .offcanvas-backdrop { z-index: 1050 !important; }
 
-        /* LATAR BELAKANG TERANG BERANIMASI DENGAN PATTERN */
         .bg-light-animated {
             background: linear-gradient(-45deg, #e0f2fe, #f0fdf4, #fef3c7, #f1f5f9);
             background-size: 400% 400%;
@@ -38,7 +37,6 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Scrollbar Halus */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -49,7 +47,6 @@
         }
         .animate-glow { animation: pulseGlow 5s infinite ease-in-out; }
 
-        /* KARTU PRO DENGAN TEMA WARNA & HOVER EFFECT */
         .card-pro {
             position: relative;
             overflow: hidden;
@@ -170,7 +167,6 @@
 
 <div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity backdrop-blur-xs"></div>
 
-    <!-- HEADER RESMI SEKOLAH BERANIMASI -->
     <header class="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-900 text-white shadow-lg border-b-4 border-amber-500 relative overflow-hidden">
         <div class="absolute -top-12 left-1/4 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl animate-glow pointer-events-none"></div>
         <div class="absolute -bottom-10 right-10 w-36 h-36 bg-amber-400/20 rounded-full blur-3xl animate-glow pointer-events-none" style="animation-delay: 2.5s;"></div>
@@ -198,7 +194,6 @@
 
     <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
-        <!-- KOTAK BANNER PROFIL (AMBER THEME) -->
         <div class="card-pro card-amber-theme p-4 mb-6 flex items-center justify-between">
             <div class="flex items-center gap-3 relative z-10">
                 <div class="bg-amber-600 text-white p-3 rounded-xl shadow-md">
@@ -211,7 +206,6 @@
             </div>
         </div>
 
-        <!-- METRIC SUMMARY CARDS WITH INDIVIDUAL COLOR THEMES -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="card-pro card-blue-theme p-4 flex items-center justify-between">
                 <div class="relative z-10">
@@ -244,7 +238,6 @@
             </div>
         </div>
 
-        <!-- KOTAK PENGATURAN IDENTITAS SEKOLAH (BERDIRI SENDIRI & RAPI) -->
         <div id="section-settings" class="card-pro card-amber-theme p-5 mb-6">
             <div class="flex items-center gap-3 mb-3 border-b border-amber-200/60 pb-2 relative z-10">
                 <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
@@ -265,7 +258,6 @@
             </form>
         </div>
 
-        <!-- KOTAK INTEGRASI WA ADMIN -->
         <div id="section-wa-gateway" class="card-pro card-emerald-theme p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3 relative z-10">
                 <div class="p-3 rounded-xl bg-emerald-600 text-white shadow-md">
@@ -280,20 +272,17 @@
             </div>
 
             <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto relative z-10">
-                <!-- KOTAK TAMPILAN QR -->
                 <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
                     <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
                     <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
                 </div>
 
-                <!-- KOTAK TAMPILAN PAIRING CODE -->
                 <div id="pairingContainer" class="hidden bg-blue-50 p-3 rounded-xl border border-blue-200 text-center min-w-[200px]">
                     <span class="text-[10px] text-blue-800 font-medium block">Kode Tautan WhatsApp Anda:</span>
                     <strong id="pairingCodeText" class="text-xl font-mono text-blue-900 tracking-widest my-1 block">-</strong>
                     <span class="text-[9px] text-blue-700 block">Masukkan di WA HP (Tautkan dg nomor)</span>
                 </div>
 
-                <!-- TOMBOL-TOMBOL AKSI WA -->
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
                     <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-qrcode"></i> Scan QR
@@ -310,7 +299,6 @@
             </div>
         </div>
 
-        <!-- KOTAK OPSI PENGIRIM NOTIFIKASI WA -->
         <div class="card-pro card-emerald-theme p-4 mb-6">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10">
                 <div class="flex items-center gap-3">
@@ -339,7 +327,6 @@
             </div>
         </div>
 
-        <!-- KOTAK IMPOR DAPODIK (EMERALD THEME) -->
         <div id="section-dapodik" class="card-pro card-emerald-theme p-5 mb-6">
             <div class="flex items-center gap-3 mb-3 border-b border-emerald-200/60 pb-2 relative z-10">
                 <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
@@ -360,10 +347,8 @@
             </form>
         </div>
 
-        <!-- KOTAK FORM TAMBAH ROMBEL & GURU -->
         <div id="section-rombel" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
-            <!-- FORM ROMBEL (PURPLE THEME) -->
             <div class="card-pro card-purple-theme p-5">
                 <div class="flex justify-between items-center border-b border-purple-200/60 pb-2 mb-4 relative z-10">
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -402,7 +387,6 @@
                 </div>
             </div>
 
-            <!-- FORM GURU (BLUE THEME) -->
             <div class="card-pro card-blue-theme p-5">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-blue-200/60 pb-2 relative z-10">
                     <i class="fa-solid fa-user-plus text-blue-700"></i> Registrasi Akun Wali Kelas / Guru
@@ -426,8 +410,8 @@
                     </button>
                 </form>
             </div>
+        </div>
 
-        <!-- KOTAK REGISTRASI SISWA MANUAL (AMBER THEME) -->
         <div class="card-pro card-amber-theme p-5 mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-amber-200/60 pb-2 relative z-10">
                 <i class="fa-solid fa-address-card text-amber-700"></i> Registrasi Peserta Didik Baru (Manual)
@@ -447,7 +431,6 @@
             </form>
         </div>
 
-        <!-- KOTAK TABEL DIREKTORI GURU (BLUE THEME) -->
         <div class="card-pro card-blue-theme p-5 mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-blue-200/60 pb-2 relative z-10">
                 <i class="fa-solid fa-users-gear text-blue-700"></i> Direktori Akun Tenaga Pendidik
@@ -504,7 +487,6 @@
             </div>
         </div>
 
-        <!-- KOTAK TABEL DIREKTORI SISWA & QR CODE (EMERALD THEME) -->
         <div id="section-siswa" class="card-pro card-emerald-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-emerald-200/60 pb-3 relative z-10">
                 <div>
@@ -594,7 +576,6 @@
             </div>
         </div>
 
-        <!-- KOTAK TABEL REKAP PRESENSI HARI INI (PURPLE THEME) -->
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
@@ -647,10 +628,8 @@
 
     </main>
 
-    <!-- FORM TERSEMBUNYI UNTUK PROCESS HAPUS -->
     <form id="formHapusUmum" action="" method="POST" class="hidden"></form>
 
-    <!-- MODAL EDIT DATA GURU -->
     <div id="modalEditGuru" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
@@ -702,7 +681,6 @@
         </div>
     </div>
 
-    <!-- MODAL EDIT DATA SISWA -->
     <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
@@ -747,7 +725,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT JAVASCRIPT BOOTSTRAP -->
+    <!-- SCRIPT JAVASCRIPT BOOTSTRAP & UTILS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -779,8 +757,8 @@
                         qrImage.src = data.qrCodeWA;
                         qrContainer.classList.remove('hidden');
                         pairingContainer.classList.add('hidden');
-                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'MENUNGGU_SCAN') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan... ⏳</span>`;
+                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'PROSES_INIT') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
                     } else {
                         statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
                         qrContainer.classList.add('hidden');
@@ -792,9 +770,13 @@
 
         function mintaQRWA() {
             const btn = document.getElementById('btnGenerateWA');
+            const statusText = document.getElementById('waStatusText');
             if (btn) {
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
                 btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
             }
 
             fetch(`/api/start-wa?userId=${currentUserId}`)
@@ -805,7 +787,7 @@
                             btn.disabled = false;
                         }
                         cekStatusWA();
-                    }, 2000);
+                    }, 3000);
                 });
         }
 
@@ -814,22 +796,34 @@
             if (!noHp) return;
 
             const btn = document.getElementById('btnPairingWA');
+            const statusText = document.getElementById('waStatusText');
+            
             if (btn) {
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
                 btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
             }
 
             fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
                 .then(res => res.json())
                 .then(data => {
-                    alert("Mempersiapkan kode tautan. Silakan tunggu 3-5 detik...");
                     setTimeout(() => {
                         if (btn) {
                             btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
                             btn.disabled = false;
                         }
                         cekStatusWA();
-                    }, 3000);
+                    }, 4000);
+                })
+                .catch(err => {
+                    console.error("Error minta pairing:", err);
+                    if (btn) {
+                        btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                        btn.disabled = false;
+                    }
+                    cekStatusWA();
                 });
         }
 
@@ -875,7 +869,6 @@
             });
         }
 
-        // AKUN GURU MODAL & HAPUS
         function bukaModalEditGuru(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -905,7 +898,6 @@
             }
         }
 
-        // SISWA MODAL & HAPUS
         function bukaModalEditSiswa(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -944,7 +936,6 @@
             document.getElementById('sidebarOverlay').classList.add('hidden');
         }
 
-        // SCRIPT SIMPAN PENGATURAN SEKOLAH
         document.getElementById('formSettings')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const nama_sekolah = document.getElementById('namaSekolahInput').value;
@@ -958,7 +949,7 @@
                 const data = await res.json();
                 if(data.success) {
                     alert(data.message);
-                    location.reload(); // Refresh otomatis agar nama sekolah langsung terupdate di layar
+                    location.reload();
                 } else {
                     alert(data.message);
                 }
@@ -967,8 +958,8 @@
             }
         });
 
-        // Jalankan pengecekan otomatis per 2 detik
-        setInterval(cekStatusWA, 2000);
+        // Jalankan pengecekan otomatis per 3 detik
+        setInterval(cekStatusWA, 3000);
         document.addEventListener("DOMContentLoaded", cekStatusWA);
     </script>
 
