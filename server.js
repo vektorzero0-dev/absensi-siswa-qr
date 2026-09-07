@@ -793,28 +793,40 @@ app.get('/api/request-pairing', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
     }
 
+    delete qrCodes[userId];
+    delete pairingCodes[userId];
+    waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
 
     connectToWhatsApp(userId, phone);
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
 
 app.get('/api/wa-status', (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    const currentPairing = pairingCodes[userId] || null;
+    const currentQr = qrCodes[userId] || null;
+
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qrCodeWA: qrCodes[userId] || null,
-        pairingCode: pairingCodes[userId] || null
+        qrCodeWA: currentPairing ? null : currentQr, // Sembunyikan QR jika pairing code aktif
+        pairingCode: currentPairing
+    });
+})
+
 app.get('/api/reset-wa', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    
     if (reconnectTimers[userId]) {
         clearTimeout(reconnectTimers[userId]);
         delete reconnectTimers[userId];
     }
+    
     if (waSessions[userId]) {
         try { waSessions[userId].end(undefined); } catch (e) {}
         delete waSessions[userId];
     }
+    
     delete qrCodes[userId];
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
@@ -823,15 +835,8 @@ app.get('/api/reset-wa', async (req, res) => {
     if (fs.existsSync(authFolder)) {
         fs.rmSync(authFolder, { recursive: true, force: true });
     }
+    
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
-});
-    res.json({
-        success: true,
-        statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        // Paksa QR Code bernilai null jika Pairing Code sedang aktif
-        qrCodeWA: currentPairing ? null : currentQr,
-        pairingCode: currentPairing
-    });
 });
 
 app.post('/api/scan', async (req, res) => {
