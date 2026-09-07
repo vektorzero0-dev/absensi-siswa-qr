@@ -754,41 +754,52 @@
         const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
 
         function cekStatusWA() {
-            fetch(`/api/wa-status?userId=${currentUserId}`)
-                .then(res => res.json())
-                .then(data => {
-                    const statusText = document.getElementById('waStatusText');
-                    const qrContainer = document.getElementById('qrContainer');
-                    const qrImage = document.getElementById('qrImageWA');
-                    const pairingContainer = document.getElementById('pairingContainer');
-                    const pairingCodeText = document.getElementById('pairingCodeText');
+    fetch(`/api/wa-status?userId=${currentUserId}`)
+        .then(res => res.json())
+        .then(data => {
+            const statusText = document.getElementById('waStatusText');
+            const qrContainer = document.getElementById('qrContainer');
+            const qrImage = document.getElementById('qrImageWA');
+            const pairingContainer = document.getElementById('pairingContainer');
+            const pairingCodeText = document.getElementById('pairingCodeText');
 
-                    if (!statusText) return;
+            if (!statusText) return;
 
-                    if (data.statusWA === 'TERHUBUNG') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
-                        qrContainer.classList.add('hidden');
-                        pairingContainer.classList.add('hidden');
-                    } else if (data.pairingCode) {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
-                        pairingCodeText.innerText = data.pairingCode;
-                        pairingContainer.classList.remove('hidden');
-                        qrContainer.classList.add('hidden');
-                    } else if (data.qrCodeWA) {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
-                        qrImage.src = data.qrCodeWA;
-                        qrContainer.classList.remove('hidden');
-                        pairingContainer.classList.add('hidden');
-                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'MENUNGGU_SCAN') {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan... ⏳</span>`;
-                    } else {
-                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
-                        qrContainer.classList.add('hidden');
-                        pairingContainer.classList.add('hidden');
-                    }
-                })
-                .catch(err => console.error("Gagal cek WA status:", err));
-        }
+            // 1. JIKA SUDAH TERHUBUNG KE WHATSAPP
+            if (data.statusWA === 'TERHUBUNG') {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
+                if (qrContainer) qrContainer.classList.add('hidden');
+                if (pairingContainer) pairingContainer.classList.add('hidden');
+                if (pairingCodeText) pairingCodeText.innerText = '-';
+            } 
+            // 2. JIKA KODE PAIRING TERBIT DARI SERVER
+            else if (data.pairingCode) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
+                if (pairingCodeText) pairingCodeText.innerText = data.pairingCode;
+                if (pairingContainer) pairingContainer.classList.remove('hidden');
+                if (qrContainer) qrContainer.classList.add('hidden');
+            } 
+            // 3. JIKA KODE SUDAH MUNCUL DI LAYAR, TAHAN (JANGAN DISUMBANYIKAN OTOMATIS)
+            else if (pairingCodeText && pairingCodeText.innerText !== '-' && pairingCodeText.innerText !== '') {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
+                if (pairingContainer) pairingContainer.classList.remove('hidden');
+            }
+            // 4. JIKA PILIH SCAN QR
+            else if (data.qrCodeWA) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
+                if (qrImage) qrImage.src = data.qrCodeWA;
+                if (qrContainer) qrContainer.classList.remove('hidden');
+                if (pairingContainer) pairingContainer.classList.add('hidden');
+            } 
+            // 5. STATUS BELUM TERHUBUNG SEBELUM MINTA KODE
+            else {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                if (qrContainer) qrContainer.classList.add('hidden');
+                if (pairingContainer) pairingContainer.classList.add('hidden');
+            }
+        })
+        .catch(err => console.error("Gagal cek WA status:", err));
+}
 
         function mintaQRWA() {
             const btn = document.getElementById('btnGenerateWA');
