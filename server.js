@@ -819,51 +819,69 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
 });
 
 app.get('/api/start-wa', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    
+    // Bersihkan kode pairing lama jika user sengaja memilih metode Scan QR
+    delete pairingCodes[userId];
+    
     connectToWhatsApp(userId);
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
 
 app.get('/api/request-pairing', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
     const phone = req.query.phone;
 
     if (!phone) {
         return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi!' });
     }
 
+    // Bersihkan QR lama dari memori agar tidak mengaburkan tampilan pairing code
+    delete qrCodes[userId];
+    waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
+
     connectToWhatsApp(userId, phone);
     res.json({ success: true, message: 'Mempersiapkan kode tautan...' });
 });
 
 app.get('/api/wa-status', (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    const currentPairing = pairingCodes[userId] || null;
+    const currentQr = qrCodes[userId] || null;
+
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qrCodeWA: qrCodes[userId] || null,
-        pairingCode: pairingCodes[userId] || null
+        // Kunci logika: Jika ada pairingCode, paksa qrCodeWA bernilai null
+        qrCodeWA: currentPairing ? null : currentQr,
+        pairingCode: currentPairing
     });
 });
 
 app.get('/api/reset-wa', async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    const userId = parseInt(req.query.userId) || req.session?.userId || 1;
+    
     if (reconnectTimers[userId]) {
         clearTimeout(reconnectTimers[userId]);
         delete reconnectTimers[userId];
     }
+    
     if (waSessions[userId]) {
         try { waSessions[userId].end(undefined); } catch (e) {}
         delete waSessions[userId];
     }
+    
+    // Hapus total data dari memori server
     delete qrCodes[userId];
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
+    // Hapus folder autentikasi sesi fisik
     const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
     if (fs.existsSync(authFolder)) {
         fs.rmSync(authFolder, { recursive: true, force: true });
     }
+    
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
