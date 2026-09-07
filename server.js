@@ -159,9 +159,13 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
             delete waSessions[userId];
         }
 
-        waStatus[userId] = phoneNumber ? 'MENUNGGU_PAIRING_CODE' : 'PROSES_INIT';
-        delete qrCodes[userId];
-        delete pairingCodes[userId];
+        waStatus[userId] = phoneNumber ? 'MENUNGGU_PAIRING_CODE' : (pairingCodes[userId] ? 'MENUNGGU_PAIRING_CODE' : 'PROSES_INIT');
+delete qrCodes[userId];
+
+// Hanya hapus pairingCode JIKA user secara eksplisit meminta nomor baru (phoneNumber diisi)
+if (phoneNumber) {
+    delete pairingCodes[userId];
+}
 
         const { state, saveCreds } = await getAuthState(userId);
         const { version } = await fetchLatestBaileysVersion();
