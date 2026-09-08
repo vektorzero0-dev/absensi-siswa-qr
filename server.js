@@ -392,6 +392,65 @@ app.post('/api/sekolah/tambah', async (req, res) => {
     }
 });
 
+// EDIT NAMA SEKOLAH
+app.post('/api/sekolah/edit/:id', async (req, res) => {
+    const sekolahId = parseInt(req.params.id);
+    const { nama_sekolah } = req.body;
+    try {
+        if (!nama_sekolah) return res.status(400).send("Nama sekolah wajib diisi.");
+        await pool.query('UPDATE sekolah SET nama_sekolah = $1 WHERE id = $2', [nama_sekolah.trim(), sekolahId]);
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal mengedit sekolah: " + err.message);
+    }
+});
+
+// HAPUS SEKOLAH
+app.post('/api/sekolah/hapus/:id', async (req, res) => {
+    const sekolahId = parseInt(req.params.id);
+    try {
+        await pool.query('DELETE FROM sekolah WHERE id = $1', [sekolahId]);
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menghapus sekolah: " + err.message);
+    }
+});
+
+// EDIT AKUN ADMIN SEKOLAH
+app.post('/api/admin/edit/:id', async (req, res) => {
+    const adminId = parseInt(req.params.id);
+    const { nama, username, password } = req.body;
+    try {
+        if (!nama || !username) return res.status(400).send("Nama dan Username wajib diisi.");
+
+        if (password && password.trim() !== '') {
+            await pool.query(
+                `UPDATE users SET nama = $1, username = $2, password = $3 WHERE id = $4 AND role = 'ADMIN'`,
+                [nama.trim(), username.trim(), password.trim(), adminId]
+            );
+        } else {
+            await pool.query(
+                `UPDATE users SET nama = $1, username = $2 WHERE id = $3 AND role = 'ADMIN'`,
+                [nama.trim(), username.trim(), adminId]
+            );
+        }
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal mengedit akun admin: " + err.message);
+    }
+});
+
+// HAPUS AKUN ADMIN SEKOLAH
+app.post('/api/admin/hapus/:id', async (req, res) => {
+    const adminId = parseInt(req.params.id);
+    try {
+        await pool.query("DELETE FROM users WHERE id = $1 AND role = 'ADMIN'", [adminId]);
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal menghapus admin: " + err.message);
+    }
+});
+
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
