@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Dashboard - SaaS Presensi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">👑 Super Admin Center</span>
+            <div>
+                <span class="text-white me-3">Halo, <%= user.nama %></span>
+                <a href="/login" class="btn btn-outline-light btn-sm">Keluar</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <!-- Form Tambah Sekolah Baru -->
+            <div class="col-md-5 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">➕ Pendaftaran Sekolah Baru</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="/api/sekolah/tambah" method="POST">
+                            <div class="mb-3">
+                                <label class="form-label">Nama Sekolah Resmi</label>
+                                <input type="text" name="nama_sekolah" class="form-control" placeholder="Contoh: SDN 03 Pagardewa" required>
+                            </div>
+                            <hr>
+                            <h6>Akun Admin Sekolah (Operator)</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Nama Admin</label>
+                                <input type="text" name="admin_nama" class="form-control" placeholder="Contoh: Pak Budi (Admin)">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Username Admin</label>
+                                <input type="text" name="admin_username" class="form-control" placeholder="admin_sd3" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password Admin</label>
+                                <input type="password" name="admin_password" class="form-control" placeholder="******" required>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Daftarkan Sekolah & Admin</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daftar Sekolah & Admin Terdaftar -->
+            <div class="col-md-7">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0">🏫 Daftar Sekolah Terdaftar</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama Sekolah</th>
+                                    <th>Total Rombel</th>
+                                    <th>Total Siswa</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% sekolahList.forEach(s => { %>
+                                    <tr>
+                                        <td><strong>#<%= s.id %></strong></td>
+                                        <td><%= s.nama_sekolah %></td>
+                                        <td><%= s.total_kelas %> Rombel</td>
+                                        <td><%= s.total_siswa %> Siswa</td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="card-title mb-0">👤 Daftar Akun Admin Sekolah</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nama Admin</th>
+                                    <th>Username</th>
+                                    <th>Sekolah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% adminList.forEach(a => { %>
+                                    <tr>
+                                        <td><%= a.nama %></td>
+                                        <td><code><%= a.username %></code></td>
+                                        <td><%= a.nama_sekolah %></td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
