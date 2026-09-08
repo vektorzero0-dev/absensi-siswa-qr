@@ -1,4 +1,3 @@
-const cron = require('node-cron');
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -9,6 +8,7 @@ const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 const fs = require('fs');
 const pool = require('./db');
+const cron = require('node-cron');
 
 // Package Import & Upload Excel
 const multer = require('multer');
@@ -161,12 +161,11 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         }
 
         waStatus[userId] = phoneNumber ? 'MENUNGGU_PAIRING_CODE' : (pairingCodes[userId] ? 'MENUNGGU_PAIRING_CODE' : 'PROSES_INIT');
-delete qrCodes[userId];
+        delete qrCodes[userId];
 
-// Hanya hapus pairingCode JIKA user secara eksplisit meminta nomor baru (phoneNumber diisi)
-if (phoneNumber) {
-    delete pairingCodes[userId];
-}
+        if (phoneNumber) {
+            delete pairingCodes[userId];
+        }
 
         const { state, saveCreds } = await getAuthState(userId);
         const { version } = await fetchLatestBaileysVersion();
@@ -188,7 +187,6 @@ if (phoneNumber) {
         waSessions[userId] = sock;
         sock.ev.on('creds.update', saveCreds);
 
-        // PENANGANAN KHUSUS PAIRING CODE
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
@@ -203,19 +201,18 @@ if (phoneNumber) {
                     waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
                     console.log(`🔑 [User #${userId}] Pairing Code WA Terbit: ${code}`);
 
-                    // Tahan kode selama 3 menit (180.000 ms) sebelum terhapus otomatis
-                   setTimeout(() => {
-                       if (waStatus[userId] !== 'TERHUBUNG') {
-                           delete pairingCodes[userId];
-                     }
-                 }, 180000);
+                    setTimeout(() => {
+                        if (waStatus[userId] !== 'TERHUBUNG') {
+                            delete pairingCodes[userId];
+                        }
+                    }, 180000);
                     
-            } catch (pErr) {
-                 console.error("Gagal Request Pairing Code:", pErr.message);
-                  waStatus[userId] = 'ERROR_PAIRING';
-            }
-        }, 5000);
-    }
+                } catch (pErr) {
+                    console.error("Gagal Request Pairing Code:", pErr.message);
+                    waStatus[userId] = 'ERROR_PAIRING';
+                }
+            }, 5000);
+        }
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
@@ -248,7 +245,6 @@ if (phoneNumber) {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
-                // Hanya hapus sesi jika di-logout resmi dari HP (401)
                 const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
 
                 console.log(`⚠️ [User #${userId}] WhatsApp Terputus. Status Code: ${statusCode}`);
@@ -256,9 +252,7 @@ if (phoneNumber) {
                 delete waSessions[userId];
 
                 if (!isLoggedOut) {
-                    // JANGAN hapus pairingCodes[userId] di sini agar kode tetap bertahan di UI saat proses reconnect
                     waStatus[userId] = pairingCodes[userId] ? 'MENUNGGU_PAIRING_CODE' : 'TERPUTUS';
-                    // Beri jeda 8 detik agar tidak looping kedap-kedip
                     console.log(`🔄 Sambung ulang User #${userId} dalam 8 detik...`);
                     if (!reconnectTimers[userId]) {
                         reconnectTimers[userId] = setTimeout(() => {
@@ -379,7 +373,8 @@ app.get('/admin', async (req, res) => {
 
         const usersCleaned = usersRes.rows.map(u => ({ ...u, nama: bersihkanGelar(u.nama) }));
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await generateQRDataURL(s.id.toString());
+            // FORMAT UNIK MULTI-SEKOLAH: K[kelas_id]-S[siswa_id]
+            const qrImage = await generateQRDataURL(`K${s.kelas_id || 0}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
@@ -438,12 +433,13 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
             : 'NAMA SEKOLAH BELUM DIATUR';
 
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.nama ASC
         `);
             
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await generateQRDataURL(s.id.toString());
+            // FORMAT UNIK MULTI-SEKOLAH: K[kelas_id]-S[siswa_id]
+            const qrImage = await generateQRDataURL(`K${s.kelas_id || 0}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
@@ -520,7 +516,8 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         });
 
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await generateQRDataURL(s.id.toString());
+            // FORMAT UNIK MULTI-SEKOLAH: K[kelas_id]-S[siswa_id]
+            const qrImage = await generateQRDataURL(`K${s.kelas_id || 0}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
@@ -797,7 +794,7 @@ app.post('/api/siswa/import-excel', upload.single('file_excel'), async (req, res
 
 app.get('/api/start-wa', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session?.userId || 1;
-    delete pairingCodes[userId]; // Bersihkan kode pairing lama
+    delete pairingCodes[userId];
     connectToWhatsApp(userId);
     res.json({ success: true, message: 'Inisialisasi WhatsApp dimulai...' });
 });
@@ -826,10 +823,10 @@ app.get('/api/wa-status', (req, res) => {
     res.json({
         success: true,
         statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
-        qrCodeWA: currentPairing ? null : currentQr, // Sembunyikan QR jika pairing code aktif
+        qrCodeWA: currentPairing ? null : currentQr,
         pairingCode: currentPairing
     });
-})
+});
 
 app.get('/api/reset-wa', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session?.userId || 1;
@@ -861,7 +858,20 @@ app.post('/api/scan', async (req, res) => {
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
 
     try {
-        const parsedSiswaId = parseInt(siswa_id);
+        // PENANGANAN SCAN PINTAR: Mendukung format K[kelas_id]-S[siswa_id] dan format angka ID lama
+        let parsedSiswaId;
+        const rawStr = siswa_id.toString().trim();
+        
+        if (rawStr.includes('S')) {
+            parsedSiswaId = parseInt(rawStr.split('S').pop());
+        } else {
+            parsedSiswaId = parseInt(rawStr.replace(/[^0-9]/g, ''));
+        }
+
+        if (isNaN(parsedSiswaId)) {
+            return res.status(400).json({ success: false, message: "Format Kode QR Siswa Tidak Valid." });
+        }
+
         const parsedScannedBy = parseInt(scanned_by) || 1;
         const tipeAbsen = tipe.toUpperCase() === 'PULANG' ? 'PULANG' : 'MASUK';
 
@@ -876,7 +886,7 @@ app.post('/api/scan', async (req, res) => {
         `, [parsedSiswaId]);
 
         if (siswaRes.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `ID Siswa #${siswa_id} Tidak Terdaftar!` });
+            return res.status(404).json({ success: false, message: `ID Siswa #${parsedSiswaId} Tidak Terdaftar!` });
         }
 
         const siswa = siswaRes.rows[0];
@@ -1159,7 +1169,6 @@ app.get('/api/absensi/export', async (req, res) => {
     }
 });
 
-app.get('/ping', (req, res) => res.send('OK'));
 // =========================================================================
 // FITUR OTOMATIS: KIRIM NOTIFIKASI WA SISWA TIDAK HADIR / ALPA
 // Dijalankan Otomatis Setiap Hari Senin - Sabtu Jam 09:00 WIB
@@ -1253,4 +1262,7 @@ cron.schedule('0 9 * * 1-6', async () => {
         console.error('❌ Error Cron Job Ketidakhadiran:', err.message);
     }
 });
+
+app.get('/ping', (req, res) => res.send('OK'));
+
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server Presensi Aktif di Port ${PORT}`));
