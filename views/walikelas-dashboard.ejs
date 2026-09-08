@@ -14,7 +14,6 @@
 
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* LATAR BELAKANG TERANG DENGAN GRADASI BERGERAK & MOTIF */
         .bg-light-animated {
             background: linear-gradient(-45deg, #e0f2fe, #f0fdf4, #fef3c7, #f1f5f9);
             background-size: 400% 400%;
@@ -31,19 +30,16 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Scrollbar Halus */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-        /* BOLA CAHAYA ANIMASI HEADER */
         @keyframes pulseGlow {
             0%, 100% { opacity: 0.3; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.2); }
         }
         .animate-glow { animation: pulseGlow 5s infinite ease-in-out; }
 
-        /* DESIGN KOTAK KARTU DENGAN VARIASI WARNA, MOTIF, DAN ANIMASI HOVER */
         .card-pro {
             position: relative;
             overflow: hidden;
@@ -52,7 +48,6 @@
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* MOTIF PATTERN INTERNAL PADA KARTU */
         .card-pro::before {
             content: "";
             position: absolute;
@@ -67,7 +62,6 @@
             box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.12);
         }
 
-        /* VARIASI WARNA BERKarakter UNTUK MASING-MASING KOTAK */
         .card-blue-theme {
             background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
             border: 1px solid #bfdbfe;
@@ -133,7 +127,7 @@
       <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
       </a>
-         <a href="/admin/cetak-kartu" target="_blank" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+      <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
       </a>
       <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
@@ -374,7 +368,7 @@
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-users text-blue-700"></i> Daftar Peserta Didik (<%= user.nama_kelas %>)
                 </h3>
-                <a href="/admin/cetak-kartu" target="_blank" class="btn-interactive bg-white hover:bg-slate-50 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-blue-200 font-medium transition flex items-center gap-1.5 shadow-xs">
+                <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" class="btn-interactive bg-white hover:bg-slate-50 text-slate-700 text-xs px-3.5 py-2 rounded-xl border border-blue-200 font-medium transition flex items-center gap-1.5 shadow-xs">
                     <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Identitas
                 </a>
             </div>
@@ -543,10 +537,10 @@
 
         const currentUserId = "<%= userId %>";
 
-      let isFetchingWA = false;
+        let isFetchingWA = false;
 
         function cekStatusWA() {
-            if (isFetchingWA) return; // Cegah tumpukan request jika server Render lambat
+            if (isFetchingWA) return;
             isFetchingWA = true;
 
             fetch(`/api/wa-status?userId=${currentUserId}`)
@@ -613,7 +607,6 @@
         }
 
         function mintaPairingWA() {
-            // Teks prompt sudah disesuaikan untuk Wali Kelas
             const noHp = prompt("Masukkan Nomor WhatsApp Anda (Contoh: 082371729760):");
             if (!noHp) return;
 
@@ -636,7 +629,7 @@
                             btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
                             btn.disabled = false;
                         }
-                        cekStatusWA(); // Panggil langsung agar kode 8 digit tampil di kotak biru
+                        cekStatusWA();
                     }, 4000);
                 })
                 .catch(err => {
@@ -659,7 +652,6 @@
                 });
         }
 
-        // Pemicu otomatis setiap 4 detik sekali agar kode/status langsung muncul di layar
         setInterval(cekStatusWA, 4000);
         document.addEventListener("DOMContentLoaded", cekStatusWA);
      
