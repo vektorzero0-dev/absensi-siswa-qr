@@ -121,10 +121,11 @@ async function initDB() {
         `, [currentSekolahId, defaultNama]);
 
         // Akun 1: SUPER ADMIN (Bisa kelola semua sekolah)
+        // Akun 1: SUPER ADMIN (Bisa kelola semua sekolah)
         await pool.query(`
             INSERT INTO users (id, nama, username, password, role, sekolah_id)
             VALUES (1, 'Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
-            ON CONFLICT (id) DO NOTHING;
+            ON CONFLICT (id) DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
         `);
 
         // Akun 2: ADMIN SEKOLAH UTAMA
