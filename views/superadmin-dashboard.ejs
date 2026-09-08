@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Dashboard - SaaS Presensi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-primary mb-4">
@@ -43,7 +44,12 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Password Admin</label>
-                                <input type="password" name="admin_password" class="form-control" placeholder="******" required>
+                                <div class="input-group">
+                                    <input type="password" id="inputPassTambah" name="admin_password" class="form-control" placeholder="******" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('inputPassTambah', 'iconPassTambah')">
+                                        <i id="iconPassTambah" class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-success w-100">Daftarkan Sekolah & Admin</button>
                         </form>
@@ -60,62 +66,69 @@
                         <span class="badge bg-info">Kendali Penuh Akses</span>
                     </div>
                     <div class="card-body p-0 table-responsive">
-                        <!-- Tabel Sekolah (Potongan Kode yang Diperbarui) -->
-<table class="table table-striped align-middle mb-0">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Nama Sekolah</th>
-            <th>Pengguna</th>
-            <th>Rombel</th>
-            <th>Siswa</th>
-            <th>Status Akses</th>
-            <th class="text-center">Aksi Kendali</th>
-        </tr>
-    </thead>
-    <tbody>
-        <% sekolahList.forEach(s => { %>
-            <tr class="<%= s.is_active ? '' : 'table-danger' %>">
-                <td><strong>#<%= s.id %></strong></td>
-                <td>
-                    <strong><%= s.nama_sekolah %></strong>
-                    <% if (!s.is_active) { %>
-                        <br><small class="text-danger"><i>(Akses Ditangguhkan)</i></small>
-                    <% } %>
-                </td>
-                <td><%= s.total_pengguna %> Pengguna</td>
-                <td><%= s.total_kelas %> Rombel</td>
-                <td><%= s.total_siswa %> Siswa</td>
-                <td>
-                    <% if (s.is_active) { %>
-                        <span class="badge bg-success">AKTIF</span>
-                    <% } else { %>
-                        <span class="badge bg-danger">NONAKTIF</span>
-                    <% } %>
-                </td>
-                <td class="text-center">
-                    <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
-                        <% if (s.is_active) { %>
-                            <button type="submit" class="btn btn-sm btn-outline-danger me-1" onclick="return confirm('Nonaktifkan sekolah ini? Seluruh admin & guru sekolah ini tidak akan bisa login.')">
-                                🚫 Nonaktifkan
-                            </button>
-                        <% } else { %>
-                            <button type="submit" class="btn btn-sm btn-outline-success me-1">
-                                ✅ Aktifkan Kembali
-                            </button>
-                        <% } %>
-                    </form>
+                        <table class="table table-striped align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama Sekolah</th>
+                                    <th>Pengguna</th>
+                                    <th>Rombel</th>
+                                    <th>Siswa</th>
+                                    <th>Status Akses</th>
+                                    <th class="text-center">Aksi Kendali</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% sekolahList.forEach(s => { %>
+                                    <tr class="<%= s.is_active ? '' : 'table-danger' %>">
+                                        <td><strong>#<%= s.id %></strong></td>
+                                        <td>
+                                            <strong><%= s.nama_sekolah %></strong>
+                                            <% if (!s.is_active) { %>
+                                                <br><small class="text-danger"><i>(Akses Ditangguhkan)</i></small>
+                                            <% } %>
+                                        </td>
+                                        <td><%= s.total_pengguna %> Pengguna</td>
+                                        <td><%= s.total_kelas %> Rombel</td>
+                                        <td><%= s.total_siswa %> Siswa</td>
+                                        <td>
+                                            <% if (s.is_active) { %>
+                                                <span class="badge bg-success">AKTIF</span>
+                                            <% } else { %>
+                                                <span class="badge bg-danger">NONAKTIF</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="text-center">
+                                            <!-- Tombol Lihat / Intip Detail Sekolah -->
+                                            <button class="btn btn-sm btn-info text-white me-1" onclick="lihatSekolah('<%= s.id %>')">
+                                                👁️ Lihat
+                                            </button>
 
-                    <button class="btn btn-sm btn-warning me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')">Edit</button>
-                    
-                    <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini beserta seluruh data di dalamnya?')">
-                        <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
-                    </form>
-                </td>
-            </tr>
-        <% }); %>
-    </tbody>
-</table>
+                                            <!-- Tombol Sakelar Aktif / Nonaktifkan -->
+                                            <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
+                                                <% if (s.is_active) { %>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger me-1" onclick="return confirm('Nonaktifkan sekolah ini? Seluruh admin & guru sekolah ini tidak akan bisa login.')">
+                                                        🚫 Nonaktifkan
+                                                    </button>
+                                                <% } else { %>
+                                                    <button type="submit" class="btn btn-sm btn-outline-success me-1">
+                                                        ✅ Aktifkan Kembali
+                                                    </button>
+                                                <% } %>
+                                            </form>
+
+                                            <button class="btn btn-sm btn-warning me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')">Edit</button>
+                                            
+                                            <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini beserta seluruh data di dalamnya?')">
+                                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
                 <!-- Tabel Admin Sekolah -->
                 <div class="card shadow-sm">
@@ -148,6 +161,42 @@
                                 <% }); %>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Lihat / Detail Sekolah -->
+    <div class="modal fade" id="modalLihatSekolah" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="lihatJudulSekolah">Detail Data Sekolah</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="detailTab" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="pengguna-tab" data-bs-toggle="tab" data-bs-target="#pengguna-panel">👤 Pengguna / Guru</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="rombel-tab" data-bs-toggle="tab" data-bs-target="#rombel-panel">🏫 Rombel</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="siswa-tab" data-bs-toggle="tab" data-bs-target="#siswa-panel">🎓 Siswa</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="detailTabContent">
+                        <div class="tab-pane fade show active" id="pengguna-panel">
+                            <ul class="list-group" id="listPengguna"></ul>
+                        </div>
+                        <div class="tab-pane fade" id="rombel-panel">
+                            <ul class="list-group" id="listRombel"></ul>
+                        </div>
+                        <div class="tab-pane fade" id="siswa-panel">
+                            <ul class="list-group" id="listSiswa" style="max-height: 300px; overflow-y: auto;"></ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -198,7 +247,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password Baru *(kosongkan jika tidak diganti)*</label>
-                            <input type="password" name="password" class="form-control" placeholder="Password baru">
+                            <div class="input-group">
+                                <input type="password" id="inputPassEdit" name="password" class="form-control" placeholder="Password baru">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('inputPassEdit', 'iconPassEdit')">
+                                    <i id="iconPassEdit" class="bi bi-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -214,6 +268,45 @@
     <script>
         const modalSekolahBs = new bootstrap.Modal(document.getElementById('modalSekolah'));
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
+        const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
+
+        // Fungsi intip/lihat detail sekolah
+        async function lihatSekolah(id) {
+            try {
+                const res = await fetch('/api/sekolah/detail/' + id);
+                const data = await res.json();
+                if (!data.success) return alert(data.message);
+
+                document.getElementById('lihatJudulSekolah').innerText = '🏫 Detail Data: ' + data.namaSekolah;
+
+                // Render Pengguna
+                const listP = document.getElementById('listPengguna');
+                listP.innerHTML = data.penggunaList.length ? data.penggunaList.map(p => 
+                    `<li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div><strong>${p.nama}</strong> (${p.username})</div>
+                        <span class="badge bg-primary rounded-pill">${p.role} - ${p.nama_kelas}</span>
+                    </li>`
+                ).join('') : '<li class="list-group-item text-muted">Belum ada pengguna</li>';
+
+                // Render Rombel
+                const listR = document.getElementById('listRombel');
+                listR.innerHTML = data.kelasList.length ? data.kelasList.map(k => 
+                    `<li class="list-group-item">📌 Kelas / Rombel: <strong>${k.nama_kelas}</strong></li>`
+                ).join('') : '<li class="list-group-item text-muted">Belum ada rombel</li>';
+
+                // Render Siswa
+                const listS = document.getElementById('listSiswa');
+                listS.innerHTML = data.siswaList.length ? data.siswaList.map(s => 
+                    `<li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${s.nama} <span class="badge bg-secondary">${s.nama_kelas}</span>
+                    </li>`
+                ).join('') : '<li class="list-group-item text-muted">Belum ada siswa</li>';
+
+                modalLihatBs.show();
+            } catch (err) {
+                alert('Gagal mengambil detail sekolah');
+            }
+        }
 
         function editSekolah(id, nama) {
             document.getElementById('editNamaSekolah').value = nama;
@@ -226,6 +319,22 @@
             document.getElementById('editUsernameAdmin').value = username;
             document.getElementById('formEditAdmin').action = '/api/admin/edit/' + id;
             modalAdminBs.show();
+        }
+
+        // Fungsi Toggle Intip Password (Lihat / Sembunyikan)
+        function togglePassword(inputId, iconId) {
+            const passInput = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                passInput.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
         }
     </script>
 </body>
