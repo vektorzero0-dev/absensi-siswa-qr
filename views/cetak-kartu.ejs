@@ -135,9 +135,10 @@
     <!-- NAVBAR HEADER ATAS (NO PRINT) -->
     <nav class="no-print bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-teal-500/50">
         <div class="flex items-center gap-3">
-            <a href="/admin" class="btn-interactive bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-xl border border-teal-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
-                <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Dashboard</span>
-            </a>
+            <!-- KODE BARU: -->
+<button type="button" onclick="window.close(); if(!window.closed){ history.back(); }" class="btn-interactive bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-xl border border-teal-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
+    <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Dashboard</span>
+</button>
             
             <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
                 UPTD SD NEGERI 1 KARYA MULYA SARI
