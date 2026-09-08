@@ -58,7 +58,8 @@ async function initDB() {
             );
             ALTER TABLE kelas ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;
         `);
-// 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS)
+
+        // 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -136,7 +137,8 @@ async function initDB() {
         `, [currentSekolahId]);
 
         console.log("✅ Database Multi-Tenant Initialized: SUPER_ADMIN & Multi-Sekolah Siap!");
-        
+    } catch (err) {
+        console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
     }
 }
 initDB();
