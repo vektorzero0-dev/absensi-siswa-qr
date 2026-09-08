@@ -488,6 +488,43 @@ app.post('/api/admin/hapus/:id', async (req, res) => {
     }
 });
 
+// ENDPOINT AMBIL DETAIL SEKOLAH (UNTUK MODAL LIHAT/INTIP SUPER ADMIN)
+app.get('/api/sekolah/detail/:id', async (req, res) => {
+    const sekolahId = parseInt(req.params.id);
+    try {
+        const sekolah = await pool.query('SELECT nama_sekolah FROM sekolah WHERE id = $1', [sekolahId]);
+        if (sekolah.rows.length === 0) return res.status(404).json({ success: false, message: 'Sekolah tidak ditemukan' });
+
+        const pengguna = await pool.query(`
+            SELECT u.nama, u.username, u.role, COALESCE(k.nama_kelas, 'Tanpa Penugasan / Guru Mapel') AS nama_kelas 
+            FROM users u 
+            LEFT JOIN kelas k ON u.kelas_id = k.id 
+            WHERE u.sekolah_id = $1 AND u.role != 'SUPER_ADMIN'
+            ORDER BY u.id ASC
+        `, [sekolahId]);
+
+        const kelas = await pool.query('SELECT nama_kelas FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC', [sekolahId]);
+        
+        const siswa = await pool.query(`
+            SELECT s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
+            FROM siswa s 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
+            ORDER BY s.nama ASC
+        `, [sekolahId]);
+
+        return res.json({
+            success: true,
+            namaSekolah: sekolah.rows[0].nama_sekolah,
+            penggunaList: pengguna.rows,
+            kelasList: kelas.rows,
+            siswaList: siswa.rows
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
