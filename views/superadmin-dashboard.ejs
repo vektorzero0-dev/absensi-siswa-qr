@@ -3,124 +3,355 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Dashboard - SaaS Presensi</title>
+    <title>Super Admin Control Center - Cyber Edition</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Orbitron & Share Tech Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --cyber-bg: #030a0e;
+            --cyber-card: rgba(10, 25, 35, 0.85);
+            --neon-green: #00ff66;
+            --neon-cyan: #00f3ff;
+            --neon-red: #ff0055;
+            --neon-yellow: #ffb700;
+            --neon-blue: #0088ff;
+            --border-glow: rgba(0, 243, 255, 0.3);
+            --text-glow: 0 0 8px rgba(0, 243, 255, 0.6);
+        }
+
+        body {
+            background-color: var(--cyber-bg);
+            color: #d1f4ff;
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Canvas Matrix Background */
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.18;
+            pointer-events: none;
+        }
+
+        /* Typography & Cyber Effect */
+        h1, h2, h3, h4, h5, .cyber-font {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        /* Top Navbar Cyber */
+        .navbar-cyber {
+            background: rgba(3, 15, 22, 0.9);
+            border-bottom: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Cyber Cards */
+        .cyber-card {
+            background: var(--cyber-card);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(0, 243, 255, 0.05);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .cyber-card:hover {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.25);
+        }
+
+        .cyber-header {
+            background: rgba(0, 243, 255, 0.08);
+            border-bottom: 1px solid var(--border-glow);
+            padding: 12px 20px;
+            color: var(--neon-cyan);
+            text-shadow: var(--text-glow);
+        }
+
+        .cyber-header-green {
+            background: rgba(0, 255, 102, 0.08);
+            border-bottom: 1px solid rgba(0, 255, 102, 0.3);
+            color: var(--neon-green);
+        }
+
+        /* Forms & Inputs */
+        .form-control, .input-group-text {
+            background-color: rgba(5, 18, 26, 0.8) !important;
+            border: 1px solid var(--border-glow) !important;
+            color: var(--neon-cyan) !important;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.5) !important;
+            border-color: var(--neon-cyan) !important;
+        }
+
+        .form-control::placeholder {
+            color: rgba(0, 243, 255, 0.4);
+        }
+
+        /* Buttons Cyber */
+        .btn-cyber-primary {
+            background: transparent;
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+        .btn-cyber-primary:hover {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .btn-cyber-success {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            font-family: 'Orbitron', sans-serif;
+        }
+        .btn-cyber-success:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        .btn-cyber-danger {
+            background: transparent;
+            border: 1px solid var(--neon-red);
+            color: var(--neon-red);
+        }
+        .btn-cyber-danger:hover {
+            background: var(--neon-red);
+            color: #fff;
+            box-shadow: 0 0 15px var(--neon-red);
+        }
+
+        .btn-cyber-warning {
+            background: transparent;
+            border: 1px solid var(--neon-yellow);
+            color: var(--neon-yellow);
+        }
+        .btn-cyber-warning:hover {
+            background: var(--neon-yellow);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-yellow);
+        }
+
+        /* Tables */
+        .table-cyber {
+            color: #d1f4ff;
+            background: transparent;
+        }
+
+        .table-cyber th {
+            background: rgba(0, 243, 255, 0.1);
+            color: var(--neon-cyan);
+            border-bottom: 2px solid var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+        }
+
+        .table-cyber td {
+            border-bottom: 1px solid rgba(0, 243, 255, 0.1);
+            background: transparent !important;
+            color: #c0eaef;
+        }
+
+        .tr-danger td {
+            background: rgba(255, 0, 85, 0.1) !important;
+            color: #ff99bb !important;
+        }
+
+        /* Badges */
+        .badge-cyber-success {
+            background: rgba(0, 255, 102, 0.15);
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .badge-cyber-danger {
+            background: rgba(255, 0, 85, 0.15);
+            border: 1px solid var(--neon-red);
+            color: var(--neon-red);
+        }
+
+        /* Modals */
+        .modal-content {
+            background: var(--cyber-bg);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.3);
+            color: #d1f4ff;
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--neon-cyan);
+            border: 1px solid transparent;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: rgba(0, 243, 255, 0.15);
+            border-color: var(--neon-cyan);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+
+        .list-group-item {
+            background: rgba(5, 20, 30, 0.8);
+            border: 1px solid rgba(0, 243, 255, 0.15);
+            color: #d1f4ff;
+        }
+    </style>
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-dark bg-primary mb-4">
-        <div class="container">
-            <span class="navbar-brand mb-0 h1">👑 Super Admin Center</span>
-            <div>
-                <span class="text-white me-3">Halo, <%= user.nama %></span>
-                <a href="/login" class="btn btn-outline-light btn-sm">Keluar</a>
+<body>
+    <!-- Background Canvas Matrix -->
+    <canvas id="matrixCanvas"></canvas>
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-cyber navbar-dark mb-4 px-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 cyber-font text-info">
+                <i class="bi bi-cpu"></i> SUPER ADMIN // CONTROL CENTER
+            </span>
+            <div class="d-flex align-items-center">
+                <span class="text-info me-3 d-none d-md-inline">
+                    <i class="bi bi-person-badge"></i> OPERATOR: <strong class="text-white"><%= user.nama %></strong>
+                </span>
+                <a href="/login" class="btn btn-cyber-danger btn-sm">
+                    <i class="bi bi-power"></i> LOGOUT
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container-fluid px-4">
         <div class="row">
-            <!-- Form Tambah Sekolah Baru -->
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="card-title mb-0">➕ Pendaftaran Sekolah Baru</h5>
+            <!-- Form Pendaftaran Sekolah Baru -->
+            <div class="col-lg-4 mb-4">
+                <div class="cyber-card">
+                    <div class="cyber-header cyber-header-green d-flex align-items-center">
+                        <i class="bi bi-building-add me-2 fs-5"></i>
+                        <h5 class="mb-0">PENDAFTARAN SEKOLAH</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-3">
                         <form action="/api/sekolah/tambah" method="POST">
                             <div class="mb-3">
-                                <label class="form-label">Nama Sekolah Resmi</label>
-                                <input type="text" name="nama_sekolah" class="form-control" placeholder="Contoh: SDN 03 Pagardewa" required>
+                                <label class="form-label text-info">NAMA SEKOLAH RESMI</label>
+                                <input type="text" name="nama_sekolah" class="form-control" placeholder="Ex: SDN 03 Pagardewa" required>
                             </div>
-                            <hr>
-                            <h6>Akun Admin Sekolah (Operator)</h6>
+                            <hr class="border-secondary">
+                            <h6 class="text-success cyber-font mb-3"><i class="bi bi-person-gear"></i> AKUN ADMIN SEKOLAH</h6>
                             <div class="mb-3">
-                                <label class="form-label">Nama Admin</label>
-                                <input type="text" name="admin_nama" class="form-control" placeholder="Contoh: Pak Budi (Admin)">
+                                <label class="form-label text-info">NAMA ADMIN</label>
+                                <input type="text" name="admin_nama" class="form-control" placeholder="Ex: Pak Budi (Operator)">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Username Admin</label>
+                                <label class="form-label text-info">USERNAME ADMIN</label>
                                 <input type="text" name="admin_username" class="form-control" placeholder="admin_sd3" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Password Admin</label>
+                                <label class="form-label text-info">PASSWORD ADMIN</label>
                                 <div class="input-group">
                                     <input type="password" id="inputPassTambah" name="admin_password" class="form-control" placeholder="******" required>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('inputPassTambah', 'iconPassTambah')">
+                                    <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassTambah', 'iconPassTambah')">
                                         <i id="iconPassTambah" class="bi bi-eye"></i>
                                     </button>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success w-100">Daftarkan Sekolah & Admin</button>
+                            <button type="submit" class="btn btn-cyber-success w-100 py-2 mt-2">
+                                <i class="bi bi-plus-circle"></i> INSIALISASI SEKOLAH
+                            </button>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <!-- Daftar Sekolah & Admin Terdaftar -->
-            <div class="col-md-8">
+            <!-- Tabel Monitoring & Kendali Data -->
+            <div class="col-lg-8">
                 <!-- Tabel Sekolah -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">🏫 Daftar Sekolah Terdaftar</h5>
-                        <span class="badge bg-info">Kendali Penuh Akses</span>
+                <div class="cyber-card mb-4">
+                    <div class="cyber-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-buildings"></i> DAFTAR SEKOLAH TERDAFTAR</h5>
+                        <span class="badge badge-cyber-success">SYSTEM ONLINE</span>
                     </div>
                     <div class="card-body p-0 table-responsive">
-                        <table class="table table-striped align-middle mb-0">
+                        <table class="table table-cyber align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Nama Sekolah</th>
-                                    <th>Pengguna</th>
-                                    <th>Rombel</th>
-                                    <th>Siswa</th>
-                                    <th>Status Akses</th>
-                                    <th class="text-center">Aksi Kendali</th>
+                                    <th>NAMA SEKOLAH</th>
+                                    <th>PENGGUNA</th>
+                                    <th>ROMBEL</th>
+                                    <th>SISWA</th>
+                                    <th>STATUS</th>
+                                    <th class="text-center">KENDALI</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <% sekolahList.forEach(s => { %>
-                                    <tr class="<%= s.is_active ? '' : 'table-danger' %>">
-                                        <td><strong>#<%= s.id %></strong></td>
+                                    <tr class="<%= s.is_active ? '' : 'tr-danger' %>">
+                                        <td><strong class="text-info">#<%= s.id %></strong></td>
                                         <td>
-                                            <strong><%= s.nama_sekolah %></strong>
+                                            <strong class="text-white"><%= s.nama_sekolah %></strong>
                                             <% if (!s.is_active) { %>
-                                                <br><small class="text-danger"><i>(Akses Ditangguhkan)</i></small>
+                                                <br><small class="text-danger">[AKSES DITANGGUHKAN]</small>
                                             <% } %>
                                         </td>
-                                        <td><%= s.total_pengguna %> Pengguna</td>
-                                        <td><%= s.total_kelas %> Rombel</td>
-                                        <td><%= s.total_siswa %> Siswa</td>
+                                        <td><%= s.total_pengguna %> Acc</td>
+                                        <td><%= s.total_kelas %> Class</td>
+                                        <td><%= s.total_siswa %> User</td>
                                         <td>
                                             <% if (s.is_active) { %>
-                                                <span class="badge bg-success">AKTIF</span>
+                                                <span class="badge badge-cyber-success">ACTIVE</span>
                                             <% } else { %>
-                                                <span class="badge bg-danger">NONAKTIF</span>
+                                                <span class="badge badge-cyber-danger">DISABLED</span>
                                             <% } %>
                                         </td>
                                         <td class="text-center">
-                                            <!-- Tombol Lihat / Intip Detail Sekolah -->
-                                            <button class="btn btn-sm btn-info text-white me-1" onclick="lihatSekolah('<%= s.id %>')">
-                                                👁️ Lihat
+                                            <!-- Button Intip / Detail -->
+                                            <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Detail">
+                                                <i class="bi bi-eye"></i>
                                             </button>
 
-                                            <!-- Tombol Sakelar Aktif / Nonaktifkan -->
+                                            <!-- Button Toggle Status -->
                                             <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
                                                 <% if (s.is_active) { %>
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger me-1" onclick="return confirm('Nonaktifkan sekolah ini? Seluruh admin & guru sekolah ini tidak akan bisa login.')">
-                                                        🚫 Nonaktifkan
+                                                    <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
+                                                        <i class="bi bi-slash-circle"></i>
                                                     </button>
                                                 <% } else { %>
-                                                    <button type="submit" class="btn btn-sm btn-outline-success me-1">
-                                                        ✅ Aktifkan Kembali
+                                                    <button type="submit" class="btn btn-cyber-success btn-sm me-1" title="Aktifkan">
+                                                        <i class="bi bi-check-circle"></i>
                                                     </button>
                                                 <% } %>
                                             </form>
 
-                                            <button class="btn btn-sm btn-warning me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')">Edit</button>
+                                            <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
                                             
-                                            <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini beserta seluruh data di dalamnya?')">
-                                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                            <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini?')">
+                                                <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </form>
                                         </td>
                                     </tr>
@@ -131,30 +362,34 @@
                 </div>
 
                 <!-- Tabel Admin Sekolah -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="card-title mb-0">👤 Daftar Akun Admin Sekolah</h5>
+                <div class="cyber-card">
+                    <div class="cyber-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-shield-lock"></i> OPR KREDENSIAL OPERATOR SEKOLAH</h5>
                     </div>
                     <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-cyber align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nama Admin</th>
-                                    <th>Username</th>
-                                    <th>Sekolah</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th>NAMA OPERATOR</th>
+                                    <th>USERNAME</th>
+                                    <th>SEKOLAH TERHUBUNG</th>
+                                    <th class="text-center">AKSI</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <% adminList.forEach(a => { %>
                                     <tr>
-                                        <td><%= a.nama %></td>
-                                        <td><code><%= a.username %></code></td>
+                                        <td class="text-white"><%= a.nama %></td>
+                                        <td><code class="text-info"><%= a.username %></code></td>
                                         <td><%= a.nama_sekolah %></td>
                                         <td class="text-center">
-                                            <button class="btn btn-sm btn-warning me-1" onclick="editAdmin('<%= a.id %>', '<%= a.nama %>', '<%= a.username %>')">Edit</button>
+                                            <button class="btn btn-cyber-warning btn-sm me-1" onclick="editAdmin('<%= a.id %>', '<%= a.nama %>', '<%= a.username %>')">
+                                                <i class="bi bi-pencil"></i> EDIT
+                                            </button>
                                             <form action="/api/admin/hapus/<%= a.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus akun admin ini?')">
-                                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                                <button type="submit" class="btn btn-cyber-danger btn-sm">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </form>
                                         </td>
                                     </tr>
@@ -167,24 +402,24 @@
         </div>
     </div>
 
-    <!-- Modal Lihat / Detail Sekolah -->
+    <!-- Modal Lihat Detail Sekolah -->
     <div class="modal fade" id="modalLihatSekolah" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="lihatJudulSekolah">Detail Data Sekolah</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-info cyber-font" id="lihatJudulSekolah">DATABASE INSPECTOR</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <ul class="nav nav-tabs mb-3" id="detailTab" role="tablist">
+                    <ul class="nav nav-tabs mb-3 border-secondary" id="detailTab" role="tablist">
                         <li class="nav-item">
-                            <button class="nav-link active" id="pengguna-tab" data-bs-toggle="tab" data-bs-target="#pengguna-panel">👤 Pengguna / Guru</button>
+                            <button class="nav-link active" id="pengguna-tab" data-bs-toggle="tab" data-bs-target="#pengguna-panel">PENGGUNA / GURU</button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link" id="rombel-tab" data-bs-toggle="tab" data-bs-target="#rombel-panel">🏫 Rombel</button>
+                            <button class="nav-link" id="rombel-tab" data-bs-toggle="tab" data-bs-target="#rombel-panel">ROMBEL</button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link" id="siswa-tab" data-bs-toggle="tab" data-bs-target="#siswa-panel">🎓 Siswa</button>
+                            <button class="nav-link" id="siswa-tab" data-bs-toggle="tab" data-bs-target="#siswa-panel">SISWA</button>
                         </li>
                     </ul>
                     <div class="tab-content" id="detailTabContent">
@@ -208,19 +443,19 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="formEditSekolah" method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit Nama Sekolah</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title text-info cyber-font">EDIT ENTITAS SEKOLAH</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Nama Sekolah Resmi</label>
+                            <label class="form-label text-info">NAMA SEKOLAH RESMI</label>
                             <input type="text" id="editNamaSekolah" name="nama_sekolah" class="form-control" required>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-cyber-danger" data-bs-dismiss="modal">BATAL</button>
+                        <button type="submit" class="btn btn-cyber-success">SIMPAN</button>
                     </div>
                 </form>
             </div>
@@ -232,79 +467,119 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="formEditAdmin" method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit Akun Admin Sekolah</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title text-info cyber-font">EDIT KREDENSIAL ADMIN</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Nama Admin</label>
+                            <label class="form-label text-info">NAMA ADMIN</label>
                             <input type="text" id="editNamaAdmin" name="nama" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Username</label>
+                            <label class="form-label text-info">USERNAME</label>
                             <input type="text" id="editUsernameAdmin" name="username" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Password Baru *(kosongkan jika tidak diganti)*</label>
+                            <label class="form-label text-info">PASSWORD BARU *(KOSONGKAN JIKA TIDAK DIBUAT BARU)*</label>
                             <div class="input-group">
-                                <input type="password" id="inputPassEdit" name="password" class="form-control" placeholder="Password baru">
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('inputPassEdit', 'iconPassEdit')">
+                                <input type="password" id="inputPassEdit" name="password" class="form-control" placeholder="Password Baru">
+                                <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassEdit', 'iconPassEdit')">
                                     <i id="iconPassEdit" class="bi bi-eye"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-cyber-danger" data-bs-dismiss="modal">BATAL</button>
+                        <button type="submit" class="btn btn-cyber-success">UPDATE DATA</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
+    <!-- Script JS Bootstrap & Matrix Engine -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Matrix Rain Canvas Effect
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-/<>[]{}';
+        const fontSize = 14;
+        let columns = Math.floor(canvas.width / fontSize);
+        let drops = [];
+
+        for (let i = 0; i < columns; i++) {
+            drops[i] = Math.floor(Math.random() * -100);
+        }
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(3, 10, 14, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#00ff66';
+            ctx.font = fontSize + 'px "Share Tech Mono", monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                const x = i * fontSize;
+                const y = drops[i] * fontSize;
+
+                ctx.fillText(text, x, y);
+
+                if (y > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 35);
+
+        // App Modals & Handlers
         const modalSekolahBs = new bootstrap.Modal(document.getElementById('modalSekolah'));
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
         const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
 
-        // Fungsi intip/lihat detail sekolah
         async function lihatSekolah(id) {
             try {
                 const res = await fetch('/api/sekolah/detail/' + id);
                 const data = await res.json();
                 if (!data.success) return alert(data.message);
 
-                document.getElementById('lihatJudulSekolah').innerText = '🏫 Detail Data: ' + data.namaSekolah;
+                document.getElementById('lihatJudulSekolah').innerText = 'INSPECTION // ' + data.namaSekolah;
 
-                // Render Pengguna
                 const listP = document.getElementById('listPengguna');
                 listP.innerHTML = data.penggunaList.length ? data.penggunaList.map(p => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div><strong>${p.nama}</strong> (${p.username})</div>
-                        <span class="badge bg-primary rounded-pill">${p.role} - ${p.nama_kelas}</span>
+                        <div><strong class="text-info">${p.nama}</strong> (${p.username})</div>
+                        <span class="badge badge-cyber-success">${p.role} - ${p.nama_kelas}</span>
                     </li>`
                 ).join('') : '<li class="list-group-item text-muted">Belum ada pengguna</li>';
 
-                // Render Rombel
                 const listR = document.getElementById('listRombel');
                 listR.innerHTML = data.kelasList.length ? data.kelasList.map(k => 
-                    `<li class="list-group-item">📌 Kelas / Rombel: <strong>${k.nama_kelas}</strong></li>`
+                    `<li class="list-group-item text-info">CLASS NODE: <strong>${k.nama_kelas}</strong></li>`
                 ).join('') : '<li class="list-group-item text-muted">Belum ada rombel</li>';
 
-                // Render Siswa
                 const listS = document.getElementById('listSiswa');
                 listS.innerHTML = data.siswaList.length ? data.siswaList.map(s => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center">
-                        ${s.nama} <span class="badge bg-secondary">${s.nama_kelas}</span>
+                        ${s.nama} <span class="badge badge-cyber-success">${s.nama_kelas}</span>
                     </li>`
                 ).join('') : '<li class="list-group-item text-muted">Belum ada siswa</li>';
 
                 modalLihatBs.show();
             } catch (err) {
-                alert('Gagal mengambil detail sekolah');
+                alert('Gagal mengambil detail data dari server.');
             }
         }
 
@@ -321,7 +596,6 @@
             modalAdminBs.show();
         }
 
-        // Fungsi Toggle Intip Password (Lihat / Sembunyikan)
         function togglePassword(inputId, iconId) {
             const passInput = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
