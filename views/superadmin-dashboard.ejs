@@ -20,7 +20,7 @@
     <div class="container">
         <div class="row">
             <!-- Form Tambah Sekolah Baru -->
-            <div class="col-md-5 mb-4">
+            <div class="col-md-4 mb-4">
                 <div class="card shadow-sm">
                     <div class="card-header bg-success text-white">
                         <h5 class="card-title mb-0">➕ Pendaftaran Sekolah Baru</h5>
@@ -52,19 +52,21 @@
             </div>
 
             <!-- Daftar Sekolah & Admin Terdaftar -->
-            <div class="col-md-7">
+            <div class="col-md-8">
+                <!-- Tabel Sekolah -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-dark text-white">
                         <h5 class="card-title mb-0">🏫 Daftar Sekolah Terdaftar</h5>
                     </div>
-                    <div class="card-body p-0">
-                        <table class="table table-striped mb-0">
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-striped align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Nama Sekolah</th>
-                                    <th>Total Rombel</th>
-                                    <th>Total Siswa</th>
+                                    <th>Rombel</th>
+                                    <th>Siswa</th>
+                                    <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -74,6 +76,12 @@
                                         <td><%= s.nama_sekolah %></td>
                                         <td><%= s.total_kelas %> Rombel</td>
                                         <td><%= s.total_siswa %> Siswa</td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-warning me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')">Edit</button>
+                                            <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus sekolah ini beserta seluruh data di dalamnya?')">
+                                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -81,17 +89,19 @@
                     </div>
                 </div>
 
+                <!-- Tabel Admin -->
                 <div class="card shadow-sm">
                     <div class="card-header bg-secondary text-white">
                         <h5 class="card-title mb-0">👤 Daftar Akun Admin Sekolah</h5>
                     </div>
-                    <div class="card-body p-0">
-                        <table class="table table-hover mb-0">
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>Nama Admin</th>
                                     <th>Username</th>
                                     <th>Sekolah</th>
+                                    <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -100,6 +110,12 @@
                                         <td><%= a.nama %></td>
                                         <td><code><%= a.username %></code></td>
                                         <td><%= a.nama_sekolah %></td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-warning me-1" onclick="editAdmin('<%= a.id %>', '<%= a.nama %>', '<%= a.username %>')">Edit</button>
+                                            <form action="/api/admin/hapus/<%= a.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus akun admin ini?')">
+                                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 <% }); %>
                             </tbody>
@@ -109,5 +125,80 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Edit Sekolah -->
+    <div class="modal fade" id="modalSekolah" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formEditSekolah" method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Nama Sekolah</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nama Sekolah Resmi</label>
+                            <input type="text" id="editNamaSekolah" name="nama_sekolah" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Admin -->
+    <div class="modal fade" id="modalAdmin" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formEditAdmin" method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Akun Admin Sekolah</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nama Admin</label>
+                            <input type="text" id="editNamaAdmin" name="nama" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" id="editUsernameAdmin" name="username" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password Baru *(kosongkan jika tidak diganti)*</label>
+                            <input type="password" name="password" class="form-control" placeholder="Password baru">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const modalSekolahBs = new bootstrap.Modal(document.getElementById('modalSekolah'));
+        const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
+
+        function editSekolah(id, nama) {
+            document.getElementById('editNamaSekolah').value = nama;
+            document.getElementById('formEditSekolah').action = '/api/sekolah/edit/' + id;
+            modalSekolahBs.show();
+        }
+
+        function editAdmin(id, nama, username) {
+            document.getElementById('editNamaAdmin').value = nama;
+            document.getElementById('editUsernameAdmin').value = username;
+            document.getElementById('formEditAdmin').action = '/api/admin/edit/' + id;
+            modalAdminBs.show();
+        }
+    </script>
 </body>
 </html>
