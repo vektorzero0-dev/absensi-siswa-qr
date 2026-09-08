@@ -1,3 +1,4 @@
+const cron = require('node-cron');
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -1159,5 +1160,97 @@ app.get('/api/absensi/export', async (req, res) => {
 });
 
 app.get('/ping', (req, res) => res.send('OK'));
+// =========================================================================
+// FITUR OTOMATIS: KIRIM NOTIFIKASI WA SISWA TIDAK HADIR / ALPA
+// Dijalankan Otomatis Setiap Hari Senin - Sabtu Jam 09:00 WIB
+// =========================================================================
+cron.schedule('0 9 * * 1-6', async () => {
+    console.log('⏰ [CRON JOB] Memulai pengecekan siswa yang belum presensi masuk jam 09:00 WIB...');
 
+    try {
+        const querySiswaAbsen = `
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas, u.id AS wali_kelas_user_id
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN users u ON u.kelas_id = s.kelas_id AND u.role = 'WALI_KELAS'
+            WHERE s.id NOT IN (
+                SELECT DISTINCT siswa_id 
+                FROM absensi 
+                WHERE DATE(waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE 
+                  AND tipe = 'MASUK'
+            )
+        `;
+
+        const result = await pool.query(querySiswaAbsen);
+        const siswaBelumPresensi = result.rows;
+
+        if (siswaBelumPresensi.length === 0) {
+            console.log('✅ Semua siswa telah melakukan presensi masuk hari ini.');
+            return;
+        }
+
+        console.log(`📢 Ditemukan ${siswaBelumPresensi.length} siswa belum presensi. Mengirimkan notifikasi WA...`);
+
+        const settingWaRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
+        const modePengirim = settingWaRes.rows.length > 0 ? settingWaRes.rows[0].value : 'ADMIN';
+
+        const settingSekolahRes = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
+        const namaSekolah = settingSekolahRes.rows.length > 0 ? settingSekolahRes.rows[0].value : 'UPTD SD NEGERI 1 KARYA MULYA SARI';
+
+        const now = new Date();
+        const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        for (const siswa of siswaBelumPresensi) {
+            if (!siswa.nomor_wa_ortu) continue;
+
+            let waClient = null;
+
+            if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
+                waClient = waSessions[siswa.wali_kelas_user_id];
+            }
+
+            if (!waClient) {
+                waClient = waSessions[1];
+            }
+
+            if (!waClient) {
+                const availableKeys = Object.keys(waSessions);
+                if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
+            }
+
+            if (waClient) {
+                let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+                if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+                const formattedJid = phone + '@s.whatsapp.net';
+
+                const pesan = `*${namaSekolah.toUpperCase()}*\n` +
+                              `*PEMBERITAHUAN KETIDAKHADIRAN SISWA*\n` +
+                              `_________________________________________\n\n` +
+                              `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                              `Diberitahukan bahwa hingga pukul *09:00 WIB*, putra/putri Anda belum melakukan presensi kehadiran di sekolah:\n\n` +
+                              `• Nama Siswa : *${siswa.nama}*\n` +
+                              `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                              `• Tanggal : *${tglWib}*\n` +
+                              `• Status : *BELUM PRESENSI / ALPA* ⚠️\n\n` +
+                              `Apabila putra/putri Anda berhalangan hadir karena sakit atau izin, mohon konfirmasinya kepada Wali Kelas.\n\n` +
+                              `Terima kasih atas perhatiannya.\n\n` +
+                              `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+
+                try {
+                    await waClient.sendMessage(formattedJid, { text: pesan });
+                    console.log(`✅ WA Alpa terkirim ke orang tua: ${siswa.nama} (${phone})`);
+                } catch (sendErr) {
+                    console.error(`❌ Gagal kirim WA ke ${siswa.nama}:`, sendErr.message);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+        }
+
+        console.log('🎉 Selesai memproses seluruh notifikasi ketidakhadiran.');
+
+    } catch (err) {
+        console.error('❌ Error Cron Job Ketidakhadiran:', err.message);
+    }
+});
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server Presensi Aktif di Port ${PORT}`));
