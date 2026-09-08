@@ -352,18 +352,20 @@ app.get('/superadmin', async (req, res) => {
         if (userRes.rows.length === 0) return res.redirect('/');
 
         // Ganti query sekolahRes di dalam app.get('/superadmin', ...) di server.js
+        // Ganti query sekolahRes di dalam app.get('/superadmin', ...) pada server.js
         const sekolahRes = await pool.query(`
             SELECT s.id, s.nama_sekolah, COALESCE(s.is_active, TRUE) AS is_active,
                    COUNT(DISTINCT k.id) AS total_kelas,
                    COUNT(DISTINCT sis.id) AS total_siswa,
-                   COUNT(DISTINCT CASE WHEN u.role = 'WALI_KELAS' THEN u.id END) AS total_guru
-            FROM sekolah s
-            LEFT JOIN kelas k ON k.sekolah_id = s.id
-            LEFT JOIN siswa sis ON sis.kelas_id = k.id
-            LEFT JOIN users u ON u.sekolah_id = s.id
-            GROUP BY s.id, s.nama_sekolah, s.is_active
-            ORDER BY s.id ASC
+                   COUNT(DISTINCT CASE WHEN u.role != 'SUPER_ADMIN' THEN u.id END) AS total_pengguna
+             FROM sekolah s
+             LEFT JOIN kelas k ON k.sekolah_id = s.id
+             LEFT JOIN siswa sis ON sis.kelas_id = k.id
+             LEFT JOIN users u ON u.sekolah_id = s.id
+             GROUP BY s.id, s.nama_sekolah, s.is_active
+             ORDER BY s.id ASC
         `);
+        
         const adminRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.sekolah_id, COALESCE(s.nama_sekolah, 'Sistem Global') AS nama_sekolah
             FROM users u
