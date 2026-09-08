@@ -58,14 +58,17 @@ async function initDB() {
             );
             ALTER TABLE kelas ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;
         `);
-
-        // 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS)
+// 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS)
         await pool.query(`
-    INSERT INTO users (nama, username, password, role, sekolah_id)
-    VALUES ('Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
-    ON CONFLICT (username) 
-    DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
-`);
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                nama VARCHAR(100) NOT NULL,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'WALI_KELAS',
+                kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL,
+                sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE
+            );
             ALTER TABLE users ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;
         `);
 
@@ -116,25 +119,24 @@ async function initDB() {
             SELECT setval('sekolah_id_seq', (SELECT GREATEST(MAX(id), 1) FROM sekolah));
         `, [currentSekolahId, defaultNama]);
 
-// Paksa buat/update akun superadmin berdasarkan USERNAME
-await pool.query(`
-    INSERT INTO users (nama, username, password, role, sekolah_id)
-    VALUES ('Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
-    ON CONFLICT (username) 
-    DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
-`);
+        // Paksa buat/update akun superadmin berdasarkan USERNAME
+        await pool.query(`
+            INSERT INTO users (nama, username, password, role, sekolah_id)
+            VALUES ('Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
+            ON CONFLICT (username) 
+            DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
+        `);
 
-        // Akun 2: ADMIN SEKOLAH UTAMA
-       await pool.query(`
-    INSERT INTO users (nama, username, password, role, sekolah_id)
-    VALUES ('Admin Sekolah', 'admin', 'admin123', 'ADMIN', $1)
-    ON CONFLICT (username) 
-    DO UPDATE SET password = 'admin123', role = 'ADMIN', sekolah_id = $1;
-`, [currentSekolahId]);
+        // Paksa buat/update akun admin sekolah berdasarkan USERNAME
+        await pool.query(`
+            INSERT INTO users (nama, username, password, role, sekolah_id)
+            VALUES ('Admin Sekolah', 'admin', 'admin123', 'ADMIN', $1)
+            ON CONFLICT (username) 
+            DO UPDATE SET password = 'admin123', role = 'ADMIN', sekolah_id = $1;
+        `, [currentSekolahId]);
 
         console.log("✅ Database Multi-Tenant Initialized: SUPER_ADMIN & Multi-Sekolah Siap!");
-    } catch (err) {
-        console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
+        
     }
 }
 initDB();
