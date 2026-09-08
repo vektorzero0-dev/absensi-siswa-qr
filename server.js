@@ -372,9 +372,12 @@ app.get('/admin', async (req, res) => {
         });
 
         const usersCleaned = usersRes.rows.map(u => ({ ...u, nama: bersihkanGelar(u.nama) }));
+        
+        // MENGAMBIL SEKOLAH_ID DARI ENV / DEFAULT 1
+        const sekolahId = process.env.SEKOLAH_ID || 1;
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            // FORMAT UNIK MULTI-SEKOLAH: K[kelas_id]-S[siswa_id]
-            const qrImage = await generateQRDataURL(`K${s.kelas_id || 0}-S${s.id}`);
+            // FORMAT UNIK MULTI-SEKOLAH: SCH[sekolah_id]-S[siswa_id]
+            const qrImage = await generateQRDataURL(`SCH${sekolahId}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
@@ -436,10 +439,11 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id ORDER BY s.nama ASC
         `);
-            
+
+        const sekolahId = process.env.SEKOLAH_ID || 1;
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            // FORMAT UNIK MULTI-SEKOLAH: K[kelas_id]-S[siswa_id]
-            const qrImage = await generateQRDataURL(`K${s.kelas_id || 0}-S${s.id}`);
+            // FORMAT UNIK MULTI-SEKOLAH: SCH[sekolah_id]-S[siswa_id]
+            const qrImage = await generateQRDataURL(`SCH${sekolahId}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
@@ -515,9 +519,10 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        const sekolahId = process.env.SEKOLAH_ID || 1;
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            // FORMAT UNIK MULTI-SEKOLAH: K[kelas_id]-S[siswa_id]
-            const qrImage = await generateQRDataURL(`K${s.kelas_id || 0}-S${s.id}`);
+            // FORMAT UNIK MULTI-SEKOLAH: SCH[sekolah_id]-S[siswa_id]
+            const qrImage = await generateQRDataURL(`SCH${sekolahId}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
@@ -858,7 +863,7 @@ app.post('/api/scan', async (req, res) => {
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
 
     try {
-        // PENANGANAN SCAN PINTAR: Mendukung format K[kelas_id]-S[siswa_id] dan format angka ID lama
+        // PENANGANAN SCAN PINTAR: Mendukung format SCH[sekolah_id]-S[siswa_id], K[kelas_id]-S[siswa_id], maupun angka ID saja
         let parsedSiswaId;
         const rawStr = siswa_id.toString().trim();
         
