@@ -41,12 +41,14 @@ app.use(session({
 // ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE MULTI-TENANT ----------------- //
 async function initDB() {
     try {
-        // 1. Tabel Sekolah
+        // 1. Tabel Sekolah (Dengan Kolom is_active)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sekolah (
                 id SERIAL PRIMARY KEY,
-                nama_sekolah VARCHAR(100) NOT NULL
+                nama_sekolah VARCHAR(100) NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE
             );
+            ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
         `);
 
         // 2. Tabel Kelas (Terhubung ke Sekolah)
@@ -115,7 +117,7 @@ async function initDB() {
         const defaultNama = oldSetting.rows.length > 0 ? oldSetting.rows[0].value : 'SEKOLAH UTAMA';
 
         await pool.query(`
-            INSERT INTO sekolah (id, nama_sekolah) VALUES ($1, $2)
+            INSERT INTO sekolah (id, nama_sekolah, is_active) VALUES ($1, $2, TRUE)
             ON CONFLICT (id) DO NOTHING;
             SELECT setval('sekolah_id_seq', (SELECT GREATEST(MAX(id), 1) FROM sekolah));
         `, [currentSekolahId, defaultNama]);
@@ -306,10 +308,26 @@ app.post('/login', async (req, res) => {
         const namaSekolah = await getNamaSekolah();
         if (!username || !password) return res.render('login', { error: 'Username dan kata sandi wajib diisi.', namaSekolah });
 
-        const result = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND password = $2', [username.trim(), password.trim()]);
+        // Tarik data user beserta status keaktifan sekolah
+        const result = await pool.query(`
+            SELECT u.*, COALESCE(s.is_active, TRUE) AS is_active 
+            FROM users u 
+            LEFT JOIN sekolah s ON u.sekolah_id = s.id 
+            WHERE LOWER(u.username) = LOWER($1) AND u.password = $2
+        `, [username.trim(), password.trim()]);
+
         if (result.rows.length === 0) return res.render('login', { error: 'Username atau kata sandi tidak valid.', namaSekolah });
 
         const user = result.rows[0];
+
+        // Ditolak login jika sekolah NONAKTIF (kecuali SUPER_ADMIN)
+        if (user.role !== 'SUPER_ADMIN' && user.is_active === false) {
+            return res.render('login', { 
+                error: 'Akses sekolah Anda telah dinonaktifkan oleh Super Admin.', 
+                namaSekolah 
+            });
+        }
+
         req.session.userId = user.id;
 
         if (user.role === 'SUPER_ADMIN') {
@@ -334,13 +352,13 @@ app.get('/superadmin', async (req, res) => {
         if (userRes.rows.length === 0) return res.redirect('/');
 
         const sekolahRes = await pool.query(`
-            SELECT s.id, s.nama_sekolah, 
+            SELECT s.id, s.nama_sekolah, COALESCE(s.is_active, TRUE) AS is_active,
                    COUNT(DISTINCT k.id) AS total_kelas,
                    COUNT(DISTINCT sis.id) AS total_siswa
             FROM sekolah s
             LEFT JOIN kelas k ON k.sekolah_id = s.id
             LEFT JOIN siswa sis ON sis.kelas_id = k.id
-            GROUP BY s.id, s.nama_sekolah
+            GROUP BY s.id, s.nama_sekolah, s.is_active
             ORDER BY s.id ASC
         `);
 
@@ -374,7 +392,7 @@ app.post('/api/sekolah/tambah', async (req, res) => {
         }
 
         await client.query('BEGIN');
-        const schRes = await client.query('INSERT INTO sekolah (nama_sekolah) VALUES ($1) RETURNING id', [nama_sekolah.trim()]);
+        const schRes = await client.query('INSERT INTO sekolah (nama_sekolah, is_active) VALUES ($1, TRUE) RETURNING id', [nama_sekolah.trim()]);
         const newSekolahId = schRes.rows[0].id;
 
         await client.query(`
@@ -389,6 +407,21 @@ app.post('/api/sekolah/tambah', async (req, res) => {
         return res.status(500).send("Gagal menambah sekolah baru: " + err.message);
     } finally {
         client.release();
+    }
+});
+
+// TOGGLE AKTIF / NONAKTIFKAN SEKOLAH
+app.post('/api/sekolah/toggle-status/:id', async (req, res) => {
+    const sekolahId = parseInt(req.params.id);
+    try {
+        await pool.query(`
+            UPDATE sekolah 
+            SET is_active = NOT COALESCE(is_active, TRUE) 
+            WHERE id = $1
+        `, [sekolahId]);
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal mengubah status keaktifan sekolah: " + err.message);
     }
 });
 
@@ -462,11 +495,12 @@ app.get('/admin', async (req, res) => {
         const currentUser = userRes.rows[0];
         const userSekolahId = currentUser.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
 
+        // DIUBAH: Sembunyikan SUPER_ADMIN dari daftar pengguna sekolah
         const usersRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
             FROM users u 
             LEFT JOIN kelas k ON u.kelas_id = k.id 
-            WHERE u.sekolah_id = $1 OR u.role = 'SUPER_ADMIN'
+            WHERE u.sekolah_id = $1 AND u.role != 'SUPER_ADMIN'
             ORDER BY u.id ASC
         `, [userSekolahId]);
 
