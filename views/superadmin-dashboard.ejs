@@ -60,64 +60,62 @@
                         <span class="badge bg-info">Kendali Penuh Akses</span>
                     </div>
                     <div class="card-body p-0 table-responsive">
-                        <table class="table table-striped align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nama Sekolah</th>
-                                    <th>Guru</th>
-                                    <th>Rombel</th>
-                                    <th>Siswa</th>
-                                    <th>Status Akses</th>
-                                    <th class="text-center">Aksi Kendali</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% sekolahList.forEach(s => { %>
-                                    <tr class="<%= s.is_active ? '' : 'table-danger' %>">
-                                        <td><strong>#<%= s.id %></strong></td>
-                                        <td>
-                                            <strong><%= s.nama_sekolah %></strong>
-                                            <% if (!s.is_active) { %>
-                                                <br><small class="text-danger"><i>(Akses Ditangguhkan)</i></small>
-                                            <% } %>
-                                        </td>
-                                        <td><%= s.total_guru %> Guru</td>
-                                        <td><%= s.total_kelas %> Rombel</td>
-                                        <td><%= s.total_siswa %> Siswa</td>
-                                        <td>
-                                            <% if (s.is_active) { %>
-                                                <span class="badge bg-success">AKTIF</span>
-                                            <% } else { %>
-                                                <span class="badge bg-danger">NONAKTIF</span>
-                                            <% } %>
-                                        </td>
-                                        <td class="text-center">
-                                            <!-- Tombol Sakelar Aktif / Nonaktifkan -->
-                                            <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
-                                                <% if (s.is_active) { %>
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger me-1" onclick="return confirm('Nonaktifkan sekolah ini? Seluruh admin & guru sekolah ini tidak akan bisa login.')">
-                                                        🚫 Nonaktifkan
-                                                    </button>
-                                                <% } else { %>
-                                                    <button type="submit" class="btn btn-sm btn-outline-success me-1">
-                                                        ✅ Aktifkan Kembali
-                                                    </button>
-                                                <% } %>
-                                            </form>
+                        <!-- Tabel Sekolah (Potongan Kode yang Diperbarui) -->
+<table class="table table-striped align-middle mb-0">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nama Sekolah</th>
+            <th>Pengguna</th>
+            <th>Rombel</th>
+            <th>Siswa</th>
+            <th>Status Akses</th>
+            <th class="text-center">Aksi Kendali</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% sekolahList.forEach(s => { %>
+            <tr class="<%= s.is_active ? '' : 'table-danger' %>">
+                <td><strong>#<%= s.id %></strong></td>
+                <td>
+                    <strong><%= s.nama_sekolah %></strong>
+                    <% if (!s.is_active) { %>
+                        <br><small class="text-danger"><i>(Akses Ditangguhkan)</i></small>
+                    <% } %>
+                </td>
+                <td><%= s.total_pengguna %> Pengguna</td>
+                <td><%= s.total_kelas %> Rombel</td>
+                <td><%= s.total_siswa %> Siswa</td>
+                <td>
+                    <% if (s.is_active) { %>
+                        <span class="badge bg-success">AKTIF</span>
+                    <% } else { %>
+                        <span class="badge bg-danger">NONAKTIF</span>
+                    <% } %>
+                </td>
+                <td class="text-center">
+                    <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
+                        <% if (s.is_active) { %>
+                            <button type="submit" class="btn btn-sm btn-outline-danger me-1" onclick="return confirm('Nonaktifkan sekolah ini? Seluruh admin & guru sekolah ini tidak akan bisa login.')">
+                                🚫 Nonaktifkan
+                            </button>
+                        <% } else { %>
+                            <button type="submit" class="btn btn-sm btn-outline-success me-1">
+                                ✅ Aktifkan Kembali
+                            </button>
+                        <% } %>
+                    </form>
 
-                                            <button class="btn btn-sm btn-warning me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')">Edit</button>
-                                            
-                                            <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini beserta seluruh data di dalamnya?')">
-                                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                    <button class="btn btn-sm btn-warning me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')">Edit</button>
+                    
+                    <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini beserta seluruh data di dalamnya?')">
+                        <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                    </form>
+                </td>
+            </tr>
+        <% }); %>
+    </tbody>
+</table>
 
                 <!-- Tabel Admin Sekolah -->
                 <div class="card shadow-sm">
