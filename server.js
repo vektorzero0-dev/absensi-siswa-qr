@@ -120,13 +120,13 @@ async function initDB() {
             SELECT setval('sekolah_id_seq', (SELECT GREATEST(MAX(id), 1) FROM sekolah));
         `, [currentSekolahId, defaultNama]);
 
-        // Akun 1: SUPER ADMIN (Bisa kelola semua sekolah)
-        // Akun 1: SUPER ADMIN (Bisa kelola semua sekolah)
-        await pool.query(`
-            INSERT INTO users (id, nama, username, password, role, sekolah_id)
-            VALUES (1, 'Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
-            ON CONFLICT (id) DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
-        `);
+// Paksa buat/update akun superadmin berdasarkan USERNAME
+await pool.query(`
+    INSERT INTO users (nama, username, password, role, sekolah_id)
+    VALUES ('Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
+    ON CONFLICT (username) 
+    DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
+`);
 
         // Akun 2: ADMIN SEKOLAH UTAMA
         await pool.query(`
