@@ -83,7 +83,7 @@
 </head>
 <body class="bg-light-animated text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased relative overflow-x-hidden">
 
-    <!-- Header Resmi Sekolah Dengan Animasi Cahaya -->
+    <!-- Header Resmi Dengan Animasi Cahaya -->
     <header class="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-900 text-white border-b-4 border-amber-500 sticky top-0 z-20 overflow-hidden shadow-lg">
         
         <!-- BOLA CAHAYA ANIMASI ATAS -->
@@ -97,7 +97,7 @@
                 </div>
                 <div>
                     <h1 class="text-xs sm:text-sm font-extrabold tracking-wide uppercase text-slate-100">
-                        <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'NAMA SEKOLAH BELUM DIATUR' %>
+                        SISTEM PRESENSI TERPADU
                     </h1>
                     <p class="text-[10px] text-blue-200 font-medium">Sistem Informasi Manajemen Presensi Terpadu Siswa</p>
                 </div>
@@ -127,14 +127,14 @@
                 </div>
             <% } %>
 
-            <form action="/login" method="POST" class="space-y-4 relative z-10">
+            <form action="/login" method="POST" class="space-y-4 relative z-10" autocomplete="off">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Pengguna (Username)</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                             <i class="fa-solid fa-user text-xs"></i>
                         </span>
-                        <input type="text" name="username" required placeholder="Masukkan username" 
+                        <input type="text" name="username" required placeholder="Masukkan username" autocomplete="off"
                             class="input-pro w-full bg-white border border-blue-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none">
                     </div>
                 </div>
@@ -145,7 +145,7 @@
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                             <i class="fa-solid fa-lock text-xs"></i>
                         </span>
-                        <input type="password" id="passwordInput" name="password" required placeholder="Masukkan kata sandi" 
+                        <input type="password" id="passwordInput" name="password" required placeholder="Masukkan kata sandi" autocomplete="new-password"
                             class="input-pro w-full bg-white border border-blue-200 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none">
                         <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 transition focus:outline-none">
                             <i class="fa-solid fa-eye text-xs" id="eyeIcon"></i>
