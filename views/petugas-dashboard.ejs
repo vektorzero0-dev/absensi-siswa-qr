@@ -54,8 +54,8 @@
                 </a>
             </div>
 
-            <!-- Panel Status WhatsApp Center -->
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm md:col-span-2 flex flex-col justify-between">
+            <!-- Panel Status WhatsApp Center (Sama dengan Admin / Wali Kelas) -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm md:col-span-2 flex flex-col justify-between space-y-4">
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Layanan WA Gateway Pusat</span>
@@ -66,19 +66,35 @@
                     </span>
                 </div>
 
-                <div class="my-3 flex items-center gap-4">
-                    <div id="qrContainer" class="hidden border p-1 rounded-lg bg-white shadow-sm">
+                <!-- Tampilan QR Code ATAU Tautan Pairing Code -->
+                <div class="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <div id="qrContainer" class="hidden border p-1 rounded-lg bg-white shadow-sm shrink-0">
                         <img id="imgQR" src="" alt="QR WA" class="w-24 h-24">
                     </div>
-                    <div>
-                        <p id="txtInfoWA" class="text-xs text-slate-600 font-medium">Memuat status koneksi WhatsApp...</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Jika mode terpusat aktif di sekolah ini, notifikasi ortu seluruh siswa dikirim via akun WA ini.</p>
+                    
+                    <div id="pairingContainer" class="hidden text-center sm:text-left bg-amber-50 border border-amber-200 p-3 rounded-xl w-full">
+                        <p class="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Kode Tautan WhatsApp Anda:</p>
+                        <p id="txtPairingCode" class="text-2xl font-black text-amber-900 tracking-widest my-1 font-mono">------</p>
+                        <p class="text-[10px] text-amber-700">Buka WA di HP > Perangkat Tertaut > Tautkan dengan nomor telepon saja.</p>
                     </div>
+
+                    <div class="flex-1 text-center sm:text-left">
+                        <p id="txtInfoWA" class="text-xs text-slate-700 font-medium">Memuat status koneksi WhatsApp...</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Gunakan salah satu metode di bawah untuk menghubungkan akun WA Petugas.</p>
+                    </div>
+                </div>
+
+                <!-- Form Masukkan Nomor WA untuk Tautan Kode -->
+                <div id="formPairing" class="flex items-center gap-2">
+                    <input type="text" id="inputNoHP" placeholder="Nomor WA (Ex: 081234567890)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
+                    <button onclick="mintaKodePairing()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shrink-0 whitespace-nowrap">
+                        <i class="fa-solid fa-key"></i> Tautkan Kode
+                    </button>
                 </div>
 
                 <div class="flex gap-2">
                     <button onclick="hubungkanWA()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-wifi"></i> Hubungkan WA
+                        <i class="fa-solid fa-qrcode"></i> QR Code Saja
                     </button>
                     <button onclick="resetWA()" class="bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
                         Reset Sesi
@@ -296,11 +312,21 @@
                 const txtInfo = document.getElementById('txtInfoWA');
                 const qrContainer = document.getElementById('qrContainer');
                 const imgQR = document.getElementById('imgQR');
+                const pairingContainer = document.getElementById('pairingContainer');
+                const txtPairingCode = document.getElementById('txtPairingCode');
 
                 if (data.statusWA === 'TERHUBUNG') {
                     badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200";
                     badge.innerText = "TERHUBUNG ✅";
                     txtInfo.innerText = "Layanan WhatsApp Petugas aktif dan siap mengirim notifikasi.";
+                    qrContainer.classList.add('hidden');
+                    pairingContainer.classList.add('hidden');
+                } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' && data.pairingCode) {
+                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200";
+                    badge.innerText = "KODE TAUTAN 🔑";
+                    txtInfo.innerText = "Masukkan kode tautan ini ke WhatsApp HP Anda.";
+                    txtPairingCode.innerText = data.pairingCode;
+                    pairingContainer.classList.remove('hidden');
                     qrContainer.classList.add('hidden');
                 } else if (data.statusWA === 'MENUNGGU_SCAN' && data.qrCodeWA) {
                     badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200";
@@ -308,17 +334,27 @@
                     txtInfo.innerText = "Silakan scan kode QR ini dari WhatsApp di HP Petugas.";
                     imgQR.src = data.qrCodeWA;
                     qrContainer.classList.remove('hidden');
+                    pairingContainer.classList.add('hidden');
                 } else {
                     badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200";
                     badge.innerText = "BELUM TERHUBUNG ❌";
-                    txtInfo.innerText = "Klik tombol 'Hubungkan WA' untuk memulai tautan sesi.";
+                    txtInfo.innerText = "Minta kode tautan HP atau klik 'QR Code Saja' untuk menghubungkan.";
                     qrContainer.classList.add('hidden');
+                    pairingContainer.classList.add('hidden');
                 }
             } catch (e) {}
         }
 
         async function hubungkanWA() {
             await fetch(`/api/start-wa?userId=${userId}`);
+            checkWAStatus();
+        }
+
+        async function mintaKodePairing() {
+            const phone = document.getElementById('inputNoHP').value.trim();
+            if (!phone) return alert("Masukkan nomor WhatsApp terlebih dahulu!");
+            
+            await fetch(`/api/request-pairing?userId=${userId}&phone=${phone}`);
             checkWAStatus();
         }
 
