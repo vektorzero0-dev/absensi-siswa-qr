@@ -333,17 +333,23 @@ app.post('/login', async (req, res) => {
             });
         }
 
+        // Simpan userId ke session
         req.session.userId = user.id;
 
-        if (user.role === 'SUPER_ADMIN') {
-            return res.redirect(`/superadmin?userId=${user.id}`);
-        } else if (user.role === 'ADMIN') {
-            return res.redirect(`/admin?userId=${user.id}`);
-        } else if (user.role === 'PETUGAS') {
-            return res.redirect(`/petugas?userId=${user.id}`);
-        } else {
-            return res.redirect(`/wali?userId=${user.id}`);
-        }
+        // Paksa simpan sesi sebelum proses redirect berjalan
+        req.session.save((err) => {
+            if (err) console.error("Gagal menyimpan session:", err);
+
+            if (user.role === 'SUPER_ADMIN') {
+                return res.redirect(`/superadmin?userId=${user.id}`);
+            } else if (user.role === 'ADMIN') {
+                return res.redirect(`/admin?userId=${user.id}`);
+            } else if (user.role === 'PETUGAS') {
+                return res.redirect(`/petugas?userId=${user.id}`);
+            } else {
+                return res.redirect(`/wali?userId=${user.id}`);
+            }
+        });
     } catch (err) {
         return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
     }
