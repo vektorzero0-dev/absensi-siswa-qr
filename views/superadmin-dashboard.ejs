@@ -414,6 +414,37 @@
             </div>
         </nav>
 
+<!-- KOTAK KONTROL MODE MAINTENANCE -->
+        <div class="cyber-card mb-4" id="sec-maintenance">
+            <div class="cyber-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fs-6"><i class="bi bi-shield-exclamation text-warning me-2"></i> MAINTENANCE SYSTEM</h5>
+                <% if (typeof isMaintenance !== 'undefined' && isMaintenance) { %>
+                    <span class="badge badge-cyber-danger">MAINTENANCE ACTIVE</span>
+                <% } else { %>
+                    <span class="badge badge-cyber-success">SYSTEM ONLINE</span>
+                <% } %>
+            </div>
+            <div class="card-body p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <div class="fw-bold text-white">STATUS KUNCI AKSES APLIKASI</div>
+                    <small class="text-info">
+                        Saat diaktifkan, seluruh pengguna (Admin Sekolah, Petugas, Wali Kelas) akan diblokir & dialihkan ke halaman pemeliharaan.
+                    </small>
+                </div>
+                <div>
+                    <% if (typeof isMaintenance !== 'undefined' && isMaintenance) { %>
+                        <button onclick="setMaintenance('false')" class="btn btn-cyber-success w-100 py-2">
+                            <i class="bi bi-unlock-fill me-1"></i> MATIKAN MAINTENANCE
+                        </button>
+                    <% } else { %>
+                        <button onclick="setMaintenance('true')" class="btn btn-cyber-danger w-100 py-2">
+                            <i class="bi bi-lock-fill me-1"></i> AKTIFKAN MAINTENANCE
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
         <div class="container-fluid p-0">
             <div class="row">
                 <!-- KOLOM KIRI (FORMULIR KONTROL) -->
