@@ -134,8 +134,9 @@
       <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
       </a>
-      <a href="/admin/cetak-kartu" target="_blank" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
-        <i class="fa-solid fa-address-card"></i> Cetak Kartu Siswa
+     <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
+    <i class="fa-solid fa-address-card"></i> Cetak Kartu Siswa
+</a>
       </a>
       <a href="#section-settings" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-school text-amber-600"></i> Pengaturan Sekolah
