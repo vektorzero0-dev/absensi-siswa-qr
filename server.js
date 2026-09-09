@@ -342,6 +342,166 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// ----------------- 1. PENYESUAIAN RUTE LOGIN ----------------- //
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const namaSekolah = await getNamaSekolah();
+        if (!username || !password) return res.render('login', { error: 'Username dan kata sandi wajib diisi.', namaSekolah });
+
+        // Tarik data user beserta status keaktifan sekolah
+        const result = await pool.query(`
+            SELECT u.*, COALESCE(s.is_active, TRUE) AS is_active 
+            FROM users u 
+            LEFT JOIN sekolah s ON u.sekolah_id = s.id 
+            WHERE LOWER(u.username) = LOWER($1) AND u.password = $2
+        `, [username.trim(), password.trim()]);
+
+        if (result.rows.length === 0) return res.render('login', { error: 'Username atau kata sandi tidak valid.', namaSekolah });
+
+        const user = result.rows[0];
+
+        // Ditolak login jika sekolah NONAKTIF (kecuali SUPER_ADMIN)
+        if (user.role !== 'SUPER_ADMIN' && user.is_active === false) {
+            return res.render('login', { 
+                error: 'Akses sekolah Anda telah dinonaktifkan oleh Super Admin.', 
+                namaSekolah 
+            });
+        }
+
+        req.session.userId = user.id;
+
+        // DIUBAH: Pengarahan berdasarkan role pengguna
+        if (user.role === 'SUPER_ADMIN') {
+            return res.redirect(`/superadmin?userId=${user.id}`);
+        } else if (user.role === 'ADMIN') {
+            return res.redirect(`/admin?userId=${user.id}`);
+        } else if (user.role === 'PETUGAS') {
+            return res.redirect(`/petugas?userId=${user.id}`); // Redirect khusus Petugas
+        } else {
+            return res.redirect(`/wali?userId=${user.id}`);
+        }
+    } catch (err) {
+        return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
+    }
+});
+
+
+// ----------------- 2. RUTE DASBOR PETUGAS ABSEN ----------------- //
+app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
+    const userId = parseInt(req.query.userId) || req.session.userId;
+    if (!userId) return res.redirect('/');
+
+    try {
+        const userRes = await pool.query('SELECT * FROM users WHERE id = $1 AND role = $2', [userId, 'PETUGAS']);
+        if (userRes.rows.length === 0) return res.redirect('/');
+
+        const user = userRes.rows[0];
+        const userSekolahId = user.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
+        const namaSekolah = await getNamaSekolah(userSekolahId);
+
+        // Ambil Seluruh Siswa Sekolah Ini (Lintas Kelas)
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
+                   COALESCE(k.nama_kelas, 'Tanpa Rombel') AS nama_kelas
+            FROM siswa s 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 OR k.sekolah_id IS NULL
+            ORDER BY s.nama ASC
+        `, [userSekolahId]);
+
+        // Ambil Daftar Rombel / Kelas Sekolah Ini
+        const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
+
+        // Ambil Riwayat Absensi Hari Ini
+        const absensiRes = await pool.query(`
+            SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE (k.sekolah_id = $1 OR k.sekolah_id IS NULL) 
+              AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            ORDER BY a.waktu DESC
+        `, [userSekolahId]);
+
+        const absensiFormatted = absensiRes.rows.map(row => {
+            const dateObj = new Date(row.waktu);
+            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+            return { ...row, waktu_formatted: waktuWIB };
+        });
+
+        req.session.userId = userId;
+
+        res.render('petugas-dashboard', {
+            user,
+            namaSekolah,
+            siswaList: siswaRes.rows || [],
+            kelasList: kelasRes.rows || [],
+            absensiHariIni: absensiFormatted,
+            userId,
+            statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
+            qrCodeWA: qrCodes[userId] || null
+        });
+    } catch (err) {
+        res.status(500).send("Kesalahan Database Petugas: " + err.message);
+    }
+});
+
+
+// ----------------- 3. PERBAIKAN RUTE MANAJEMEN SISWA/KELAS (PENYESUAIAN PETUGAS) ----------------- //
+
+// Tambah Siswa Manual (Bisa dipanggil dari Admin atau Petugas)
+app.post('/api/siswa/tambah', async (req, res) => {
+    const { nama, nomor_wa_ortu, kelas_id } = req.body;
+    const userId = req.session.userId || 1;
+
+    try {
+        if (!nama) return res.status(400).send("Nama siswa wajib diisi.");
+        const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+        
+        await pool.query(
+            'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
+            [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId]
+        );
+
+        // Redirect sesuai lokasi pemicu (Petugas atau Admin)
+        const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+        const userRole = userRes.rows.length > 0 ? userRes.rows[0].role : 'ADMIN';
+
+        if (userRole === 'PETUGAS') {
+            return res.redirect(`/petugas?userId=${userId}`);
+        } else {
+            return res.redirect(`/admin?userId=${userId}`);
+        }
+    } catch (err) {
+        return res.status(500).send("Gagal menambah siswa: " + err.message);
+    }
+});
+
+// Tambah Rombel / Kelas (Bisa dipanggil dari Admin atau Petugas)
+app.post('/api/kelas/tambah', async (req, res) => {
+    const { nama_kelas } = req.body;
+    const userId = req.session.userId || 1;
+
+    try {
+        if (!nama_kelas) return res.status(400).send("Nama kelas wajib diisi.");
+
+        const userRes = await pool.query('SELECT sekolah_id, role FROM users WHERE id = $1', [userId]);
+        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
+        const userRole = userRes.rows.length > 0 ? userRes.rows[0].role : 'ADMIN';
+
+        await pool.query('INSERT INTO kelas (nama_kelas, sekolah_id) VALUES ($1, $2)', [nama_kelas.trim(), userSekolahId]);
+
+        if (userRole === 'PETUGAS') {
+            return res.redirect(`/petugas?userId=${userId}`);
+        } else {
+            return res.redirect(`/admin?userId=${userId}`);
+        }
+    } catch (err) {
+        return res.status(500).send("Gagal menambah kelas: " + err.message);
+    }
+});
+
 // ----------------- DASBOR SUPER ADMIN ----------------- //
 app.get('/superadmin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
