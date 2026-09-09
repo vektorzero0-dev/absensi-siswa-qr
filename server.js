@@ -38,6 +38,52 @@ app.use(session({
     cookie: { secure: false }
 }));
 
+// =========================================================================
+// 🚀 FITUR MAINTENANCE: MIDDLEWARE PENGECEKAN AKSES (LETAK PERSIS)
+// =========================================================================
+async function isMaintenanceActive() {
+    try {
+        const res = await pool.query("SELECT value FROM settings WHERE key = 'maintenance_mode'");
+        return res.rows.length > 0 && res.rows[0].value === 'true';
+    } catch (err) {
+        return false;
+    }
+}
+
+app.use(async (req, res, next) => {
+    // Biarkan file publik/aset (CSS, JS, Gambar, Favicon) tetap dapat diakses
+    if (req.path.startsWith('/public') || req.path.includes('.')) {
+        return next();
+    }
+
+    const maintenance = await isMaintenanceActive();
+    
+    if (maintenance) {
+        const userId = req.session?.userId || parseInt(req.query.userId);
+        
+        if (userId) {
+            try {
+                // Izinkan SUPER_ADMIN untuk tetap mengakses seluruh halaman
+                const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+                if (userRes.rows.length > 0 && userRes.rows[0].role === 'SUPER_ADMIN') {
+                    return next();
+                }
+            } catch (err) {}
+        }
+
+        // Rute yang tetap dibuka agar Super Admin bisa login dan mematikan maintenance
+        const allowedRoutes = ['/login', '/superadmin', '/api/settings/maintenance'];
+        if (allowedRoutes.includes(req.path)) {
+            return next();
+        }
+
+        // Alihkan halaman ke tampilan maintenance untuk akun Admin, Petugas, dan Wali Kelas
+        return res.status(530).render('maintenance');
+    }
+
+    next();
+});
+// =========================================================================
 // ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE MULTI-TENANT ----------------- //
 async function initDB() {
     try {
@@ -454,6 +500,33 @@ app.get('/superadmin', async (req, res) => {
     }
 });
 
+// =========================================================================
+// 🚀 API TOGGLE STATUS MAINTENANCE (KHUSUS SUPER ADMIN)
+// =========================================================================
+app.post('/api/settings/maintenance', async (req, res) => {
+    const { active } = req.body; // 'true' atau 'false'
+    const userId = req.session?.userId || parseInt(req.query.userId);
+
+    try {
+        const checkSuper = await pool.query("SELECT role FROM users WHERE id = $1", [userId]);
+        if (checkSuper.rows.length === 0 || checkSuper.rows[0].role !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: "Akses ditolak. Hanya Super Admin!" });
+        }
+
+        await pool.query(`
+            INSERT INTO settings (key, value) VALUES ('maintenance_mode', $1)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+        `, [active.toString()]);
+
+        return res.json({ 
+            success: true, 
+            message: `Mode Maintenance berhasil ${active === 'true' ? 'DIAKTIFKAN' : 'DIMATIKAN'}` 
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal mengubah mode maintenance: " + err.message });
+    }
+});
+// =========================================================================
 app.post('/api/sekolah/tambah', async (req, res) => {
     const { nama_sekolah, admin_nama, admin_username, admin_password } = req.body;
     const client = await pool.connect();
