@@ -364,6 +364,9 @@
 <body>
     <canvas id="matrixCanvas"></canvas>
 
+    <!-- SAFE EVALUATION VARIABEL USER ID -->
+    <% const currentUserId = (typeof user !== 'undefined' && user.id) ? user.id : (typeof userId !== 'undefined' ? userId : 1); %>
+
     <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand cyber-font">
@@ -372,6 +375,9 @@
         <div class="sidebar-menu">
             <a href="#sec-maintenance" class="sidebar-item">
                 <i class="bi bi-shield-exclamation text-warning"></i> MAINTENANCE
+            </a>
+            <a href="#sec-backup" class="sidebar-item">
+                <i class="bi bi-database-down text-info"></i> BACKUP & RESTORE
             </a>
             <a href="#sec-sekolah" class="sidebar-item active">
                 <i class="bi bi-buildings"></i> DAFTAR SEKOLAH
@@ -411,7 +417,7 @@
                 </div>
                 <div class="d-flex align-items-center">
                     <span class="text-info text-xs me-2">
-                        OPERATOR: <strong class="text-white"><%= user.nama %></strong>
+                        OPERATOR: <strong class="text-white"><%= typeof user !== 'undefined' ? user.nama : 'SUPER ADMIN' %></strong>
                     </span>
                 </div>
             </div>
@@ -444,6 +450,31 @@
                             <i class="bi bi-lock-fill me-1"></i> AKTIFKAN MAINTENANCE
                         </button>
                     <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- KOTAK BACKUP & RESTORE SUPER ADMIN -->
+        <div class="cyber-card mb-4" id="sec-backup">
+            <div class="cyber-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fs-6"><i class="bi bi-database-down text-info me-2"></i> BACKUP & RESTORE SISTEM</h5>
+                <span class="badge badge-cyber-success">SAFE DATA MANAGEMENT</span>
+            </div>
+            <div class="card-body p-3 row align-items-center g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-white">1. UNDUH BACKUP LENGKAP (FORMAT JSON)</label>
+                    <a href="/api/backup/export?userId=<%= currentUserId %>" class="btn btn-cyber-primary w-100 py-2">
+                        <i class="bi bi-download me-1"></i> UNDUH SELURUH DATABASE SISTEM
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-white">2. PULIHKAN DATA DARI FILE BACKUP (.JSON)</label>
+                    <form id="formRestoreSystem" onsubmit="handleRestore(event)" class="d-flex gap-2">
+                        <input type="file" id="fileBackupInput" accept=".json" class="form-control" required>
+                        <button type="submit" class="btn btn-cyber-warning px-4 text-nowrap">
+                            <i class="bi bi-upload me-1"></i> RESTORE
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -503,7 +534,7 @@
                                     <label class="form-label">PILIH SEKOLAH TARGET</label>
                                     <select name="sekolah_id" class="form-select form-select-cyber" required>
                                         <option value="">-- Pilih Sekolah --</option>
-                                        <% sekolahList.forEach(s => { %>
+                                        <% (typeof sekolahList !== 'undefined' ? sekolahList : []).forEach(s => { %>
                                             <option value="<%= s.id %>">#<%= s.id %> - <%= s.nama_sekolah %></option>
                                         <% }); %>
                                     </select>
@@ -544,7 +575,7 @@
                                     <label class="form-label">PILIH SEKOLAH TARGET</label>
                                     <select name="sekolah_id" class="form-select form-select-cyber" required>
                                         <option value="">-- Pilih Sekolah --</option>
-                                        <% sekolahList.forEach(s => { %>
+                                        <% (typeof sekolahList !== 'undefined' ? sekolahList : []).forEach(s => { %>
                                             <option value="<%= s.id %>"><%= s.nama_sekolah %></option>
                                         <% }); %>
                                     </select>
@@ -597,7 +628,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <% sekolahList.forEach(s => { %>
+                                    <% (typeof sekolahList !== 'undefined' ? sekolahList : []).forEach(s => { %>
                                         <tr class="<%= s.is_active ? '' : 'tr-danger' %>">
                                             <td><strong class="text-info">#<%= s.id %></strong></td>
                                             <td>
@@ -678,7 +709,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <% adminList.forEach(a => { %>
+                                    <% (typeof adminList !== 'undefined' ? adminList : []).forEach(a => { %>
                                         <tr>
                                             <td class="text-white"><%= a.nama %></td>
                                             <td><code class="text-info"><%= a.username %></code></td>
@@ -855,7 +886,7 @@
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
         const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
 
-        // Fungsi Sakelar Mode Maintenance (Fixed & Presisi)
+        // Sakelar Maintenance Mode
         function setMaintenance(status) {
             const isEnable = String(status) === 'true';
             const pesan = isEnable 
@@ -865,7 +896,7 @@
             if (!confirm(pesan)) return;
 
             const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('userId') || '';
+            const userId = urlParams.get('userId') || '<%= currentUserId %>';
 
             fetch('/api/settings/maintenance' + (userId ? '?userId=' + userId : ''), {
                 method: 'POST',
@@ -887,6 +918,33 @@
             .catch(err => {
                 console.error('Error Maintenance:', err);
                 alert('Gagal terhubung ke server! Periksa koneksi internet Anda.');
+            });
+        }
+
+        // Handler Restore JSON System Data
+        function handleRestore(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileBackupInput');
+            if (!fileInput.files.length) return alert('Pilih berkas JSON backup terlebih dahulu!');
+
+            if (!confirm('Apakah Anda yakin ingin memulihkan data dari berkas backup ini? Data yang cocok akan diperbarui secara otomatis.')) return;
+
+            const formData = new FormData();
+            formData.append('file_backup', fileInput.files[0]);
+            formData.append('userId', '<%= currentUserId %>');
+
+            fetch('/api/backup/restore', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(err => {
+                console.error('Error Restore:', err);
+                alert('Gagal memproses berkas backup! Pastikan format file sesuai.');
             });
         }
 
