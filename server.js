@@ -1701,11 +1701,15 @@ app.post('/api/scan', async (req, res) => {
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+        // 🔥 FIX: Paksa Timestamp berformat WIB (+7 Jam) agar sinkron dengan query CURRENT_DATE Neon DB
+        const tzOffsetMs = 7 * 60 * 60 * 1000;
+        const wibTimestamp = new Date(now.getTime() + tzOffsetMs).toISOString().replace('Z', '');
+
         // 3. Simpan Riwayat Absensi ke Database
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
-             VALUES ($1, 'HADIR', $2, $3, NOW() AT TIME ZONE 'Asia/Jakarta')`,
-            [siswa.id, parsedScannedBy, tipeAbsen]
+             VALUES ($1, 'HADIR', $2, $3, $4::timestamp)`,
+            [siswa.id, parsedScannedBy, tipeAbsen, wibTimestamp]
         );
 
         // 4. Cari Client WhatsApp Sesuai Pengaturan Sekolah Siswa
@@ -1803,7 +1807,6 @@ app.post('/api/scan', async (req, res) => {
         return res.status(500).json({ success: false, message: "Kendala Sistem: " + err.message });
     }
 });
-
 // TERISOLASI PER SEKOLAH
 app.post('/api/absensi/reset-riwayat', async (req, res) => {
     const userId = req.session?.userId || parseInt(req.query.userId) || 1;
@@ -1822,7 +1825,7 @@ app.post('/api/absensi/reset-riwayat', async (req, res) => {
                 SELECT s.id 
                 FROM siswa s 
                 LEFT JOIN kelas k ON s.kelas_id = k.id 
-                WHERE k.sekolah_id = $1
+                WHERE k.sekolah_id = $1 OR k.sekolah_id IS NULL
             )
         `, [userSekolahId]);
 
@@ -1833,7 +1836,7 @@ app.post('/api/absensi/reset-riwayat', async (req, res) => {
     }
 });
 
-// TERISOLASI PER SEKOLAH
+// TERISOLASI PER SEKOLAH (FIX REKAPAN TERBACA)
 app.get('/api/absensi/preview', async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
     const userId = req.session.userId || parseInt(req.query.userId) || 1;
@@ -1843,14 +1846,15 @@ app.get('/api/absensi/preview', async (req, res) => {
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
         const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
 
+        // Gunakan LEFT JOIN agar siswa tanpa kelas tetap muncul di rekap
         let query = `
-            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas, COUNT(a.id) AS total_hadir
+            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
-            JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN absensi a ON s.id = a.siswa_id 
-                AND EXTRACT(MONTH FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $1
-                AND EXTRACT(YEAR FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $2
-            WHERE k.sekolah_id = $3
+                AND EXTRACT(MONTH FROM a.waktu) = $1
+                AND EXTRACT(YEAR FROM a.waktu) = $2
+            WHERE COALESCE(k.sekolah_id, $3) = $3
         `;
         const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
 
@@ -1867,7 +1871,6 @@ app.get('/api/absensi/preview', async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
-
 app.get('/api/absensi/export', async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
     const userId = req.session.userId || 1;
@@ -1878,14 +1881,15 @@ app.get('/api/absensi/export', async (req, res) => {
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
         const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
 
+        // 🔥 FIX: Samakan dengan query Preview (Gunakan LEFT JOIN & tanpa AT TIME ZONE berlebih)
         let query = `
-            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas, COUNT(a.id) AS total_hadir
+            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
-            JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN absensi a ON s.id = a.siswa_id 
-                AND EXTRACT(MONTH FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $1
-                AND EXTRACT(YEAR FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $2
-            WHERE k.sekolah_id = $3
+                AND EXTRACT(MONTH FROM a.waktu) = $1
+                AND EXTRACT(YEAR FROM a.waktu) = $2
+            WHERE COALESCE(k.sekolah_id, $3) = $3
         `;
         const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
 
@@ -2019,7 +2023,7 @@ app.get('/api/absensi/export', async (req, res) => {
     }
 });
 
-// ----------------- CRON JOB NOTIFIKASI ALPA MULTI-SEKOLAH ----------------- //
+// ----------------- CRON JOB NOTIFIKASI & CATAT ALPA MULTI-SEKOLAH ----------------- //
 cron.schedule('0 9 * * 1-6', async () => {
     console.log('⏰ [CRON JOB] Memulai pengecekan siswa yang belum presensi masuk jam 09:00 WIB...');
 
@@ -2039,7 +2043,7 @@ cron.schedule('0 9 * * 1-6', async () => {
             WHERE s.id NOT IN (
                 SELECT DISTINCT siswa_id 
                 FROM absensi 
-                WHERE DATE(waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE 
+                WHERE (waktu AT TIME ZONE 'Asia/Jakarta')::date = CURRENT_DATE 
                   AND tipe = 'MASUK'
             )
         `;
@@ -2051,8 +2055,23 @@ cron.schedule('0 9 * * 1-6', async () => {
 
         const now = new Date();
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const tzOffsetMs = 7 * 60 * 60 * 1000;
+        const wibTimestamp = new Date(now.getTime() + tzOffsetMs).toISOString().replace('Z', '');
 
         for (const siswa of siswaBelumPresensi) {
+            // 🔥 1. OTOMATIS MASUKKAN KE DATABASE REKAPAN DENGAN STATUS 'ALPA'
+            try {
+                await pool.query(
+                    `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
+                     VALUES ($1, 'ALPA', 'MASUK', $2::timestamp)`,
+                    [siswa.id, wibTimestamp]
+                );
+                console.log(`📌 [DB Alpa] Siswa ${siswa.nama} berhasil dicatat ALPA di database.`);
+            } catch (dbErr) {
+                console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
+            }
+
+            // 2. KIRIM NOTIFIKASI WHATSAPP
             if (!siswa.nomor_wa_ortu) continue;
 
             const modePengirim = siswa.wa_mode;
@@ -2118,7 +2137,6 @@ cron.schedule('0 9 * * 1-6', async () => {
         console.error("Error Cron Job Alpa:", err);
     }
 });
-
 app.get('/ping', (req, res) => res.send('OK'));
 
 // PERLINDUNGAN UNCAUGHT ERROR AGAR SERVER TIDAK MATI/RESTART
