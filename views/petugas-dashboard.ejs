@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasbor Petugas Absen - <%= namaSekolah %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- Header Dasbor -->
+    <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-400 text-slate-950 p-2.5 rounded-xl font-bold shadow">
+                    <i class="fa-solid fa-user-shield text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-extrabold tracking-wide uppercase text-slate-100"><%= namaSekolah %></h1>
+                    <p class="text-xs text-blue-200">Dasbor Petugas Absen Sekolah (Pusat / Lintas Kelas)</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="hidden sm:block text-right">
+                    <p class="text-xs font-bold text-white"><%= user.nama %></p>
+                    <p class="text-[10px] text-amber-400 font-semibold uppercase">Petugas Absen</p>
+                </span>
+                <a href="/login" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-1 space-y-6">
+
+        <!-- Banner Aksi Cepat & Status WA Center -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Tombol Scanner -->
+            <div class="bg-gradient-to-br from-blue-900 to-indigo-800 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between">
+                <div>
+                    <span class="bg-blue-700/50 text-blue-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">Pemindai Utama</span>
+                    <h3 class="text-lg font-black mt-2">Kamera Scan QR Presensi</h3>
+                    <p class="text-xs text-blue-100 mt-1">Lakukan scan kartu siswa dari semua kelas di sini.</p>
+                </div>
+                <a href="/scan?userId=<%= userId %>" class="mt-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs py-3 px-4 rounded-xl text-center shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-qrcode text-base"></i> Buka Pemindai QR
+                </a>
+            </div>
+
+            <!-- Panel Status WhatsApp Center -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm md:col-span-2 flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Layanan WA Gateway Pusat</span>
+                        <h3 class="text-base font-black text-slate-800">Status Koneksi Akun Petugas</h3>
+                    </div>
+                    <span id="badgeStatusWA" class="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        Memeriksa...
+                    </span>
+                </div>
+
+                <div class="my-3 flex items-center gap-4">
+                    <div id="qrContainer" class="hidden border p-1 rounded-lg bg-white shadow-sm">
+                        <img id="imgQR" src="" alt="QR WA" class="w-24 h-24">
+                    </div>
+                    <div>
+                        <p id="txtInfoWA" class="text-xs text-slate-600 font-medium">Memuat status koneksi WhatsApp...</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Jika mode terpusat aktif di sekolah ini, notifikasi ortu seluruh siswa dikirim via akun WA ini.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="hubungkanWA()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-wifi"></i> Hubungkan WA
+                    </button>
+                    <button onclick="resetWA()" class="bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
+                        Reset Sesi
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tabel Monitoring Presensi Hari Ini -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-blue-600 text-lg"></i>
+                    <h3 class="font-extrabold text-slate-800 text-sm">Riwayat Presensi Masuk & Pulang Hari Ini</h3>
+                </div>
+                <span class="text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
+                    Total: <%= absensiHariIni.length %> Presensi
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                        <tr>
+                            <th class="p-3.5">Waktu WIB</th>
+                            <th class="p-3.5">Nama Siswa</th>
+                            <th class="p-3.5">Kelas / Rombel</th>
+                            <th class="p-3.5">Tipe Presensi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% if (absensiHariIni && absensiHariIni.length > 0) { %>
+                            <% absensiHariIni.forEach(row => { %>
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="p-3.5 font-bold text-slate-900"><%= row.waktu_formatted %></td>
+                                    <td class="p-3.5 font-semibold text-slate-800"><%= row.nama_siswa %></td>
+                                    <td class="p-3.5"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold border border-slate-200"><%= row.nama_kelas %></span></td>
+                                    <td class="p-3.5">
+                                        <% if (row.tipe === 'PULANG') { %>
+                                            <span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2.5 py-1 rounded-full text-[10px]">🏠 PULANG</span>
+                                        <% } else { %>
+                                            <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2.5 py-1 rounded-full text-[10px]">✅ MASUK</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="4" class="p-6 text-center text-slate-400 font-medium">Belum ada data presensi masuk/pulang hari ini.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabel Daftar Siswa Sekolah (Semua Kelas) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-users text-slate-600"></i>
+                    <h3 class="font-extrabold text-slate-800 text-sm">Daftar Seluruh Siswa Sekolah</h3>
+                </div>
+                <span class="text-xs font-semibold text-slate-500">Total: <%= siswaList.length %> Siswa</span>
+            </div>
+
+            <div class="p-4 border-b border-slate-100">
+                <input type="text" id="inputCariSiswa" onkeyup="filterSiswa()" placeholder="Cari nama siswa atau kelas..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                <table class="w-full text-left text-xs text-slate-700" id="tabelSiswa">
+                    <thead class="bg-slate-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider sticky top-0 border-b border-slate-200">
+                        <tr>
+                            <th class="p-3.5">Nama Siswa</th>
+                            <th class="p-3.5">Kelas / Rombel</th>
+                            <th class="p-3.5">Nomor WA Orang Tua</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% if (siswaList && siswaList.length > 0) { %>
+                            <% siswaList.forEach(s => { %>
+                                <tr class="baris-siswa hover:bg-slate-50 transition">
+                                    <td class="p-3.5 font-bold text-slate-800 cell-nama"><%= s.nama %></td>
+                                    <td class="p-3.5 cell-kelas"><span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-semibold border border-slate-200"><%= s.nama_kelas %></span></td>
+                                    <td class="p-3.5 text-slate-500 font-mono"><%= s.nomor_wa_ortu || '-' %></td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="3" class="p-6 text-center text-slate-400">Belum ada data siswa terdaftar.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
+        <p>&copy; <%= new Date().getFullYear() %> Sistem Presensi QR Code - <%= namaSekolah %></p>
+    </footer>
+
+    <!-- Script Pengelola Status WA & Filter -->
+    <script>
+        const userId = "<%= userId %>";
+
+        async function checkWAStatus() {
+            try {
+                const res = await fetch(`/api/wa-status?userId=${userId}`);
+                const data = await res.json();
+                
+                const badge = document.getElementById('badgeStatusWA');
+                const txtInfo = document.getElementById('txtInfoWA');
+                const qrContainer = document.getElementById('qrContainer');
+                const imgQR = document.getElementById('imgQR');
+
+                if (data.statusWA === 'TERHUBUNG') {
+                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200";
+                    badge.innerText = "TERHUBUNG ✅";
+                    txtInfo.innerText = "Layanan WhatsApp Petugas aktif dan siap mengirim notifikasi.";
+                    qrContainer.classList.add('hidden');
+                } else if (data.statusWA === 'MENUNGGU_SCAN' && data.qrCodeWA) {
+                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200";
+                    badge.innerText = "SCAN QR WA 📲";
+                    txtInfo.innerText = "Silakan scan kode QR ini dari WhatsApp di HP Petugas.";
+                    imgQR.src = data.qrCodeWA;
+                    qrContainer.classList.remove('hidden');
+                } else {
+                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200";
+                    badge.innerText = "BELUM TERHUBUNG ❌";
+                    txtInfo.innerText = "Klik tombol 'Hubungkan WA' untuk memulai tautan sesi.";
+                    qrContainer.classList.add('hidden');
+                }
+            } catch (e) {}
+        }
+
+        async function hubungkanWA() {
+            await fetch(`/api/start-wa?userId=${userId}`);
+            checkWAStatus();
+        }
+
+        async function resetWA() {
+            if (confirm("Reset sesi WA petugas ini?")) {
+                await fetch(`/api/reset-wa?userId=${userId}`);
+                checkWAStatus();
+            }
+        }
+
+        setInterval(checkWAStatus, 5000);
+        checkWAStatus();
+
+        function filterSiswa() {
+            const input = document.getElementById('inputCariSiswa').value.toLowerCase();
+            const rows = document.querySelectorAll('.baris-siswa');
+
+            rows.forEach(row => {
+                const nama = row.querySelector('.cell-nama').innerText.toLowerCase();
+                const kelas = row.querySelector('.cell-kelas').innerText.toLowerCase();
+                if (nama.includes(input) || kelas.includes(input)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
