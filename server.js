@@ -1174,6 +1174,7 @@ app.post('/api/scan', async (req, res) => {
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
                    COALESCE(sch.nama_sekolah, set_sch.value, 'SEKOLAH') AS nama_sekolah_siswa,
+                   sch.id AS sekolah_id,
                    u.id AS wali_kelas_user_id
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
@@ -1202,7 +1203,22 @@ app.post('/api/scan', async (req, res) => {
         );
 
         let waClient = null;
-        if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) waClient = waSessions[siswa.wali_kelas_user_id];
+        if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
+            waClient = waSessions[siswa.wali_kelas_user_id];
+        } else if (modePengirim === 'PETUGAS') {
+            const targetSekolahId = siswa.sekolah_id || 1;
+            const petugasRes = await pool.query(
+                "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'PETUGAS' ORDER BY id ASC",
+                [targetSekolahId]
+            );
+            for (const p of petugasRes.rows) {
+                if (waSessions[p.id]) {
+                    waClient = waSessions[p.id];
+                    break;
+                }
+            }
+        }
+
         if (!waClient) waClient = waSessions[1] || waSessions[parsedScannedBy];
         if (!waClient) {
             const availableKeys = Object.keys(waSessions);
@@ -1459,6 +1475,7 @@ cron.schedule('0 9 * * 1-6', async () => {
             SELECT s.id, s.nama, s.nomor_wa_ortu, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas, 
                    COALESCE(sch.nama_sekolah, set_sch.value, 'SEKOLAH') AS nama_sekolah_siswa,
+                   sch.id AS sekolah_id,
                    u.id AS wali_kelas_user_id
             FROM siswa s
             LEFT JOIN kelas k ON s.kelas_id = k.id
@@ -1488,7 +1505,22 @@ cron.schedule('0 9 * * 1-6', async () => {
             if (!siswa.nomor_wa_ortu) continue;
 
             let waClient = null;
-            if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) waClient = waSessions[siswa.wali_kelas_user_id];
+            if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
+                waClient = waSessions[siswa.wali_kelas_user_id];
+            } else if (modePengirim === 'PETUGAS') {
+                const targetSekolahId = siswa.sekolah_id || 1;
+                const petugasRes = await pool.query(
+                    "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'PETUGAS' ORDER BY id ASC",
+                    [targetSekolahId]
+                );
+                for (const p of petugasRes.rows) {
+                    if (waSessions[p.id]) {
+                        waClient = waSessions[p.id];
+                        break;
+                    }
+                }
+            }
+
             if (!waClient) waClient = waSessions[1];
             if (!waClient) {
                 const availableKeys = Object.keys(waSessions);
