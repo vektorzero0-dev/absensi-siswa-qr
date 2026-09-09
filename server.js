@@ -731,17 +731,17 @@ app.post('/api/settings', async (req, res) => {
 });
 
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
-    // Ambil userId dari query URL terlebih dahulu, lalu dari session
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     
     try {
-        // Cari sekolah_id berdasarkan user yang sedang mengakses
+        // 1. Ambil sekolah_id milik user aktif
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
         const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
 
+        // 2. Ambil Nama Sekolah spesifik berdasarkan userSekolahId
         const namaSekolah = await getNamaSekolah(userSekolahId);
         
-        // Filter data siswa secara ketat berdasarkan sekolah_id user tersebut
+        // 3. Ambil data siswa milik sekolah ini saja
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -757,12 +757,12 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
             return { ...s, qrImage };
         }));
 
+        // Kirim namaSekolah yang tepat ke tampilan
         res.render('cetak-kartu', { siswa: siswaData, namaSekolah });
     } catch (err) {
         res.status(500).send("Gagal memuat kartu: " + err.message);
     }
 });
-
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/');
