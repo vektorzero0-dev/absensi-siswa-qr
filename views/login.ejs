@@ -128,13 +128,17 @@
             <% } %>
 
             <form action="/login" method="POST" class="space-y-4 relative z-10" autocomplete="off">
+                <!-- DUMMY INPUT UNTUK MEMBOHONGI AUTOFILL BROWSER -->
+                <input type="text" style="display:none;" aria-hidden="true">
+                <input type="password" style="display:none;" aria-hidden="true">
+
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Pengguna (Username)</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                             <i class="fa-solid fa-user text-xs"></i>
                         </span>
-                        <input type="text" name="username" required placeholder="Masukkan username" autocomplete="off"
+                        <input type="text" name="username" required placeholder="Masukkan username" autocomplete="username-off" readonly onfocus="this.removeAttribute('readonly');"
                             class="input-pro w-full bg-white border border-blue-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none">
                     </div>
                 </div>
@@ -145,7 +149,7 @@
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                             <i class="fa-solid fa-lock text-xs"></i>
                         </span>
-                        <input type="password" id="passwordInput" name="password" required placeholder="Masukkan kata sandi" autocomplete="new-password"
+                        <input type="password" id="passwordInput" name="password" required placeholder="Masukkan kata sandi" autocomplete="current-password-off" readonly onfocus="this.removeAttribute('readonly');"
                             class="input-pro w-full bg-white border border-blue-200 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none">
                         <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 transition focus:outline-none">
                             <i class="fa-solid fa-eye text-xs" id="eyeIcon"></i>
