@@ -131,6 +131,10 @@
       <a href="/admin?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
         <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
       </a>
+      <!-- NAVIGASI BACKUP RESTORE -->
+      <a href="#section-backup" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-database text-blue-600"></i> Backup & Restore Data
+      </a>
       <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
       </a>
@@ -209,6 +213,56 @@
             </div>
         </div>
 
+        <!-- ========================================================================= -->
+        <!-- 💾 MODUL BACKUP & RESTORE DATA SEKOLAH (ADMIN - ATAS) -->
+        <!-- ========================================================================= -->
+        <div id="section-backup" class="card-pro card-blue-theme p-5 mb-6">
+            <div class="flex items-center gap-3 mb-4 border-b border-blue-200/60 pb-2 relative z-10">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-database text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Cadangan & Pemulihan Data Sekolah</h3>
+                    <p class="text-[11px] text-slate-600">Unduh salinan cadangan berkas database atau pulihkan data sekolah Anda dari file JSON.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                <!-- 1. Unduh Backup -->
+                <div class="bg-white/80 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-file-arrow-down text-blue-600"></i> 1. Unduh Cadangan Data (.JSON)
+                        </h4>
+                        <p class="text-[11px] text-slate-600 mb-3">
+                            Simpan seluruh data kelas, siswa, dan riwayat absensi sekolah ini ke dalam berkas format JSON.
+                        </p>
+                    </div>
+                    <a href="/api/backup/export?userId=<%= userId %>" class="btn-interactive w-full bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-solid fa-download"></i> Unduh Backup Data
+                    </a>
+                </div>
+
+                <!-- 2. Form Restore Data -->
+                <div class="bg-white/80 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-file-arrow-up text-amber-600"></i> 2. Pulihkan Data Dari File JSON
+                        </h4>
+                        <p class="text-[11px] text-slate-600 mb-3">
+                            Unggah berkas JSON cadangan untuk memulihkan data siswa, kelas, dan riwayat absensi.
+                        </p>
+                    </div>
+                    <form id="formRestoreAdmin" onsubmit="prosesRestoreAdmin(event)" class="flex gap-2">
+                        <input type="file" id="inputBackupJsonAdmin" accept=".json" required class="flex-1 text-xs text-slate-700 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 border border-slate-300 rounded-xl p-1 bg-white">
+                        <button type="submit" id="btnSubmitRestoreAdmin" class="btn-interactive bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-amber-700 whitespace-nowrap shadow-md">
+                            <i class="fa-solid fa-rotate-left"></i> Restore
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="card-pro card-blue-theme p-4 flex items-center justify-between">
                 <div class="relative z-10">
@@ -241,7 +295,7 @@
             </div>
         </div>
 
-        <!-- PANEL REKAP BULANAN ADMIN (DISAMAKAN DENGAN WALI KELAS) -->
+        <!-- PANEL REKAP BULANAN ADMIN -->
         <div id="section-rekap-bulanan" class="card-pro card-amber-theme p-5 mb-6">
             <div class="flex items-center gap-3 mb-4 border-b border-amber-200/60 pb-2 relative z-10">
                 <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
@@ -673,94 +727,6 @@
             </div>
         </div>
 
-<!-- ========================================================================= -->
-<!-- 💾 MODUL BACKUP & RESTORE DATA SEKOLAH (ADMIN) -->
-<!-- ========================================================================= -->
-<div class="card my-4 shadow-sm border-0">
-    <div class="card-header bg-primary text-white fw-bold d-flex align-items-center gap-2">
-        <i class="bi bi-database-down"></i> CADANGAN & PEMULIHAN DATA SEKOLAH
-    </div>
-    <div class="card-body bg-light">
-        <div class="row g-3 align-items-center">
-            <!-- 1. Tombol Unduh Backup -->
-            <div class="col-md-6">
-                <div class="p-3 bg-white rounded border h-100">
-                    <label class="form-label fw-bold text-dark">
-                        <i class="bi bi-download text-primary me-1"></i> 1. Unduh Cadangan Data (.JSON)
-                    </label>
-                    <p class="small text-muted mb-2">
-                        Simpan seluruh data kelas, siswa, dan riwayat absensi sekolah ini ke dalam file JSON.
-                    </p>
-                    <a href="/api/backup/export?userId=<%= userId %>" class="btn btn-primary w-100 fw-bold">
-                        <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> UNDUH BACKUP DATA
-                    </a>
-                </div>
-            </div>
-
-            <!-- 2. Form Restore Data -->
-            <div class="col-md-6">
-                <div class="p-3 bg-white rounded border h-100">
-                    <label class="form-label fw-bold text-dark">
-                        <i class="bi bi-upload text-warning me-1"></i> 2. Pulihkan Data Dari File JSON
-                    </label>
-                    <p class="small text-muted mb-2">
-                        Unggah berkas JSON cadangan untuk memulihkan data siswa, kelas, dan absensi.
-                    </p>
-                    <form id="formRestoreAdmin" onsubmit="prosesRestoreAdmin(event)" class="d-flex gap-2">
-                        <input type="file" id="inputBackupJsonAdmin" accept=".json" class="form-control" required>
-                        <button type="submit" id="btnSubmitRestoreAdmin" class="btn btn-warning fw-bold text-nowrap">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i> RESTORE
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-function prosesRestoreAdmin(e) {
-    e.preventDefault();
-    const fileInput = document.getElementById('inputBackupJsonAdmin');
-    const btnSubmit = document.getElementById('btnSubmitRestoreAdmin');
-
-    if (!fileInput.files.length) {
-        return alert('Silakan pilih berkas JSON cadangan terlebih dahulu!');
-    }
-
-    if (!confirm('Apakah Anda yakin ingin memulihkan data? Data siswa, kelas, dan absensi di sekolah ini akan diperbarui dari file backup.')) {
-        return;
-    }
-
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memproses...';
-
-    const formData = new FormData();
-    formData.append('file_backup', fileInput.files[0]);
-    formData.append('userId', '<%= userId %>');
-
-    fetch('/api/backup/restore', {
-        method: 'POST',
-        body: formData
-    })
-    .then(async (res) => {
-        const data = await res.json();
-        alert(data.message);
-        if (data.success) {
-            window.location.reload();
-        } else {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> RESTORE';
-        }
-    })
-    .catch(err => {
-        alert('Gagal memproses berkas! Pastikan format file .json valid.');
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> RESTORE';
-    });
-}
-</script>
-
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
@@ -917,6 +883,47 @@ function prosesRestoreAdmin(e) {
 
     <script>
         const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
+
+        function prosesRestoreAdmin(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('inputBackupJsonAdmin');
+            const btnSubmit = document.getElementById('btnSubmitRestoreAdmin');
+
+            if (!fileInput.files.length) {
+                return alert('Silakan pilih berkas JSON cadangan terlebih dahulu!');
+            }
+
+            if (!confirm('Apakah Anda yakin ingin memulihkan data? Data siswa, kelas, dan absensi di sekolah ini akan diperbarui dari file backup.')) {
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+            const formData = new FormData();
+            formData.append('file_backup', fileInput.files[0]);
+            formData.append('userId', '<%= userId %>');
+
+            fetch('/api/backup/restore', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                alert(data.message);
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Restore';
+                }
+            })
+            .catch(err => {
+                alert('Gagal memproses berkas! Pastikan format file .json valid.');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Restore';
+            });
+        }
 
         function cekStatusWA() {
             fetch(`/api/wa-status?userId=${currentUserId}`)
