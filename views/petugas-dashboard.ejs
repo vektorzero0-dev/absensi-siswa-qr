@@ -155,6 +155,9 @@
       <a href="#section-presensi" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-clipboard-check text-amber-600"></i> Presensi Hari Ini
       </a>
+      <a href="#section-rekap-bulanan" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-calendar-days text-indigo-600"></i> Rekap Absensi Bulanan
+      </a>
     </div>
   </div>
 
@@ -500,6 +503,76 @@
                         <% } else { %>
                             <tr>
                                 <td colspan="4" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk/pulang untuk hari ini.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FITUR BARU: SEKSI REKAP ABSENSI BULANAN & UNDUH LAPORAN -->
+        <div id="section-rekap-bulanan" class="card-pro card-blue-theme p-5 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-blue-200/60 pb-3 relative z-10">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-blue-700"></i> Rekapitulasi Presensi Bulanan
+                    </h3>
+                    <p class="text-[11px] text-slate-600 mt-0.5">Filter riwayat kehadiran bulanan dan unduh laporan resmi.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <!-- Form Filter Bulan -->
+                    <form action="/petugas" method="GET" class="flex items-center gap-2">
+                        <input type="hidden" name="userId" value="<%= userId %>">
+                        <input type="month" name="bulan" value="<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" required class="bg-white border border-blue-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <button type="submit" class="btn-interactive bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1">
+                            <i class="fa-solid fa-filter"></i> Filter
+                        </button>
+                    </form>
+
+                    <!-- Tombol Unduh Laporan (CSV/Excel) -->
+                    <a href="/api/admin/rekap/excel?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-file-excel"></i> CSV / Excel
+                    </a>
+
+                    <!-- Tombol Cetak PDF -->
+                    <a href="/api/admin/rekap/pdf?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" target="_blank" class="btn-interactive bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-file-pdf"></i> PDF / Cetak
+                    </a>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto relative z-10">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
+                    <thead class="bg-blue-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-blue-200">
+                        <tr>
+                            <th class="p-3">Nama Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3">Tanggal Presensi</th>
+                            <th class="p-3">Jam Presensi</th>
+                            <th class="p-3 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-blue-100 bg-white/70">
+                        <% if (typeof rekapAbsensi !== 'undefined' && rekapAbsensi && rekapAbsensi.length > 0) { %>
+                            <% rekapAbsensi.forEach(r => { %>
+                                <tr class="hover:bg-blue-50/50 transition-colors">
+                                    <td class="p-3 font-semibold text-slate-900"><%= r.nama_siswa %></td>
+                                    <td class="p-3 text-slate-600"><%= r.nama_kelas %></td>
+                                    <td class="p-3 font-mono text-slate-600"><%= r.tanggal_formatted %></td>
+                                    <td class="p-3 font-mono text-slate-600"><%= r.jam_formatted %> WIB</td>
+                                    <td class="p-3 text-center">
+                                        <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded">
+                                            <%= r.status || 'HADIR' %>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-400 italic">
+                                    Tidak ada rekaman presensi pada periode bulan yang dipilih.
+                                </td>
                             </tr>
                         <% } %>
                     </tbody>
