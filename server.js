@@ -691,6 +691,9 @@ app.get('/admin', async (req, res) => {
             return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
         }
 
+        // Ambil Parameter Bulan (?bulan=2026-03), Default ke Bulan Berjalan
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
         const usersRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
             FROM users u 
@@ -711,7 +714,8 @@ app.get('/admin', async (req, res) => {
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        const absensiRes = await pool.query(`
+        // 1. Absensi Hari Ini (Untuk Pemantauan Harian)
+        const absensiHariIniRes = await pool.query(`
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
@@ -720,11 +724,23 @@ app.get('/admin', async (req, res) => {
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
+        // 2. Rekap Absensi Bulanan (Untuk Tabel Rekapitulasi)
+        const rekapBulananRes = await pool.query(`
+            SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            ORDER BY a.waktu DESC
+        `, [userSekolahId, bulanPilihan]);
+
         const settingsAll = await pool.query("SELECT key, value FROM settings WHERE key = 'pengirim_wa'");
         let pengirimWA = settingsAll.rows.length > 0 ? settingsAll.rows[0].value : 'ADMIN';
         let namaSekolah = await getNamaSekolah(userSekolahId);
 
-        const absensiFormatted = absensiRes.rows.map(row => {
+        const absensiFormatted = absensiHariIniRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
             const waktuWIB = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
             return { ...row, waktu_formatted: waktuWIB };
@@ -739,11 +755,14 @@ app.get('/admin', async (req, res) => {
 
         req.session.userId = userId;
 
+        // Kirim data lengkap ke admin-dashboard.ejs
         res.render('admin-dashboard', {
             users: usersCleaned,
             siswa: siswaData,
             kelas: kelasRes.rows || [],
             absensiHariIni: absensiFormatted,
+            rekapAbsensi: rekapBulananRes.rows, // DATA REKAP BULANAN
+            bulanPilihan: bulanPilihan,          // INPUT MONTH BINDING
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
@@ -755,6 +774,118 @@ app.get('/admin', async (req, res) => {
     }
 });
 
+// ----------------- ENDPOINT EKSPOR REKAP ABSENSI EXCEL ----------------- //
+app.get('/api/admin/rekap/excel', async (req, res) => {
+    const userId = parseInt(req.query.userId) || req.session.userId;
+    const bulan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
+    try {
+        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        if (userRes.rows.length === 0) return res.status(403).send("Akses Ditolak.");
+
+        const sekolahId = userRes.rows[0].sekolah_id || 1;
+
+        const dataRes = await pool.query(`
+            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS kelas,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD HH24:MI:SS') AS waktu,
+                   COALESCE(a.status, 'HADIR') AS status
+            FROM absensi a
+            JOIN siswa s ON a.siswa_id = s.id
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            ORDER BY a.waktu ASC
+        `, [sekolahId, bulan]);
+
+        // Output berupa CSV yang otomatis terbaca sebagai Excel (.xlsx/.csv)
+        let csvContent = "Nama Siswa,Kelas,Waktu Presensi,Status\n";
+        dataRes.rows.forEach(r => {
+            csvContent += `"${r.nama_siswa}","${r.kelas}","${r.waktu}","${r.status}"\n`;
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="Rekap_Absensi_${bulan}.csv"`);
+        res.status(200).send(csvContent);
+    } catch (err) {
+        res.status(500).send("Gagal mengunduh Excel: " + err.message);
+    }
+});
+
+// ----------------- ENDPOINT CETAK / PDF REKAP ABSENSI ----------------- //
+app.get('/api/admin/rekap/pdf', async (req, res) => {
+    const userId = parseInt(req.query.userId) || req.session.userId;
+    const bulan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
+    try {
+        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        if (userRes.rows.length === 0) return res.status(403).send("Akses Ditolak.");
+
+        const sekolahId = userRes.rows[0].sekolah_id || 1;
+        const namaSekolah = await getNamaSekolah(sekolahId);
+
+        const dataRes = await pool.query(`
+            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS kelas,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD HH24:MI:SS') AS waktu,
+                   COALESCE(a.status, 'HADIR') AS status
+            FROM absensi a
+            JOIN siswa s ON a.siswa_id = s.id
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            ORDER BY a.waktu ASC
+        `, [sekolahId, bulan]);
+
+        let html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Laporan Absensi ${bulan}</title>
+                <style>
+                    body { font-family: sans-serif; padding: 20px; }
+                    h2, h4 { text-align: center; margin: 5px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
+                    th { background-color: #f2f2f2; }
+                    @media print { .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="no-print" style="margin-bottom: 15px;">
+                    <button onclick="window.print()" style="padding: 8px 16px; cursor: pointer;">🖨️ Cetak / Simpan ke PDF</button>
+                </div>
+                <h2>${namaSekolah}</h2>
+                <h4>REKAPITULASI PRESENSI SISWA - PERIODE ${bulan}</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Siswa</th>
+                            <th>Kelas</th>
+                            <th>Waktu Presensi</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dataRes.rows.map((r, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td>${r.nama_siswa}</td>
+                                <td>${r.kelas}</td>
+                                <td>${r.waktu}</td>
+                                <td>${r.status}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        res.send(html);
+    } catch (err) {
+        res.status(500).send("Gagal memuat PDF: " + err.message);
+    }
+});
+
+// ----------------- ENDPOINT SETTINGS & CETAK KARTU ----------------- //
 app.post('/api/settings/pengirim-wa', async (req, res) => {
     const { pengirim_wa } = req.body;
     const userId = req.session.userId || parseInt(req.query.userId) || 1;
@@ -828,10 +959,13 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     if (!userId) return res.redirect('/login');
 
     try {
+        // 1. Ambil Data Wali Kelas
         const userRes = await pool.query(`
             SELECT u.id, u.nama, u.role, u.kelas_id, u.sekolah_id,
                    COALESCE(k.nama_kelas, 'Guru Mata Pelajaran (Semua Kelas)') AS nama_kelas
-            FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id WHERE u.id = $1
+            FROM users u 
+            LEFT JOIN kelas k ON u.kelas_id = k.id 
+            WHERE u.id = $1
         `, [userId]);
 
         if (userRes.rows.length === 0) return res.redirect('/login');
@@ -841,47 +975,81 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         userRaw.nama = bersihkanGelar(userRaw.nama);
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
+        // Ambil Parameter Bulan dari URL (?bulan=2026-03), default ke bulan berjalan
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
+        // 2. Query Daftar Siswa (Prioritas berdasarkan kelas_id wali kelas)
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
-                   COALESCE(k.sekolah_id, $1) AS sekolah_id 
+                   COALESCE(s.sekolah_id, $1) AS sekolah_id 
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE k.sekolah_id = $1
+            WHERE 1=1
         `;
         const queryParamsSiswa = [userSekolahId];
 
         if (userRaw.kelas_id) {
             siswaQuery += ` AND s.kelas_id = $2`;
             queryParamsSiswa.push(parseInt(userRaw.kelas_id));
+        } else {
+            siswaQuery += ` AND s.sekolah_id = $1`;
         }
 
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        let absensiQuery = `
+        // 3. Query Absensi HARI INI (Untuk Monitor Harian)
+        let absensiHariIniQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
-            JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
         `;
-        const queryParamsAbsensi = [userSekolahId];
+        const queryParamsHarian = [];
 
         if (userRaw.kelas_id) {
-            absensiQuery += ` AND s.kelas_id = $2`;
-            queryParamsAbsensi.push(parseInt(userRaw.kelas_id));
+            absensiHariIniQuery += ` AND s.kelas_id = $1`;
+            queryParamsHarian.push(parseInt(userRaw.kelas_id));
+        } else {
+            absensiHariIniQuery += ` AND s.sekolah_id = $1`;
+            queryParamsHarian.push(userSekolahId);
         }
 
-        absensiQuery += ` ORDER BY a.waktu DESC`;
-        const absensiRes = await pool.query(absensiQuery, queryParamsAbsensi);
+        absensiHariIniQuery += ` ORDER BY a.waktu DESC`;
+        const absensiHariIniRes = await pool.query(absensiHariIniQuery, queryParamsHarian);
 
-        const absensiFormatted = absensiRes.rows.map(row => {
+        const absensiHariIniFormatted = absensiHariIniRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
             const waktuWIB = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        // 4. Query REKAP ABSENSI BULANAN (Untuk Fitur Rekapitulasi & Download)
+        let absensiBulananQuery = `
+            SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+            FROM absensi a 
+            JOIN siswa s ON a.siswa_id = s.id 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $1
+        `;
+        const queryParamsBulanan = [bulanPilihan];
+
+        if (userRaw.kelas_id) {
+            absensiBulananQuery += ` AND s.kelas_id = $2`;
+            queryParamsBulanan.push(parseInt(userRaw.kelas_id));
+        } else {
+            absensiBulananQuery += ` AND s.sekolah_id = $2`;
+            queryParamsBulanan.push(userSekolahId);
+        }
+
+        absensiBulananQuery += ` ORDER BY a.waktu DESC`;
+        const absensiBulananRes = await pool.query(absensiBulananQuery, queryParamsBulanan);
+
+        // 5. Generate QR Code Siswa
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(`SCH${s.sekolah_id || userSekolahId}-S${s.id}`);
             return { ...s, qrImage };
@@ -889,10 +1057,13 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 
         req.session.userId = userId;
 
+        // 6. Kirim Seluruh Data ke Template EJS
         res.render('walikelas-dashboard', {
             user: userRaw,
             siswaList: siswaData,
-            absensiHariIni: absensiFormatted,
+            absensiHariIni: absensiHariIniFormatted,
+            rekapAbsensi: absensiBulananRes.rows, // DATA REKAP BULANAN
+            bulanPilihan: bulanPilihan,          // UNTUK BINDING INPUT MONTH
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
