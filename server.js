@@ -538,6 +538,27 @@ app.post('/api/sekolah/wa-mode/:id', async (req, res) => {
     }
 });
 
+// SUPER ADMIN: TAMBAH AKUN PETUGAS ABSEN UNTUK SEKOLAH CERTAIN
+app.post('/api/superadmin/petugas/tambah', async (req, res) => {
+    const { sekolah_id, nama, username, password } = req.body;
+    try {
+        if (!sekolah_id || !nama || !username || !password) {
+            return res.status(400).send("Semua kolom wajib diisi.");
+        }
+
+        // Buat akun khusus dengan role PETUGAS
+        await pool.query(
+            `INSERT INTO users (nama, username, password, role, sekolah_id) 
+             VALUES ($1, $2, $3, 'PETUGAS', $4)`,
+            [nama.trim(), username.trim(), password.trim(), parseInt(sekolah_id)]
+        );
+
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal membuat akun Petugas: " + err.message);
+    }
+});
+
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
