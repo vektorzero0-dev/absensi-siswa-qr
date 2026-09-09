@@ -284,6 +284,42 @@
                 </div>
             </div>
 
+<!-- Form Tambah Akun Petugas oleh Super Admin -->
+<div class="cyber-card mt-4">
+    <div class="cyber-header cyber-header-green d-flex align-items-center">
+        <i class="bi bi-person-plus-fill me-2 fs-5"></i>
+        <h5 class="mb-0">AKTIVASI AKUN PETUGAS (PAKET TERPUSAT)</h5>
+    </div>
+    <div class="card-body p-3">
+        <form action="/api/superadmin/petugas/tambah" method="POST">
+            <div class="mb-3">
+                <label class="form-label text-info">PILIH SEKOLAH TARGET</label>
+                <select name="sekolah_id" class="form-select form-select-cyber" required>
+                    <option value="">-- Pilih Sekolah --</option>
+                    <% sekolahList.forEach(s => { %>
+                        <option value="<%= s.id %>"><%= s.nama_sekolah %></option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-info">NAMA PETUGAS ABSEN</label>
+                <input type="text" name="nama" class="form-control" placeholder="Ex: Petugas Absen Utama" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-info">USERNAME LOGIN</label>
+                <input type="text" name="username" class="form-control" placeholder="petugas_sd1" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-info">PASSWORD</label>
+                <input type="password" name="password" class="form-control" placeholder="******" required>
+            </div>
+            <button type="submit" class="btn btn-cyber-success w-100 py-2">
+                <i class="bi bi-shield-check"></i> BUAT AKUN PETUGAS
+            </button>
+        </form>
+    </div>
+</div>
+
             <!-- Tabel Monitoring & Kendali Data -->
             <div class="col-lg-8">
                 <!-- Tabel Sekolah -->
