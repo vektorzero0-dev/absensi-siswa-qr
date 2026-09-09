@@ -637,6 +637,44 @@ app.post('/api/admin/tambah-ke-sekolah', async (req, res) => {
     }
 });
 
+// API UNTUK SUPER ADMIN MENGINTIP / MENGELOLA SEKOLAH DENGAN KONTROL PENUH
+app.get('/superadmin/switch-sekolah/:id', async (req, res) => {
+    const sekolahId = parseInt(req.params.id);
+    const userId = req.session.userId;
+
+    try {
+        // Cek apakah user aktif adalah SUPER_ADMIN
+        const checkSuper = await pool.query("SELECT role FROM users WHERE id = $1", [userId]);
+        if (checkSuper.rows.length === 0 || checkSuper.rows[0].role !== 'SUPER_ADMIN') {
+            return res.status(403).send("Akses ditolak. Hanya Super Admin yang memiliki hak ini.");
+        }
+
+        // Cari atau buatkan akun admin sementara untuk sekolah target
+        let adminRes = await pool.query(
+            "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC LIMIT 1",
+            [sekolahId]
+        );
+
+        let targetUserId;
+        if (adminRes.rows.length > 0) {
+            targetUserId = adminRes.rows[0].id;
+        } else {
+            // Jika sekolah belum punya admin, buatkan akun admin otomatis
+            const newAdmin = await pool.query(
+                `INSERT INTO users (nama, username, password, role, sekolah_id) 
+                 VALUES ($1, $2, 'admin123', 'ADMIN', $3) RETURNING id`,
+                [`Admin Sekolah #${sekolahId}`, `admin_auto_${sekolahId}`, sekolahId]
+            );
+            targetUserId = newAdmin.rows[0].id;
+        }
+
+        // Langsung arahkan ke dashboard admin sekolah tersebut
+        return res.redirect(`/admin?userId=${targetUserId}`);
+    } catch (err) {
+        return res.status(500).send("Gagal masuk ke sekolah target: " + err.message);
+    }
+});
+
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
