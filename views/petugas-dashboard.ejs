@@ -143,6 +143,9 @@
       <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-brands fa-whatsapp text-emerald-600"></i> Integrasi WhatsApp
       </a>
+      <a href="#section-rekap-bulanan" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-file-invoice text-purple-600"></i> Rekap Presensi Bulanan
+      </a>
       <a href="#section-dapodik" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-file-excel text-emerald-600"></i> Impor Excel Dapodik
       </a>
@@ -154,9 +157,6 @@
       </a>
       <a href="#section-presensi" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-clipboard-check text-amber-600"></i> Presensi Hari Ini
-      </a>
-      <a href="#section-rekap-bulanan" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
-        <i class="fa-solid fa-calendar-days text-indigo-600"></i> Rekap Absensi Bulanan
       </a>
     </div>
   </div>
@@ -227,6 +227,106 @@
                 </div>
                 <div class="bg-purple-600 text-white p-3 rounded-xl relative z-10 shadow-md">
                     <i class="fa-solid fa-school text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEKSI REKAP BULANAN SAMA SEPERTI WALI KELAS -->
+        <div id="section-rekap-bulanan" class="card-pro card-purple-theme p-5 mb-6">
+            <div class="flex items-center gap-3 mb-4 border-b border-purple-200/60 pb-2 relative z-10">
+                <div class="bg-purple-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-file-invoice text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Pratinjau & Unduh Rekap Presensi Bulanan</h3>
+                    <p class="text-[11px] text-slate-600">Pilih periode dan kelas untuk menampilkan pratinjau data rekap sebelum mengunduh berkas laporan</p>
+                </div>
+            </div>
+
+            <form id="filterForm" action="/api/absensi/export" method="GET" target="_blank" class="grid grid-cols-1 sm:grid-cols-6 gap-3 mb-4 relative z-10">
+                
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Kelas</label>
+                    <select name="kelas_id" id="kelasId" class="w-full text-xs p-2 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600">
+                        <option value="all">-- Semua Kelas --</option>
+                        <% if (kelasList && kelasList.length > 0) { %>
+                            <% kelasList.forEach(k => { %>
+                                <option value="<%= k.id %>"><%= k.nama_kelas %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Bulan</label>
+                    <select name="bulan" id="selectBulan" required class="w-full text-xs p-2 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600">
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9" selected>September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Tahun</label>
+                    <select name="tahun" id="selectTahun" required class="w-full text-xs p-2 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600">
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Format Berkas</label>
+                    <select name="format" required class="w-full text-xs p-2 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600">
+                        <option value="excel">📊 Excel (.xlsx)</option>
+                        <option value="word">📝 Word (.docx)</option>
+                        <option value="pdf">📄 PDF (.pdf)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end">
+                    <button type="button" onclick="muatPreview()" class="btn-interactive w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-eye"></i> Lihat Rekapan
+                    </button>
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="btn-interactive w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-download"></i> Unduh Berkas
+                    </button>
+                </div>
+            </form>
+
+            <div id="previewArea" class="hidden border border-purple-200 rounded-xl p-4 bg-white/80 relative z-10">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 id="previewTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                        Hasil Pratinjau Rekapitulasi
+                    </h4>
+                    <span id="previewCount" class="text-[10px] bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded font-bold">
+                        0 Siswa
+                    </span>
+                </div>
+                <div class="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                    <table class="w-full text-xs text-left text-slate-700 border-collapse">
+                        <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="p-2.5">No</th>
+                                <th class="p-2.5">Nama Siswa</th>
+                                <th class="p-2.5">Rombel</th>
+                                <th class="p-2.5 text-center">Total Kehadiran</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTableBody" class="divide-y divide-slate-100">
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -510,76 +610,6 @@
             </div>
         </div>
 
-        <!-- FITUR BARU: SEKSI REKAP ABSENSI BULANAN & UNDUH LAPORAN -->
-        <div id="section-rekap-bulanan" class="card-pro card-blue-theme p-5 mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-blue-200/60 pb-3 relative z-10">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-calendar-days text-blue-700"></i> Rekapitulasi Presensi Bulanan
-                    </h3>
-                    <p class="text-[11px] text-slate-600 mt-0.5">Filter riwayat kehadiran bulanan dan unduh laporan resmi.</p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    <!-- Form Filter Bulan -->
-                    <form action="/petugas" method="GET" class="flex items-center gap-2">
-                        <input type="hidden" name="userId" value="<%= userId %>">
-                        <input type="month" name="bulan" value="<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" required class="bg-white border border-blue-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                        <button type="submit" class="btn-interactive bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1">
-                            <i class="fa-solid fa-filter"></i> Filter
-                        </button>
-                    </form>
-
-                    <!-- Tombol Unduh Laporan (CSV/Excel) -->
-                    <a href="/api/admin/rekap/excel?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1">
-                        <i class="fa-solid fa-file-excel"></i> CSV / Excel
-                    </a>
-
-                    <!-- Tombol Cetak PDF -->
-                    <a href="/api/admin/rekap/pdf?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" target="_blank" class="btn-interactive bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1">
-                        <i class="fa-solid fa-file-pdf"></i> PDF / Cetak
-                    </a>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto relative z-10">
-                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
-                    <thead class="bg-blue-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-blue-200">
-                        <tr>
-                            <th class="p-3">Nama Siswa</th>
-                            <th class="p-3">Rombel Kelas</th>
-                            <th class="p-3">Tanggal Presensi</th>
-                            <th class="p-3">Jam Presensi</th>
-                            <th class="p-3 text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-blue-100 bg-white/70">
-                        <% if (typeof rekapAbsensi !== 'undefined' && rekapAbsensi && rekapAbsensi.length > 0) { %>
-                            <% rekapAbsensi.forEach(r => { %>
-                                <tr class="hover:bg-blue-50/50 transition-colors">
-                                    <td class="p-3 font-semibold text-slate-900"><%= r.nama_siswa %></td>
-                                    <td class="p-3 text-slate-600"><%= r.nama_kelas %></td>
-                                    <td class="p-3 font-mono text-slate-600"><%= r.tanggal_formatted %></td>
-                                    <td class="p-3 font-mono text-slate-600"><%= r.jam_formatted %> WIB</td>
-                                    <td class="p-3 text-center">
-                                        <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded">
-                                            <%= r.status || 'HADIR' %>
-                                        </span>
-                                    </td>
-                                </tr>
-                            <% }); %>
-                        <% } else { %>
-                            <tr>
-                                <td colspan="5" class="p-6 text-center text-slate-400 italic">
-                                    Tidak ada rekaman presensi pada periode bulan yang dipilih.
-                                </td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
     </main>
 
     <form id="formHapusUmum" action="" method="POST" class="hidden"></form>
@@ -810,6 +840,41 @@
         function tutupSidebar() {
             document.getElementById('sidebarMenu').classList.add('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.add('hidden');
+        }
+
+        function muatPreview() {
+            const bulan = document.getElementById('selectBulan').value;
+            const tahun = document.getElementById('selectTahun').value;
+            const kelasId = document.getElementById('kelasId').value;
+            const previewArea = document.getElementById('previewArea');
+            const tbody = document.getElementById('previewTableBody');
+            const countTag = document.getElementById('previewCount');
+
+            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data rekapitulasi...</td></tr>`;
+            previewArea.classList.remove('hidden');
+
+            fetch(`/api/absensi/preview?bulan=${bulan}&tahun=${tahun}&kelas_id=${kelasId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        countTag.innerText = `${data.data.length} Siswa`;
+                        tbody.innerHTML = data.data.map((item, index) => `
+                            <tr class="hover:bg-slate-50 border-b border-slate-100">
+                                <td class="p-2.5 text-center font-mono">${index + 1}</td>
+                                <td class="p-2.5 font-semibold text-slate-900">${item.nama_siswa}</td>
+                                <td class="p-2.5 text-slate-600">${item.nama_kelas}</td>
+                                <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${item.total_hadir} Hari</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        countTag.innerText = '0 Siswa';
+                        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Tidak ada data kehadiran pada bulan dan tahun yang dipilih.</td></tr>`;
+                    }
+                })
+                .catch(err => {
+                    console.error("Preview error:", err);
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
+                });
         }
 
         document.getElementById('formSettings')?.addEventListener('submit', async (e) => {
