@@ -370,6 +370,9 @@
             <i class="bi bi-cpu text-info me-2"></i> SUPER ADMIN
         </div>
         <div class="sidebar-menu">
+            <a href="#sec-maintenance" class="sidebar-item">
+                <i class="bi bi-shield-exclamation text-warning"></i> MAINTENANCE
+            </a>
             <a href="#sec-sekolah" class="sidebar-item active">
                 <i class="bi bi-buildings"></i> DAFTAR SEKOLAH
             </a>
@@ -414,7 +417,7 @@
             </div>
         </nav>
 
-<!-- KOTAK KONTROL MODE MAINTENANCE -->
+        <!-- KOTAK KONTROL MODE MAINTENANCE -->
         <div class="cyber-card mb-4" id="sec-maintenance">
             <div class="cyber-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fs-6"><i class="bi bi-shield-exclamation text-warning me-2"></i> MAINTENANCE SYSTEM</h5>
@@ -854,6 +857,29 @@
         const modalSekolahBs = new bootstrap.Modal(document.getElementById('modalSekolah'));
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
         const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
+
+        // Fungsi Sakelar Mode Maintenance
+        function setMaintenance(status) {
+            const pesan = status === 'true' 
+                ? 'Apakah Anda yakin ingin MENGAKTIFKAN mode maintenance?\n\nSemua pengguna selain Super Admin akan diblokir dari sistem.' 
+                : 'Apakah Anda yakin ingin MEMATIKAN mode maintenance?\n\nAplikasi akan kembali berjalan normal.';
+
+            if (!confirm(pesan)) return;
+
+            fetch('/api/settings/maintenance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: status })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(err => {
+                alert('Gagal mengubah status maintenance!');
+            });
+        }
 
         async function lihatSekolah(id) {
             try {
