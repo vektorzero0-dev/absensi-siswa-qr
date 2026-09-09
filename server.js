@@ -115,7 +115,7 @@ async function initDB() {
             ON CONFLICT (key) DO NOTHING;
         `);
 
-        // Inisialisasi Sekolah Pertama dari DB / ENV
+        // Inisialisasi Sekolah Pertama dari DB / ENV (Tanpa menimpa data yang sudah ada)
         const currentSekolahId = parseInt(process.env.SEKOLAH_ID) || 1;
         const oldSetting = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const defaultNama = oldSetting.rows.length > 0 ? oldSetting.rows[0].value : 'SEKOLAH UTAMA';
@@ -129,23 +129,21 @@ async function initDB() {
             SELECT setval('sekolah_id_seq', (SELECT GREATEST(MAX(id), 1) FROM sekolah));
         `);
 
-        // Paksa buat/update akun superadmin berdasarkan USERNAME
+        // Buat akun Superadmin jika belum ada
         await pool.query(`
             INSERT INTO users (nama, username, password, role, sekolah_id)
             VALUES ('Super Administrator', 'superadmin', 'super123', 'SUPER_ADMIN', NULL)
-            ON CONFLICT (username) 
-            DO UPDATE SET password = 'super123', role = 'SUPER_ADMIN';
+            ON CONFLICT (username) DO NOTHING;
         `);
 
-        // Paksa buat/update akun admin sekolah berdasarkan USERNAME
+        // Buat akun Admin Sekolah 1 jika belum ada (Aman dari menimpa sekolah_id admin lain)
         await pool.query(`
             INSERT INTO users (nama, username, password, role, sekolah_id)
-            VALUES ('Admin Sekolah', 'admin', 'admin123', 'ADMIN', $1)
-            ON CONFLICT (username) 
-            DO UPDATE SET password = 'admin123', role = 'ADMIN', sekolah_id = $1;
+            VALUES ('Admin Sekolah 1', 'admin', 'admin123', 'ADMIN', $1)
+            ON CONFLICT (username) DO NOTHING;
         `, [currentSekolahId]);
 
-        console.log("✅ Database Multi-Tenant Initialized: SUPER_ADMIN & Multi-Sekolah Siap!");
+        console.log("✅ Database Multi-Tenant Initialized: Data Aman & Multi-Sekolah Siap!");
     } catch (err) {
         console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
     }
@@ -365,7 +363,7 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
         if (userRes.rows.length === 0) return res.redirect('/');
 
         const user = userRes.rows[0];
-        const userSekolahId = user.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
+        const userSekolahId = user.sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
         const siswaRes = await pool.query(`
@@ -622,14 +620,18 @@ app.post('/api/superadmin/petugas/tambah', async (req, res) => {
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
-    if (!userId) return res.redirect('/');
+    if (!userId) return res.redirect('/login');
     
     try {
         const userRes = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-        if (userRes.rows.length === 0) return res.redirect('/');
+        if (userRes.rows.length === 0) return res.redirect('/login');
         
         const currentUser = userRes.rows[0];
-        const userSekolahId = currentUser.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
+        const userSekolahId = currentUser.sekolah_id;
+
+        if (!userSekolahId && currentUser.role !== 'SUPER_ADMIN') {
+            return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
+        }
 
         const usersRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
@@ -697,13 +699,14 @@ app.get('/admin', async (req, res) => {
 
 app.post('/api/settings/pengirim-wa', async (req, res) => {
     const { pengirim_wa } = req.body;
+    const userId = req.session.userId || parseInt(req.query.userId) || 1;
     try {
         await pool.query(
             `INSERT INTO settings (key, value) VALUES ('pengirim_wa', $1)
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
             [pengirim_wa]
         );
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        return res.redirect(`/admin?userId=${userId}`);
     } catch (err) {
         return res.status(500).send("Gagal menyimpan pengaturan: " + err.message);
     }
@@ -715,7 +718,7 @@ app.post('/api/settings', async (req, res) => {
 
     try {
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
-        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
+        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
 
         await pool.query(`
             INSERT INTO sekolah (id, nama_sekolah) 
@@ -732,11 +735,11 @@ app.post('/api/settings', async (req, res) => {
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     
-    if (!userId) return res.redirect('/');
+    if (!userId) return res.redirect('/login');
 
     try {
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
-        if (userRes.rows.length === 0) return res.redirect('/');
+        if (userRes.rows.length === 0) return res.redirect('/login');
 
         const userSekolahId = userRes.rows[0].sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(userSekolahId);
@@ -764,7 +767,7 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
 
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
-    if (!userId) return res.redirect('/');
+    if (!userId) return res.redirect('/login');
 
     try {
         const userRes = await pool.query(`
@@ -773,10 +776,10 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             FROM users u LEFT JOIN kelas k ON u.kelas_id = k.id WHERE u.id = $1
         `, [userId]);
 
-        if (userRes.rows.length === 0) return res.redirect('/');
+        if (userRes.rows.length === 0) return res.redirect('/login');
 
         const userRaw = userRes.rows[0];
-        const userSekolahId = userRaw.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
+        const userSekolahId = userRaw.sekolah_id || 1;
         userRaw.nama = bersihkanGelar(userRaw.nama);
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
@@ -846,7 +849,7 @@ app.get(['/scan', '/scanner'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     try {
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
-        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
+        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
 
         const namaSekolah = await getNamaSekolah(userSekolahId);
         res.render('scan', { userId, namaSekolah });
