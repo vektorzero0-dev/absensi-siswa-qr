@@ -617,6 +617,26 @@ app.post('/api/superadmin/petugas/tambah', async (req, res) => {
     }
 });
 
+// API TAMBAH AKUN ADMIN BARU UNTUK SEKOLAH YANG SUDAH ADA
+app.post('/api/admin/tambah-ke-sekolah', async (req, res) => {
+    const { sekolah_id, nama, username, password } = req.body;
+    try {
+        if (!sekolah_id || !nama || !username || !password) {
+            return res.status(400).send("Semua kolom (Sekolah, Nama, Username, Password) wajib diisi.");
+        }
+
+        await pool.query(
+            `INSERT INTO users (nama, username, password, role, sekolah_id) 
+             VALUES ($1, $2, $3, 'ADMIN', $4)`,
+            [nama.trim(), username.trim(), password.trim(), parseInt(sekolah_id)]
+        );
+
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal mendaftarkan Admin baru: " + err.message);
+    }
+});
+
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
