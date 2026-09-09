@@ -417,7 +417,12 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
         if (userRes.rows.length === 0) return res.redirect('/');
 
         const user = userRes.rows[0];
-        const userSekolahId = user.sekolah_id || 1;
+        const userSekolahId = user.sekolah_id;
+        
+        if (!userSekolahId && user.role !== 'SUPER_ADMIN') {
+            return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
+        }
+
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
         const siswaRes = await pool.query(`
@@ -432,11 +437,11 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
         const absensiRes = await pool.query(`
-            SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
-            JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE COALESCE(k.sekolah_id, $1) = $1 
               AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
@@ -545,7 +550,6 @@ app.post('/api/settings/maintenance', async (req, res) => {
         return res.status(500).json({ success: false, message: "Gagal mengubah mode maintenance: " + err.message });
     }
 });
-// =========================================================================
 
 app.post('/api/sekolah/tambah', async (req, res) => {
     const { nama_sekolah, admin_nama, admin_username, admin_password } = req.body;
@@ -927,7 +931,7 @@ app.post('/api/backup/restore', upload.single('file_backup'), async (req, res) =
     }
 });
 
-// ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
+// ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH - FIX KEBOCORAN) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/login');
@@ -939,6 +943,7 @@ app.get('/admin', async (req, res) => {
         const currentUser = userRes.rows[0];
         const userSekolahId = currentUser.sekolah_id;
 
+        // 🛡️ MENCEGAH JATUH KE DEFAULT SEKOLAH ID 1 JIKA USER BELUM PUNYA SEKOLAH
         if (!userSekolahId && currentUser.role !== 'SUPER_ADMIN') {
             return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
         }
@@ -966,25 +971,27 @@ app.get('/admin', async (req, res) => {
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        // 1. Absensi Hari Ini (Untuk Pemantauan Harian)
+        // 1. Absensi Hari Ini (Hanya Milik Sekolah User Aktif & Aman Siswa Tanpa Kelas)
         const absensiHariIniRes = await pool.query(`
-            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
-            JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            WHERE COALESCE(k.sekolah_id, $1) = $1 
+              AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
-        // 2. Rekap Absensi Bulanan (Untuk Tabel Rekapitulasi)
+        // 2. Rekap Absensi Bulanan (Isolasi Ketat Sekolah ID)
         const rekapBulananRes = await pool.query(`
-            SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas,
+            SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            WHERE COALESCE(k.sekolah_id, $1) = $1 
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
             ORDER BY a.waktu DESC
         `, [userSekolahId, bulanPilihan]);
 
@@ -1021,7 +1028,7 @@ app.get('/admin', async (req, res) => {
             namaSekolah: namaSekolah
         });
     } catch (err) {
-        res.status(500).send("Kesalahan Database: " + err.message);
+        res.status(500).send("Kesalahan Database Admin: " + err.message);
     }
 });
 
@@ -1221,7 +1228,12 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         if (userRes.rows.length === 0) return res.redirect('/login');
 
         const userRaw = userRes.rows[0];
-        const userSekolahId = userRaw.sekolah_id || 1;
+        const userSekolahId = userRaw.sekolah_id;
+
+        if (!userSekolahId && userRaw.role !== 'SUPER_ADMIN') {
+            return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
+        }
+
         userRaw.nama = bersihkanGelar(userRaw.nama);
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
@@ -1249,11 +1261,11 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 
         // 3. Query Absensi HARI INI
         let absensiHariIniQuery = `
-            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
+            SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            WHERE COALESCE(k.sekolah_id, $1) = $1 AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
         `;
         const queryParamsHarian = [userSekolahId];
 
@@ -1273,13 +1285,13 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 
         // 4. Query REKAP ABSENSI BULANAN
         let absensiBulananQuery = `
-            SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas,
+            SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
         `;
         const queryParamsBulanan = [userSekolahId, bulanPilihan];
 
@@ -1807,6 +1819,7 @@ app.post('/api/scan', async (req, res) => {
         return res.status(500).json({ success: false, message: "Kendala Sistem: " + err.message });
     }
 });
+
 // TERISOLASI PER SEKOLAH
 app.post('/api/absensi/reset-riwayat', async (req, res) => {
     const userId = req.session?.userId || parseInt(req.query.userId) || 1;
@@ -1871,6 +1884,7 @@ app.get('/api/absensi/preview', async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
+
 app.get('/api/absensi/export', async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
     const userId = req.session.userId || 1;
@@ -1881,7 +1895,7 @@ app.get('/api/absensi/export', async (req, res) => {
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
         const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
 
-        // 🔥 FIX: Samakan dengan query Preview (Gunakan LEFT JOIN & tanpa AT TIME ZONE berlebih)
+        // Samakan dengan query Preview (Gunakan LEFT JOIN & tanpa AT TIME ZONE berlebih)
         let query = `
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
@@ -2059,7 +2073,7 @@ cron.schedule('0 9 * * 1-6', async () => {
         const wibTimestamp = new Date(now.getTime() + tzOffsetMs).toISOString().replace('Z', '');
 
         for (const siswa of siswaBelumPresensi) {
-            // 🔥 1. OTOMATIS MASUKKAN KE DATABASE REKAPAN DENGAN STATUS 'ALPA'
+            // 1. OTOMATIS MASUKKAN KE DATABASE REKAPAN DENGAN STATUS 'ALPA'
             try {
                 await pool.query(
                     `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
@@ -2137,6 +2151,7 @@ cron.schedule('0 9 * * 1-6', async () => {
         console.error("Error Cron Job Alpa:", err);
     }
 });
+
 app.get('/ping', (req, res) => res.send('OK'));
 
 // PERLINDUNGAN UNCAUGHT ERROR AGAR SERVER TIDAK MATI/RESTART
