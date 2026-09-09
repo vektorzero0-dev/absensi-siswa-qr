@@ -297,53 +297,57 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         }
 
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
+    const { connection, lastDisconnect, qr } = update;
 
-            if (qr && !phoneNumber && !sock.authState.creds.registered) {
-                try {
-                    qrCodes[userId] = await generateQRDataURL(qr);
-                    waStatus[userId] = 'MENUNGGU_SCAN';
-                    qrcodeTerminal.generate(qr, { small: true });
-                } catch (qrErr) {}
-            }
-
-            if (connection === 'open') {
-                waStatus[userId] = 'TERHUBUNG';
-                delete qrCodes[userId];
-                delete pairingCodes[userId];
-                if (reconnectTimers[userId]) {
-                    clearTimeout(reconnectTimers[userId]);
-                    delete reconnectTimers[userId];
-                }
-                console.log(`✅ [User #${userId}] WhatsApp Berhasil Terhubung!`);
-            }
-
-            if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
-
-                waStatus[userId] = 'TERPUTUS';
-                delete waSessions[userId];
-
-                if (!isLoggedOut) {
-                    if (!reconnectTimers[userId]) {
-                        reconnectTimers[userId] = setTimeout(() => {
-                            delete reconnectTimers[userId];
-                            connectToWhatsApp(userId);
-                        }, 8000);
-                    }
-                } else {
-                    delete qrCodes[userId];
-                    delete pairingCodes[userId];
-                    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-                    if (fs.existsSync(authFolder)) fs.rmSync(authFolder, { recursive: true, force: true });
-                }
-            }
-        });
-    } catch (err) {
-        waStatus[userId] = 'ERROR';
+    if (qr && !phoneNumber && !sock.authState.creds.registered) {
+        try {
+            qrCodes[userId] = await generateQRDataURL(qr);
+            waStatus[userId] = 'MENUNGGU_SCAN';
+            qrcodeTerminal.generate(qr, { small: true });
+        } catch (qrErr) {}
     }
-}
+
+    if (connection === 'open') {
+        waStatus[userId] = 'TERHUBUNG';
+        delete qrCodes[userId];
+        delete pairingCodes[userId];
+        if (reconnectTimers[userId]) {
+            clearTimeout(reconnectTimers[userId]);
+            delete reconnectTimers[userId];
+        }
+        console.log(`✅ [User #${userId}] WhatsApp Berhasil Terhubung!`);
+    }
+
+    if (connection === 'close') {
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
+
+        delete waSessions[userId];
+
+        if (!isLoggedOut) {
+            // 🔥 FIX: Jangan ubah status kalau lagi nunggu input kode pairing!
+            if (waStatus[userId] !== 'MENUNGGU_PAIRING_CODE') {
+                waStatus[userId] = 'TERPUTUS';
+            }
+
+            if (!reconnectTimers[userId]) {
+                reconnectTimers[userId] = setTimeout(() => {
+                    delete reconnectTimers[userId];
+                    // 🔥 FIX: Jika sedang pairing, jangan auto-reconnect biasa yang bikin reset socket
+                    if (waStatus[userId] !== 'MENUNGGU_PAIRING_CODE') {
+                        connectToWhatsApp(userId);
+                    }
+                }, 8000);
+            }
+        } else {
+            waStatus[userId] = 'TERPUTUS';
+            delete qrCodes[userId];
+            delete pairingCodes[userId];
+            const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
+            if (fs.existsSync(authFolder)) fs.rmSync(authFolder, { recursive: true, force: true });
+        }
+    }
+});
 
 // ---------------- ROUTES HALAMAN ---------------- //
 
