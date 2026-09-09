@@ -39,7 +39,7 @@ app.use(session({
 }));
 
 // =========================================================================
-// 🚀 FITUR MAINTENANCE: MIDDLEWARE PENGECEKAN AKSES (LETAK PERSIS)
+// 🚀 FITUR MAINTENANCE: MIDDLEWARE PENGECEKAN AKSES (RENDER & NEON READY)
 // =========================================================================
 async function isMaintenanceActive() {
     try {
@@ -59,16 +59,19 @@ app.use(async (req, res, next) => {
     const maintenance = await isMaintenanceActive();
     
     if (maintenance) {
-        const userId = req.session?.userId || parseInt(req.query.userId);
+        // Cek ID Super Admin dari Sesi khusus agar tidak terblokir saat switch sekolah
+        const currentUserId = req.session?.superAdminId || req.session?.userId || parseInt(req.query.userId);
         
-        if (userId) {
+        if (currentUserId) {
             try {
                 // Izinkan SUPER_ADMIN untuk tetap mengakses seluruh halaman
-                const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+                const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [currentUserId]);
                 if (userRes.rows.length > 0 && userRes.rows[0].role === 'SUPER_ADMIN') {
                     return next();
                 }
-            } catch (err) {}
+            } catch (err) {
+                console.error("Error maintenance check:", err.message);
+            }
         }
 
         // Rute yang tetap dibuka agar Super Admin bisa login dan mematikan maintenance
@@ -84,6 +87,7 @@ app.use(async (req, res, next) => {
     next();
 });
 // =========================================================================
+
 // ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE MULTI-TENANT ----------------- //
 async function initDB() {
     try {
@@ -380,6 +384,10 @@ app.post('/login', async (req, res) => {
         // Simpan userId ke session
         req.session.userId = user.id;
 
+        if (user.role === 'SUPER_ADMIN') {
+            req.session.superAdminId = user.id; // Tandai ID Super Admin secara eksplisit
+        }
+
         // Paksa simpan sesi sebelum proses redirect berjalan
         req.session.save((err) => {
             if (err) console.error("Gagal menyimpan session:", err);
@@ -405,7 +413,7 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
     if (!userId) return res.redirect('/');
 
     try {
-        const userRes = await pool.query('SELECT * FROM users WHERE id = $1 AND role = $2', [userId, 'PETUGAS']);
+        const userRes = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
         if (userRes.rows.length === 0) return res.redirect('/');
 
         const user = userRes.rows[0];
@@ -457,7 +465,6 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
 });
 
 // ----------------- DASBOR SUPER ADMIN ----------------- //
-// ----------------- DASBOR SUPER ADMIN ----------------- //
 app.get('/superadmin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/');
@@ -493,12 +500,13 @@ app.get('/superadmin', async (req, res) => {
         const isMaintenance = maintRes.rows.length > 0 && maintRes.rows[0].value === 'true';
 
         req.session.userId = userId;
+        req.session.superAdminId = userId; // Tandai ID Super Admin di sesi
 
         res.render('superadmin-dashboard', {
             user: userRes.rows[0],
             sekolahList: sekolahRes.rows || [],
             adminList: adminRes.rows || [],
-            isMaintenance: isMaintenance, // <-- Dikirim ke tampilan HTML/EJS
+            isMaintenance: isMaintenance,
             userId
         });
     } catch (err) {
@@ -511,7 +519,7 @@ app.get('/superadmin', async (req, res) => {
 // =========================================================================
 app.post('/api/settings/maintenance', async (req, res) => {
     const { active } = req.body; // 'true' atau 'false'
-    const userId = req.session?.userId || parseInt(req.query.userId);
+    const userId = req.session?.superAdminId || req.session?.userId || parseInt(req.query.userId);
 
     try {
         const checkSuper = await pool.query("SELECT role FROM users WHERE id = $1", [userId]);
@@ -533,6 +541,7 @@ app.post('/api/settings/maintenance', async (req, res) => {
     }
 });
 // =========================================================================
+
 app.post('/api/sekolah/tambah', async (req, res) => {
     const { nama_sekolah, admin_nama, admin_username, admin_password } = req.body;
     const client = await pool.connect();
@@ -727,6 +736,9 @@ app.get('/superadmin/switch-sekolah/:id', async (req, res) => {
         if (checkSuper.rows.length === 0 || checkSuper.rows[0].role !== 'SUPER_ADMIN') {
             return res.status(403).send("Akses ditolak. Hanya Super Admin yang memiliki hak ini.");
         }
+
+        // Tanamkan ID Super Admin secara permanen di sesi agar bebas dari blokir Maintenance
+        req.session.superAdminId = userId;
 
         // Cari atau buatkan akun admin sementara untuk sekolah target
         let adminRes = await pool.query(
