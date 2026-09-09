@@ -625,17 +625,14 @@
                                                 <% } %>
                                             </td>
                                             <td class="text-center">
-                                                <!-- Tombol Masuk / Kelola Penuh Sekolah (Aksen Kuning Glow) -->
                                                 <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-warning btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
                                                     <i class="bi bi-door-open-fill"></i> KELOLA
                                                 </a>
 
-                                                <!-- Button Intip Ringkas -->
                                                 <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail Ringkas">
                                                     <i class="bi bi-eye"></i>
                                                 </button>
 
-                                                <!-- Form Toggle Status -->
                                                 <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
                                                     <% if (s.is_active) { %>
                                                         <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
@@ -858,26 +855,38 @@
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
         const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
 
-        // Fungsi Sakelar Mode Maintenance
+        // Fungsi Sakelar Mode Maintenance (Fixed & Presisi)
         function setMaintenance(status) {
-            const pesan = status === 'true' 
-                ? 'Apakah Anda yakin ingin MENGAKTIFKAN mode maintenance?\n\nSemua pengguna selain Super Admin akan diblokir dari sistem.' 
+            const isEnable = String(status) === 'true';
+            const pesan = isEnable 
+                ? 'Apakah Anda yakin ingin MENGAKTIFKAN mode maintenance?\n\nSemua pengguna (Admin Sekolah, Petugas, Wali Kelas) akan diblokir dari sistem.' 
                 : 'Apakah Anda yakin ingin MEMATIKAN mode maintenance?\n\nAplikasi akan kembali berjalan normal.';
 
             if (!confirm(pesan)) return;
 
-            fetch('/api/settings/maintenance', {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId') || '';
+
+            fetch('/api/settings/maintenance' + (userId ? '?userId=' + userId : ''), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ active: status })
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ active: isEnable ? 'true' : 'false' })
             })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message);
-                location.reload();
+            .then(async (res) => {
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Gagal: ' + (data.message || 'Terjadi kesalahan sistem'));
+                }
             })
             .catch(err => {
-                alert('Gagal mengubah status maintenance!');
+                console.error('Error Maintenance:', err);
+                alert('Gagal terhubung ke server! Periksa koneksi internet Anda.');
             });
         }
 
@@ -942,47 +951,6 @@
                 icon.classList.add('bi-eye');
             }
         }
-    <!-- PASTIKAN BUNGKUS DENGAN TAG <script> DI ATAS DAN </script> DI BAWAH -->
-    <script>
-        // ==========================================
-        // FUNGSI SAKELAR MODE MAINTENANCE (FIXED)
-        // ==========================================
-        function setMaintenance(status) {
-            const isEnable = String(status) === 'true';
-            const pesan = isEnable 
-                ? 'Apakah Anda yakin ingin MENGAKTIFKAN mode maintenance?\n\nSemua pengguna (Admin Sekolah, Petugas, Wali Kelas) akan diblokir dari sistem.' 
-                : 'Apakah Anda yakin ingin MEMATIKAN mode maintenance?\n\nAplikasi akan kembali berjalan normal.';
-
-            if (!confirm(pesan)) return;
-
-            // Mengambil ID User dari URL jika ada
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('userId') || '';
-
-            fetch('/api/settings/maintenance' + (userId ? '?userId=' + userId : ''), {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ active: isEnable ? 'true' : 'false' })
-            })
-            .then(async (res) => {
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    alert(data.message);
-                    window.location.reload();
-                } else {
-                    alert('Gagal: ' + (data.message || 'Terjadi kesalahan sistem'));
-                }
-            })
-            .catch(err => {
-                console.error('Error Maintenance:', err);
-                alert('Gagal terhubung ke server! Periksa koneksi internet Anda.');
-            });
-        }
     </script>
-</body>
-</html>
 </body>
 </html>
