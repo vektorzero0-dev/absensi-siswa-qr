@@ -457,6 +457,7 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
 });
 
 // ----------------- DASBOR SUPER ADMIN ----------------- //
+// ----------------- DASBOR SUPER ADMIN ----------------- //
 app.get('/superadmin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/');
@@ -487,12 +488,17 @@ app.get('/superadmin', async (req, res) => {
             ORDER BY u.id ASC
         `);
 
+        // Cek status maintenance dari database
+        const maintRes = await pool.query("SELECT value FROM settings WHERE key = 'maintenance_mode'");
+        const isMaintenance = maintRes.rows.length > 0 && maintRes.rows[0].value === 'true';
+
         req.session.userId = userId;
 
         res.render('superadmin-dashboard', {
             user: userRes.rows[0],
             sekolahList: sekolahRes.rows || [],
             adminList: adminRes.rows || [],
+            isMaintenance: isMaintenance, // <-- Dikirim ke tampilan HTML/EJS
             userId
         });
     } catch (err) {
