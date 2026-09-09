@@ -1934,6 +1934,7 @@ app.get('/api/absensi/export', async (req, res) => {
     }
 });
 
+
 // ----------------- CRON JOB NOTIFIKASI ALPA MULTI-SEKOLAH ----------------- //
 cron.schedule('0 9 * * 1-6', async () => {
     console.log('⏰ [CRON JOB] Memulai pengecekan siswa yang belum presensi masuk jam 09:00 WIB...');
@@ -2022,12 +2023,16 @@ cron.schedule('0 9 * * 1-6', async () => {
 
                 try {
                     await waClient.sendMessage(formattedJid, { text: pesan });
-                } catch (sendErr) {}
+                } catch (sendErr) {
+                    console.error("Gagal kirim WA Cron:", sendErr.message);
+                }
 
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
         }
-    } catch (err) {}
+    } catch (err) {
+        console.error("Error Cron Job Alpa:", err);
+    }
 });
 
 app.get('/ping', (req, res) => res.send('OK'));
