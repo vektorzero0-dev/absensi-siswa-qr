@@ -673,6 +673,94 @@
             </div>
         </div>
 
+<!-- ========================================================================= -->
+<!-- 💾 MODUL BACKUP & RESTORE DATA SEKOLAH (ADMIN) -->
+<!-- ========================================================================= -->
+<div class="card my-4 shadow-sm border-0">
+    <div class="card-header bg-primary text-white fw-bold d-flex align-items-center gap-2">
+        <i class="bi bi-database-down"></i> CADANGAN & PEMULIHAN DATA SEKOLAH
+    </div>
+    <div class="card-body bg-light">
+        <div class="row g-3 align-items-center">
+            <!-- 1. Tombol Unduh Backup -->
+            <div class="col-md-6">
+                <div class="p-3 bg-white rounded border h-100">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-download text-primary me-1"></i> 1. Unduh Cadangan Data (.JSON)
+                    </label>
+                    <p class="small text-muted mb-2">
+                        Simpan seluruh data kelas, siswa, dan riwayat absensi sekolah ini ke dalam file JSON.
+                    </p>
+                    <a href="/api/backup/export?userId=<%= userId %>" class="btn btn-primary w-100 fw-bold">
+                        <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> UNDUH BACKUP DATA
+                    </a>
+                </div>
+            </div>
+
+            <!-- 2. Form Restore Data -->
+            <div class="col-md-6">
+                <div class="p-3 bg-white rounded border h-100">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-upload text-warning me-1"></i> 2. Pulihkan Data Dari File JSON
+                    </label>
+                    <p class="small text-muted mb-2">
+                        Unggah berkas JSON cadangan untuk memulihkan data siswa, kelas, dan absensi.
+                    </p>
+                    <form id="formRestoreAdmin" onsubmit="prosesRestoreAdmin(event)" class="d-flex gap-2">
+                        <input type="file" id="inputBackupJsonAdmin" accept=".json" class="form-control" required>
+                        <button type="submit" id="btnSubmitRestoreAdmin" class="btn btn-warning fw-bold text-nowrap">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> RESTORE
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function prosesRestoreAdmin(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('inputBackupJsonAdmin');
+    const btnSubmit = document.getElementById('btnSubmitRestoreAdmin');
+
+    if (!fileInput.files.length) {
+        return alert('Silakan pilih berkas JSON cadangan terlebih dahulu!');
+    }
+
+    if (!confirm('Apakah Anda yakin ingin memulihkan data? Data siswa, kelas, dan absensi di sekolah ini akan diperbarui dari file backup.')) {
+        return;
+    }
+
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memproses...';
+
+    const formData = new FormData();
+    formData.append('file_backup', fileInput.files[0]);
+    formData.append('userId', '<%= userId %>');
+
+    fetch('/api/backup/restore', {
+        method: 'POST',
+        body: formData
+    })
+    .then(async (res) => {
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) {
+            window.location.reload();
+        } else {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> RESTORE';
+        }
+    })
+    .catch(err => {
+        alert('Gagal memproses berkas! Pastikan format file .json valid.');
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> RESTORE';
+    });
+}
+</script>
+
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
