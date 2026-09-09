@@ -515,28 +515,33 @@ app.get('/superadmin', async (req, res) => {
 });
 
 // =========================================================================
-// 🚀 API TOGGLE STATUS MAINTENANCE (KHUSUS SUPER ADMIN)
+// 🚀 API TOGGLE STATUS MAINTENANCE (PENCATATAN PRESISI DI NEON)
 // =========================================================================
 app.post('/api/settings/maintenance', async (req, res) => {
-    const { active } = req.body; // 'true' atau 'false'
-    const userId = req.session?.superAdminId || req.session?.userId || parseInt(req.query.userId);
-
     try {
-        const checkSuper = await pool.query("SELECT role FROM users WHERE id = $1", [userId]);
-        if (checkSuper.rows.length === 0 || checkSuper.rows[0].role !== 'SUPER_ADMIN') {
-            return res.status(403).json({ success: false, message: "Akses ditolak. Hanya Super Admin!" });
+        const { active } = req.body;
+        const userId = req.session?.superAdminId || req.session?.userId || parseInt(req.query.userId);
+
+        // 1. Verifikasi Role Super Admin
+        if (userId) {
+            const checkSuper = await pool.query("SELECT role FROM users WHERE id = $1", [userId]);
+            if (checkSuper.rows.length === 0 || checkSuper.rows[0].role !== 'SUPER_ADMIN') {
+                return res.status(403).json({ success: false, message: "Akses ditolak! Khusus Super Admin." });
+            }
         }
 
-        await pool.query(`
-            INSERT INTO settings (key, value) VALUES ('maintenance_mode', $1)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-        `, [active.toString()]);
+        const statusValue = String(active) === 'true' ? 'true' : 'false';
+
+        // 2. Hapus entry lama lalu insert nilai baru (Mencegah error duplicate/missing key)
+        await pool.query("DELETE FROM settings WHERE key = 'maintenance_mode'");
+        await pool.query("INSERT INTO settings (key, value) VALUES ('maintenance_mode', $1)", [statusValue]);
 
         return res.json({ 
             success: true, 
-            message: `Mode Maintenance berhasil ${active === 'true' ? 'DIAKTIFKAN' : 'DIMATIKAN'}` 
+            message: `Mode Maintenance berhasil ${statusValue === 'true' ? 'DIAKTIFKAN' : 'DIMATIKAN'}!` 
         });
     } catch (err) {
+        console.error("Gagal update maintenance:", err);
         return res.status(500).json({ success: false, message: "Gagal mengubah mode maintenance: " + err.message });
     }
 });
