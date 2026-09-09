@@ -115,7 +115,7 @@ async function initDB() {
             ON CONFLICT (key) DO NOTHING;
         `);
 
-        // Inisialisasi Sekolah Pertama dari DB / ENV (Tanpa menimpa data yang sudah ada)
+        // Inisialisasi Sekolah Pertama dari DB / ENV
         const currentSekolahId = parseInt(process.env.SEKOLAH_ID) || 1;
         const oldSetting = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const defaultNama = oldSetting.rows.length > 0 ? oldSetting.rows[0].value : 'SEKOLAH UTAMA';
@@ -136,7 +136,7 @@ async function initDB() {
             ON CONFLICT (username) DO NOTHING;
         `);
 
-        // Buat akun Admin Sekolah 1 jika belum ada (Aman dari menimpa sekolah_id admin lain)
+        // Buat akun Admin Sekolah 1 jika belum ada
         await pool.query(`
             INSERT INTO users (nama, username, password, role, sekolah_id)
             VALUES ('Admin Sekolah 1', 'admin', 'admin123', 'ADMIN', $1)
@@ -755,14 +755,13 @@ app.get('/admin', async (req, res) => {
 
         req.session.userId = userId;
 
-        // Kirim data lengkap ke admin-dashboard.ejs
         res.render('admin-dashboard', {
             users: usersCleaned,
             siswa: siswaData,
             kelas: kelasRes.rows || [],
             absensiHariIni: absensiFormatted,
-            rekapAbsensi: rekapBulananRes.rows, // DATA REKAP BULANAN
-            bulanPilihan: bulanPilihan,          // INPUT MONTH BINDING
+            rekapAbsensi: rekapBulananRes.rows,
+            bulanPilihan: bulanPilihan,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
@@ -796,7 +795,6 @@ app.get('/api/admin/rekap/excel', async (req, res) => {
             ORDER BY a.waktu ASC
         `, [sekolahId, bulan]);
 
-        // Output berupa CSV yang otomatis terbaca sebagai Excel (.xlsx/.csv)
         let csvContent = "Nama Siswa,Kelas,Waktu Presensi,Status\n";
         dataRes.rows.forEach(r => {
             csvContent += `"${r.nama_siswa}","${r.kelas}","${r.waktu}","${r.status}"\n`;
@@ -978,7 +976,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         // Ambil Parameter Bulan dari URL (?bulan=2026-03)
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
 
-        // 2. Query Daftar Siswa (Gunakan k.sekolah_id, BUKAN s.sekolah_id)
+        // 2. Query Daftar Siswa
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -1021,7 +1019,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // 4. Query REKAP ABSENSI BULANAN (Gunakan k.sekolah_id)
+        // 4. Query REKAP ABSENSI BULANAN
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
@@ -1049,7 +1047,6 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 
         req.session.userId = userId;
 
-        // 6. Kirim Data ke walikelas-dashboard.ejs
         res.render('walikelas-dashboard', {
             user: userRaw,
             siswaList: siswaData,
@@ -1454,10 +1451,18 @@ app.post('/api/scan', async (req, res) => {
             }
         }
 
-        if (!waClient) waClient = waSessions[1] || waSessions[parsedScannedBy];
+        // CARI WA CLIENT DARI ADMIN SEKOLAH YANG SAMA (ISOLASI)
         if (!waClient) {
-            const availableKeys = Object.keys(waSessions);
-            if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
+            const adminSekolahRes = await pool.query(
+                "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC",
+                [siswa.sekolah_id || 1]
+            );
+            for (const adm of adminSekolahRes.rows) {
+                if (waSessions[adm.id]) {
+                    waClient = waSessions[adm.id];
+                    break;
+                }
+            }
         }
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
@@ -1511,34 +1516,52 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// TERISOLASI PER SEKOLAH
 app.post('/api/absensi/reset-riwayat', async (req, res) => {
-    const userId = req.session.userId || 1;
+    const userId = req.session.userId || parseInt(req.query.userId) || 1;
     try {
-        await pool.query('DELETE FROM absensi');
-        await pool.query('ALTER SEQUENCE absensi_id_seq RESTART WITH 1');
+        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
+
+        await pool.query(`
+            DELETE FROM absensi 
+            WHERE siswa_id IN (
+                SELECT s.id 
+                FROM siswa s 
+                JOIN kelas k ON s.kelas_id = k.id 
+                WHERE k.sekolah_id = $1
+            )
+        `, [userSekolahId]);
+
         return res.redirect(`/admin?userId=${userId}`);
     } catch (err) {
         return res.status(500).send("Gagal membersihkan riwayat absensi: " + err.message);
     }
 });
 
+// TERISOLASI PER SEKOLAH
 app.get('/api/absensi/preview', async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
+    const userId = req.session.userId || parseInt(req.query.userId) || 1;
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
 
     try {
+        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
+
         let query = `
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
-            LEFT JOIN kelas k ON s.kelas_id = k.id
+            JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN absensi a ON s.id = a.siswa_id 
                 AND EXTRACT(MONTH FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $1
                 AND EXTRACT(YEAR FROM a.waktu AT TIME ZONE 'Asia/Jakarta') = $2
+            WHERE k.sekolah_id = $3
         `;
-        const queryParams = [parseInt(bulan), parseInt(tahun)];
+        const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
 
         if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
-            query += ` WHERE s.kelas_id = $3`;
+            query += ` AND s.kelas_id = $4`;
             queryParams.push(parseInt(kelas_id));
         }
 
@@ -1757,10 +1780,17 @@ cron.schedule('0 9 * * 1-6', async () => {
                 }
             }
 
-            if (!waClient) waClient = waSessions[1];
             if (!waClient) {
-                const availableKeys = Object.keys(waSessions);
-                if (availableKeys.length > 0) waClient = waSessions[availableKeys[0]];
+                const adminSekolahRes = await pool.query(
+                    "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC",
+                    [siswa.sekolah_id || 1]
+                );
+                for (const adm of adminSekolahRes.rows) {
+                    if (waSessions[adm.id]) {
+                        waClient = waSessions[adm.id];
+                        break;
+                    }
+                }
             }
 
             if (waClient) {
