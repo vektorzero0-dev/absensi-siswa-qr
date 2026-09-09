@@ -295,7 +295,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                 }
             }, 5000);
         }
-
+    waSessions[userId] = sock;
         sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
