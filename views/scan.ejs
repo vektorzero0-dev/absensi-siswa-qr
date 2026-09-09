@@ -32,9 +32,11 @@
                     </p>
                 </div>
             </div>
-            <a href="javascript:history.back()" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1.5">
+            
+            <!-- TOMBOL KEMBALI AMAN & DINAMIS -->
+            <button type="button" onclick="window.close(); if(!window.closed){ history.back(); }" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1.5 shadow-xs">
                 <i class="fa-solid fa-arrow-left"></i> Kembali
-            </a>
+            </button>
         </div>
     </header>
 
@@ -117,7 +119,7 @@
     </main>
 
     <script>
-        const userId = <%= userId %>;
+        const userId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
         let isProcessing = false;
         let html5QrCode = null;
 
