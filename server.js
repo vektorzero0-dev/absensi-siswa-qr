@@ -359,13 +359,13 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
         const userSekolahId = user.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
-        // Ambil Seluruh Siswa Sekolah Ini (Lintas Kelas)
+        // Ambil Siswa Khusus Sekolah Ini Saja
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, 'Tanpa Rombel') AS nama_kelas
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE k.sekolah_id = $1 OR k.sekolah_id IS NULL
+            WHERE k.sekolah_id = $1
             ORDER BY s.nama ASC
         `, [userSekolahId]);
 
@@ -377,8 +377,8 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
             SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE (k.sekolah_id = $1 OR k.sekolah_id IS NULL) 
+            JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
               AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
@@ -734,14 +734,11 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
     
     try {
-        // 1. Ambil sekolah_id milik user aktif
         const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
         const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
 
-        // 2. Ambil Nama Sekolah spesifik berdasarkan userSekolahId
         const namaSekolah = await getNamaSekolah(userSekolahId);
         
-        // 3. Ambil data siswa milik sekolah ini saja
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -757,12 +754,12 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
             return { ...s, qrImage };
         }));
 
-        // Kirim namaSekolah yang tepat ke tampilan
         res.render('cetak-kartu', { siswa: siswaData, namaSekolah });
     } catch (err) {
         res.status(500).send("Gagal memuat kartu: " + err.message);
     }
 });
+
 app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/');
@@ -1174,12 +1171,13 @@ app.post('/api/scan', async (req, res) => {
         const parsedScannedBy = parseInt(scanned_by) || 1;
         const tipeAbsen = tipe.toUpperCase() === 'PULANG' ? 'PULANG' : 'MASUK';
 
-        // TARIK NAMA SEKOLAH SECARA DINAMIS SESUAI SEKOLAH SISWA TERDAPAT
+        // TARIK DATA SISWA & MODE WA DARI TABEL SEKOLAH LANGSUNG
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
                    COALESCE(sch.nama_sekolah, set_sch.value, 'SEKOLAH') AS nama_sekolah_siswa,
                    sch.id AS sekolah_id,
+                   COALESCE(sch.wa_mode, 'WALI_KELAS') AS wa_mode,
                    u.id AS wali_kelas_user_id
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
@@ -1193,9 +1191,7 @@ app.post('/api/scan', async (req, res) => {
 
         const siswa = siswaRes.rows[0];
         const namaSekolahResmi = siswa.nama_sekolah_siswa;
-
-        const settingWaRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
-        const modePengirim = settingWaRes.rows.length > 0 ? settingWaRes.rows[0].value : 'ADMIN';
+        const modePengirim = siswa.wa_mode;
 
         const now = new Date();
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
@@ -1481,6 +1477,7 @@ cron.schedule('0 9 * * 1-6', async () => {
                    COALESCE(k.nama_kelas, '-') AS nama_kelas, 
                    COALESCE(sch.nama_sekolah, set_sch.value, 'SEKOLAH') AS nama_sekolah_siswa,
                    sch.id AS sekolah_id,
+                   COALESCE(sch.wa_mode, 'WALI_KELAS') AS wa_mode,
                    u.id AS wali_kelas_user_id
             FROM siswa s
             LEFT JOIN kelas k ON s.kelas_id = k.id
@@ -1500,16 +1497,15 @@ cron.schedule('0 9 * * 1-6', async () => {
 
         if (siswaBelumPresensi.length === 0) return;
 
-        const settingWaRes = await pool.query("SELECT value FROM settings WHERE key = 'pengirim_wa'");
-        const modePengirim = settingWaRes.rows.length > 0 ? settingWaRes.rows[0].value : 'ADMIN';
-
         const now = new Date();
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
         for (const siswa of siswaBelumPresensi) {
             if (!siswa.nomor_wa_ortu) continue;
 
+            const modePengirim = siswa.wa_mode;
             let waClient = null;
+
             if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
                 waClient = waSessions[siswa.wali_kelas_user_id];
             } else if (modePengirim === 'PETUGAS') {
