@@ -584,6 +584,41 @@
             </div>
         </div>
 
+<!-- PANEL KONTROL REKAP ABSENSI BULANAN (ADMIN) -->
+<div id="section-rekap-bulanan" class="card-pro card-amber-theme p-5 mb-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-amber-200/60 pb-3 relative z-10">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-amber-600 text-white shadow-md">
+                <i class="fa-solid fa-file-invoice text-lg"></i>
+            </div>
+            <div>
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Rekapitulasi Absensi Bulanan</h3>
+                <p class="text-[11px] text-slate-600">Filter dan unduh rekapitulasi absensi seluruh siswa per bulan.</p>
+            </div>
+        </div>
+
+        <!-- Form Filter Bulan & Tombol Download -->
+        <form action="/admin" method="GET" class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <input type="hidden" name="userId" value="<%= userId %>">
+            
+            <input type="month" name="bulan" required value="<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" class="bg-white border border-amber-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600">
+            
+            <button type="submit" class="btn-interactive bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-magnifying-glass"></i> Lihat Rekap
+            </button>
+
+            <!-- Download Excel -->
+            <a href="/api/admin/rekap/excel?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : '' %>" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-file-excel"></i> Excel
+            </a>
+
+            <!-- Download / Cetak PDF -->
+            <a href="/api/admin/rekap/pdf?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : '' %>" target="_blank" class="btn-interactive bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </a>
+        </form>
+    </div>
+</div>
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
