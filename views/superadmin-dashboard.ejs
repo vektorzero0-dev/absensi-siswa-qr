@@ -95,7 +95,7 @@
             border: 1px solid var(--border-glow) !important;
             color: var(--neon-cyan) !important;
             font-family: 'Share Tech Mono', monospace;
-            font-size: 14px; /* Mencegah auto-zoom di browser iOS & Android */
+            font-size: 14px;
         }
 
         .form-control:focus, .form-select-cyber:focus {
@@ -234,7 +234,6 @@
             color: #d1f4ff;
         }
 
-        /* ----- PENYESUAIAN KHUSUS LAYAR ANDROID / MOBILE ----- */
         @media (max-width: 768px) {
             .container-fluid {
                 padding-left: 10px !important;
@@ -253,21 +252,18 @@
                 font-size: 0.85rem !important;
             }
 
-            /* Scroll horizontal halus untuk tabel di HP */
             .table-responsive {
                 border: 0;
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
             }
 
-            /* Tombol kendali di tabel disesuaikan ukurannya agar mudah dipencet */
             .table-cyber .btn-sm {
                 padding: 4px 8px !important;
                 font-size: 0.75rem !important;
                 margin-bottom: 2px;
             }
 
-            /* Penyesuaian Modal pada HP */
             .modal-dialog {
                 margin: 10px;
             }
@@ -298,7 +294,7 @@
             <!-- KOLOM KIRI (FORM PENDAFTARAN & AKTIVASI) -->
             <div class="col-lg-4 mb-4">
                 
-                <!-- 1. Form Pendaftaran Sekolah Baru (NO AUTOFILL) -->
+                <!-- 1. Form Pendaftaran Sekolah Baru -->
                 <div class="cyber-card mb-4">
                     <div class="cyber-header cyber-header-green d-flex align-items-center">
                         <i class="bi bi-building-add me-2 fs-5"></i>
@@ -336,7 +332,7 @@
                     </div>
                 </div>
 
-                <!-- 2. Form Tambah Admin Baru ke Sekolah yang Sudah Ada (NO AUTOFILL) -->
+                <!-- 2. Form Tambah Admin Baru ke Sekolah -->
                 <div class="cyber-card mb-4">
                     <div class="cyber-header cyber-header-blue d-flex align-items-center">
                         <i class="bi bi-person-plus-fill me-2 fs-5"></i>
@@ -377,7 +373,7 @@
                     </div>
                 </div>
 
-                <!-- 3. Form Tambah Akun Petugas oleh Super Admin (NO AUTOFILL) -->
+                <!-- 3. Form Tambah Akun Petugas -->
                 <div class="cyber-card">
                     <div class="cyber-header cyber-header-green d-flex align-items-center">
                         <i class="bi bi-person-badge-fill me-2 fs-5"></i>
@@ -470,40 +466,17 @@
                                             <% } %>
                                         </td>
                                         <td class="text-center">
-    <!-- Tombol Masuk / Kontrol Penuh Sekolah -->
-    <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-success btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
-        <i class="bi bi-door-open-fill"></i> KELOLA
-    </a>
+                                            <!-- Tombol Masuk / Kelola Penuh Sekolah -->
+                                            <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-success btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
+                                                <i class="bi bi-door-open-fill"></i> KELOLA
+                                            </a>
 
-    <!-- Button Intip Ringkas -->
-    <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail Ringkas">
-        <i class="bi bi-eye"></i>
-    </button>
+                                            <!-- Button Intip Ringkas -->
+                                            <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail Ringkas">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
 
-    <!-- Form Toggle Status -->
-    <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
-        <% if (s.is_active) { %>
-            <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
-                <i class="bi bi-slash-circle"></i>
-            </button>
-        <% } else { %>
-            <button type="submit" class="btn btn-cyber-success btn-sm me-1" title="Aktifkan">
-                <i class="bi bi-check-circle"></i>
-            </button>
-        <% } %>
-    </form>
-
-    <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit Nama Sekolah">
-        <i class="bi bi-pencil-square"></i>
-    </button>
-    
-    <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini?')">
-        <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus Sekolah">
-            <i class="bi bi-trash"></i>
-        </button>
-    </form>
-</td>
-
+                                            <!-- Form Toggle Status -->
                                             <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
                                                 <% if (s.is_active) { %>
                                                     <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
@@ -516,12 +489,12 @@
                                                 <% } %>
                                             </form>
 
-                                            <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit">
+                                            <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit Nama Sekolah">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
                                             
                                             <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini?')">
-                                                <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus">
+                                                <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus Sekolah">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
