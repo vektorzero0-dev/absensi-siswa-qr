@@ -284,7 +284,43 @@
                         </form>
                     </div>
                 </div>
+<!-- FORMULIR DAFTARKAN ADMIN BARU KE SEKOLAH YANG SUDAH ADA -->
+<div class="card-pro card-blue-theme p-4 mt-4">
+    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2 border-b pb-2">
+        <i class="fa-solid fa-user-plus text-blue-600"></i> Daftarkan Admin Baru Ke Sekolah
+    </h3>
+    <form action="/api/admin/tambah-ke-sekolah" method="POST" autocomplete="off" class="space-y-3">
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Pilih Sekolah Tujuan</label>
+            <select name="sekolah_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <option value="">-- Pilih Sekolah --</option>
+                <% sekolahList.forEach(s => { %>
+                    <option value="<%= s.id %>">#<%= s.id %> - <%= s.nama_sekolah %></option>
+                <% }); %>
+            </select>
+        </div>
 
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Nama Lengkap Admin</label>
+            <input type="text" name="nama" required placeholder="Contoh: Pak Budi (Operator)" autocomplete="off" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">Username Admin</label>
+                <input type="text" name="username" required placeholder="admin_sekolah2" autocomplete="off" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">Password</label>
+                <input type="password" name="password" required placeholder="••••••••" autocomplete="new-password" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-md">
+            <i class="fa-solid fa-user-check mr-1"></i> Buat Akun Admin Sekolah
+        </button>
+    </form>
+</div>
                 <!-- Form Tambah Akun Petugas oleh Super Admin -->
 <div class="cyber-card">
     <div class="cyber-header cyber-header-green d-flex align-items-center">
