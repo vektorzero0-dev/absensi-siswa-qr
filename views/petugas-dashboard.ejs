@@ -3,209 +3,447 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dasbor Petugas Absen - <%= namaSekolah %></title>
+    <title>Panel Petugas Absen - SISTEM ABSENSI DIGITAL</title>
+    
+    <!-- CSS Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- CSS Pendukung -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .offcanvas { z-index: 1055 !important; }
+        .offcanvas-backdrop { z-index: 1050 !important; }
+
+        .bg-light-animated {
+            background: linear-gradient(-45deg, #e0f2fe, #f0fdf4, #fef3c7, #f1f5f9);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            background-image: 
+                radial-gradient(rgba(15, 23, 42, 0.05) 1.2px, transparent 1.2px),
+                linear-gradient(-45deg, #e0f2fe, #f0fdf4, #fef3c7, #e2e8f0);
+            background-size: 20px 20px, 400% 400%;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+        .animate-glow { animation: pulseGlow 5s infinite ease-in-out; }
+
+        .card-pro {
+            position: relative;
+            overflow: hidden;
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card-pro::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+            background-size: 14px 14px;
+            pointer-events: none;
+        }
+
+        .card-pro:hover {
+            transform: translateY(-4px) scale(1.005);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-amber-theme {
+            background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+            border: 1px solid #fde68a;
+        }
+        .card-emerald-theme {
+            background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+            border: 1px solid #a7f3d0;
+        }
+        .card-blue-theme {
+            background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+            border: 1px solid #bfdbfe;
+        }
+        .card-purple-theme {
+            background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+            border: 1px solid #e9d5ff;
+        }
+
+        @keyframes fadeInSoft {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInSoft 0.4s ease-out forwards; }
+
+        button, .btn-interactive { transition: all 0.2s ease-in-out; }
+        button:active, .btn-interactive:active { transform: scale(0.96); }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between">
+<body class="bg-light-animated text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
 
-    <!-- Header Dasbor -->
-    <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
+<!-- NAVBAR HEADER ATAS -->
+<nav class="bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-amber-500/50">
+  <div class="flex items-center gap-3">
+    <button type="button" onclick="bukaSidebar()" class="btn-interactive bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl border border-blue-600 font-bold text-xs flex items-center gap-2 transition shadow-sm">
+      <i class="fa-solid fa-bars text-sm"></i> <span>Menu</span>
+    </button>
+    
+    <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
+      <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'NAMA SEKOLAH BELUM DIATUR' %>
+    </span>
+  </div>
+
+  <div class="text-xs text-slate-300 hidden sm:block">
+    <i class="fa-solid fa-user-shield text-amber-400 mr-1"></i> Panel Petugas Absen
+  </div>
+</nav>
+
+<!-- SIDEBAR SLIDE PETUGAS -->
+<div id="sidebarMenu" class="fixed top-0 left-0 h-full w-[260px] bg-white text-slate-800 shadow-2xl z-50 transition-all duration-300 -translate-x-full flex flex-col justify-between border-r border-slate-200">
+  <div>
+    <div class="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-slate-800">
+      <h5 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-shield-halved text-amber-400"></i> Menu Navigasi
+      </h5>
+      <button type="button" onclick="tutupSidebar()" class="text-slate-400 hover:text-white text-lg font-bold px-2">
+        &times;
+      </button>
+    </div>
+    
+    <div class="p-2 space-y-1 text-xs">
+      <a href="/petugas?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
+        <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
+      </a>
+      <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
+      </a>
+      <a href="/admin/cetak-kartu" target="_blank" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
+        <i class="fa-solid fa-address-card"></i> Cetak Kartu Siswa
+      </a>
+      <a href="#section-settings" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-school text-amber-600"></i> Pengaturan Sekolah
+      </a>
+      <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-brands fa-whatsapp text-emerald-600"></i> Integrasi WhatsApp
+      </a>
+      <a href="#section-dapodik" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-file-excel text-emerald-600"></i> Impor Excel Dapodik
+      </a>
+      <a href="#section-rombel" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-school text-purple-600"></i> Kelola Rombel
+      </a>
+      <a href="#section-siswa" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-users text-blue-600"></i> Direktori Siswa
+      </a>
+      <a href="#section-presensi" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-clipboard-check text-amber-600"></i> Presensi Hari Ini
+      </a>
+    </div>
+  </div>
+
+  <div class="p-4 border-t border-slate-100">
+    <a href="/" class="flex items-center justify-center gap-2 w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs py-2.5 rounded-xl transition">
+      <i class="fa-solid fa-right-from-bracket"></i> Keluar (Logout)
+    </a>
+  </div>
+</div>
+
+<div id="sidebarOverlay" onclick="tutupSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity backdrop-blur-xs"></div>
+
+    <header class="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-900 text-white shadow-lg border-b-4 border-amber-500 relative overflow-hidden">
+        <div class="absolute -top-12 left-1/4 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl animate-glow pointer-events-none"></div>
+        <div class="absolute -bottom-10 right-10 w-36 h-36 bg-amber-400/20 rounded-full blur-3xl animate-glow pointer-events-none" style="animation-delay: 2.5s;"></div>
+
+        <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
             <div class="flex items-center gap-3">
-                <div class="bg-amber-400 text-slate-950 p-2.5 rounded-xl font-bold shadow">
-                    <i class="fa-solid fa-user-shield text-xl"></i>
+                <div class="bg-gradient-to-tr from-amber-500 to-amber-300 p-2 rounded-xl text-slate-950 shadow-md">
+                    <i class="fa-solid fa-user-shield text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-sm sm:text-base font-extrabold tracking-wide uppercase text-slate-100"><%= namaSekolah %></h1>
-                    <p class="text-xs text-blue-200">Dasbor Petugas Absen Sekolah (Pusat / Lintas Kelas)</p>
+                    <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">SISTEM ABSENSI DIGITAL</h1>
+                    <p class="text-[11px] text-blue-200">Panel Petugas Absen Presensi Sekolah</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="hidden sm:block text-right">
-                    <p class="text-xs font-bold text-white"><%= user.nama %></p>
-                    <p class="text-[10px] text-amber-400 font-semibold uppercase">Petugas Absen</p>
-                </span>
-                <a href="/login" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <a href="/scan?userId=<%= userId %>" class="btn-interactive flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-qrcode text-sm"></i> Pemindai Presensi (Scanner)
+                </a>
+                <a href="/" class="btn-interactive bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar
                 </a>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-1 space-y-6">
+    <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
 
-        <!-- Banner Aksi Cepat & Status WA Center -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            <!-- Tombol Scanner -->
-            <div class="bg-gradient-to-br from-blue-900 to-indigo-800 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between">
+        <div class="card-pro card-amber-theme p-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-3 relative z-10">
+                <div class="bg-amber-600 text-white p-3 rounded-xl shadow-md">
+                    <i class="fa-solid fa-user-check text-xl"></i>
+                </div>
                 <div>
-                    <span class="bg-blue-700/50 text-blue-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">Pemindai Utama</span>
-                    <h3 class="text-lg font-black mt-2">Kamera Scan QR Presensi</h3>
-                    <p class="text-xs text-blue-100 mt-1">Lakukan scan kartu siswa dari semua kelas di sini.</p>
-                </div>
-                <a href="/scan?userId=<%= userId %>" class="mt-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs py-3 px-4 rounded-xl text-center shadow transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-qrcode text-base"></i> Buka Pemindai QR
-                </a>
-            </div>
-
-            <!-- Panel Status WhatsApp Center (Sama dengan Admin / Wali Kelas) -->
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm md:col-span-2 flex flex-col justify-between space-y-4">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Layanan WA Gateway Pusat</span>
-                        <h3 class="text-base font-black text-slate-800">Status Koneksi Akun Petugas</h3>
-                    </div>
-                    <span id="badgeStatusWA" class="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                        Memeriksa...
-                    </span>
-                </div>
-
-                <!-- Tampilan QR Code ATAU Tautan Pairing Code -->
-                <div class="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <div id="qrContainer" class="hidden border p-1 rounded-lg bg-white shadow-sm shrink-0">
-                        <img id="imgQR" src="" alt="QR WA" class="w-24 h-24">
-                    </div>
-                    
-                    <div id="pairingContainer" class="hidden text-center sm:text-left bg-amber-50 border border-amber-200 p-3 rounded-xl w-full">
-                        <p class="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Kode Tautan WhatsApp Anda:</p>
-                        <p id="txtPairingCode" class="text-2xl font-black text-amber-900 tracking-widest my-1 font-mono">------</p>
-                        <p class="text-[10px] text-amber-700">Buka WA di HP > Perangkat Tertaut > Tautkan dengan nomor telepon saja.</p>
-                    </div>
-
-                    <div class="flex-1 text-center sm:text-left">
-                        <p id="txtInfoWA" class="text-xs text-slate-700 font-medium">Memuat status koneksi WhatsApp...</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Gunakan salah satu metode di bawah untuk menghubungkan akun WA Petugas.</p>
-                    </div>
-                </div>
-
-                <!-- Form Masukkan Nomor WA untuk Tautan Kode -->
-                <div id="formPairing" class="flex items-center gap-2">
-                    <input type="text" id="inputNoHP" placeholder="Nomor WA (Ex: 081234567890)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                    <button onclick="mintaKodePairing()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shrink-0 whitespace-nowrap">
-                        <i class="fa-solid fa-key"></i> Tautkan Kode
-                    </button>
-                </div>
-
-                <div class="flex gap-2">
-                    <button onclick="hubungkanWA()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-qrcode"></i> QR Code Saja
-                    </button>
-                    <button onclick="resetWA()" class="bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
-                        Reset Sesi
-                    </button>
+                    <span class="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded uppercase tracking-wider">Hak Akses: Petugas Absen</span>
+                    <h2 class="text-base font-bold text-slate-900 mt-0.5">Dashboard Operasional Presensi Siswa</h2>
                 </div>
             </div>
-
         </div>
 
-        <!-- Section Pengelolaan Rombel & Siswa -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <!-- Form Tambah Rombel / Kelas -->
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-4">
-                    <i class="fa-solid fa-layer-group text-blue-600"></i>
-                    <h3 class="font-extrabold text-slate-800 text-sm">Tambah Rombel / Kelas</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div class="card-pro card-emerald-theme p-4 flex items-center justify-between">
+                <div class="relative z-10">
+                    <p class="text-xs text-slate-600 font-medium">Total Peserta Didik</p>
+                    <h3 class="text-xl font-bold text-emerald-800 mt-1"><%= siswaList ? siswaList.length : 0 %> <span class="text-xs font-normal text-slate-500">Siswa</span></h3>
                 </div>
-                <form action="/api/kelas/tambah" method="POST" class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">NAMA KELAS / ROMBEL</label>
-                        <input type="text" name="nama_kelas" placeholder="Ex: Kelas 1A / IX B" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                    </div>
-                    <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-plus"></i> Simpan Kelas
-                    </button>
-                </form>
+                <div class="bg-emerald-600 text-white p-3 rounded-xl relative z-10 shadow-md">
+                    <i class="fa-solid fa-user-graduate text-lg"></i>
+                </div>
             </div>
 
-            <!-- Form Tambah Siswa Manual & Import Excel -->
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm md:col-span-2">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-user-plus text-emerald-600"></i>
-                        <h3 class="font-extrabold text-slate-800 text-sm">Input Data Siswa Baru</h3>
-                    </div>
-                    <button onclick="toggleImportModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-excel text-emerald-600"></i> Impor Excel
-                    </button>
+            <div class="card-pro card-purple-theme p-4 flex items-center justify-between">
+                <div class="relative z-10">
+                    <p class="text-xs text-slate-600 font-medium">Rombongan Belajar (Rombel)</p>
+                    <h3 class="text-xl font-bold text-purple-900 mt-1"><%= kelasList ? kelasList.length : 0 %> <span class="text-xs font-normal text-slate-500">Kelas</span></h3>
+                </div>
+                <div class="bg-purple-600 text-white p-3 rounded-xl relative z-10 shadow-md">
+                    <i class="fa-solid fa-school text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-settings" class="card-pro card-amber-theme p-5 mb-6">
+            <div class="flex items-center gap-3 mb-3 border-b border-amber-200/60 pb-2 relative z-10">
+                <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-school text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Pengaturan Identitas Sekolah</h3>
+                    <p class="text-[11px] text-slate-600">Ubah nama instansi/sekolah yang akan ditampilkan pada header dan laporan.</p>
+                </div>
+            </div>
+
+            <form id="formSettings" class="flex flex-col sm:flex-row items-center gap-3 relative z-10">
+                <input type="text" id="namaSekolahInput" name="nama_sekolah" placeholder="Contoh: SD NEGERI 2 KARYA MULYA" value="<%= typeof namaSekolah !== 'undefined' ? namaSekolah : '' %>" required class="flex-1 text-xs text-slate-800 border border-amber-300 rounded-xl p-2.5 w-full bg-white focus:outline-none focus:ring-2 focus:ring-amber-600">
+                
+                <button type="submit" class="btn-interactive w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-amber-700 whitespace-nowrap shadow-md">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Nama Sekolah
+                </button>
+            </form>
+        </div>
+
+        <div id="section-wa-gateway" class="card-pro card-emerald-theme p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 relative z-10">
+                <div class="p-3 rounded-xl bg-emerald-600 text-white shadow-md">
+                    <i class="fa-brands fa-whatsapp text-2xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Status WhatsApp Gateway Petugas</h3>
+                    <p class="text-xs text-slate-600 mt-0.5" id="waStatusText">
+                        Koneksi Layanan: <span class="text-slate-500 font-bold">Memeriksa status...</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto relative z-10">
+                <div id="qrContainer" class="hidden bg-white p-1.5 rounded-xl shadow border border-slate-300 flex flex-col items-center">
+                    <img id="qrImageWA" src="" alt="Scan QR WA" class="w-28 h-28">
+                    <span class="text-[9px] text-slate-500 mt-1 font-mono">Pindai dengan WA</span>
                 </div>
 
-                <!-- Form Tambah Manual -->
-                <form action="/api/siswa/tambah" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 mb-1">NAMA LENGKAP SISWA</label>
-                        <input type="text" name="nama" placeholder="Ex: Ahmad Riski" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 mb-1">NOMOR WA ORANG TUA</label>
-                        <input type="text" name="nomor_wa_ortu" placeholder="08xxxxxxxxx" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 mb-1">PILIH ROMBEL / KELAS</label>
-                        <select name="kelas_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
-                            <option value="">-- Pilih Kelas --</option>
+                <div id="pairingContainer" class="hidden bg-blue-50 p-3 rounded-xl border border-blue-200 text-center min-w-[200px]">
+                    <span class="text-[10px] text-blue-800 font-medium block">Kode Tautan WhatsApp Anda:</span>
+                    <strong id="pairingCodeText" class="text-xl font-mono text-blue-900 tracking-widest my-1 block">-</strong>
+                    <span class="text-[9px] text-blue-700 block">Masukkan di WA HP (Tautkan dg nomor)</span>
+                </div>
+
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+                    <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-qrcode"></i> Scan QR
+                    </button>
+
+                    <button type="button" onclick="mintaPairingWA()" id="btnPairingWA" class="btn-interactive bg-blue-800 hover:bg-blue-900 text-white text-xs px-3.5 py-2.5 rounded-xl border border-blue-900 font-semibold transition flex items-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA
+                    </button>
+
+                    <button type="button" onclick="resetWA()" id="btnResetWA" class="btn-interactive bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-dapodik" class="card-pro card-emerald-theme p-5 mb-6">
+            <div class="flex items-center gap-3 mb-3 border-b border-emerald-200/60 pb-2 relative z-10">
+                <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-file-excel text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Impor Massal Data Siswa (Format Dapodik/Excel)</h3>
+                    <p class="text-[11px] text-slate-600">Unggah berkas rekap Excel (.xlsx / .csv) dari Dapodik untuk menambahkan siswa & rombel secara otomatis.</p>
+                </div>
+            </div>
+
+            <form id="formImportExcel" onsubmit="prosesImportExcel(event)" class="flex flex-col sm:flex-row items-center gap-3 relative z-10">
+                <input type="file" id="fileExcelInput" accept=".xlsx, .xls, .csv" required class="flex-1 text-xs text-slate-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 border border-emerald-300 rounded-xl p-1 w-full bg-white">
+                
+                <button type="submit" id="btnImportExcel" class="btn-interactive w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-emerald-800 whitespace-nowrap shadow-md">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data
+                </button>
+            </form>
+        </div>
+
+        <div id="section-rombel" class="card-pro card-purple-theme p-5 mb-6">
+            <div class="flex justify-between items-center border-b border-purple-200/60 pb-2 mb-4 relative z-10">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-purple-700"></i> Rombongan Belajar (Rombel)
+                </h3>
+                
+                <% if (kelasList && kelasList.length > 0) { %>
+                    <form action="/api/kelas/hapus-semua" method="POST" onsubmit="return confirm('HAPUS SELURUH ROMBEL?\n\nSemua rombel ganda akan dibersihkan.');">
+                        <button type="submit" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-rose-200 transition flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can text-rose-600"></i> Kosongkan Semua Rombel
+                        </button>
+                    </form>
+                <% } %>
+            </div>
+
+            <form action="/api/kelas/tambah" method="POST" class="flex gap-2 relative z-10">
+                <input type="text" name="nama_kelas" required placeholder="Contoh: Kelas 1A" class="flex-1 bg-white border border-purple-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600">
+                <button type="submit" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow-md">Simpan Rombel</button>
+            </form>
+
+            <div class="mt-4 flex flex-wrap gap-2 relative z-10">
+                <% if (kelasList && kelasList.length > 0) { %>
+                    <% kelasList.forEach(k => { %>
+                        <span class="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                            <%= k.nama_kelas %>
+                            <form action="/api/kelas/hapus/<%= k.id %>" method="POST" onsubmit="return confirm('Hapus rombel <%= k.nama_kelas %>?');" class="inline">
+                                <button type="submit" class="text-purple-400 hover:text-rose-600 font-bold ml-1 text-xs">
+                                    &times;
+                                </button>
+                            </form>
+                        </span>
+                    <% }); %>
+                <% } else { %>
+                    <p class="text-[11px] text-slate-400 italic">Belum ada rombel terdaftar.</p>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="card-pro card-amber-theme p-5 mb-6">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-amber-200/60 pb-2 relative z-10">
+                <i class="fa-solid fa-address-card text-amber-700"></i> Registrasi Peserta Didik Baru (Manual)
+            </h3>
+            <form action="/api/siswa/tambah" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-3 relative z-10">
+                <input type="text" name="nama" required placeholder="Nama Lengkap Siswa" class="bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                <input type="text" name="nomor_wa_ortu" placeholder="No. WhatsApp Orang Tua (Contoh: 082371729760)" class="bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                <div class="flex gap-2">
+                    <select name="kelas_id" required class="flex-1 bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                        <option value="">-- Pilih Rombel Kelas --</option>
+                        <% if (kelasList && kelasList.length > 0) { %>
                             <% kelasList.forEach(k => { %>
                                 <option value="<%= k.id %>"><%= k.nama_kelas %></option>
                             <% }); %>
-                        </select>
-                    </div>
-                    <div class="sm:col-span-3 text-right">
-                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 inline-flex">
-                            <i class="fa-solid fa-user-check"></i> Tambahkan Siswa
-                        </button>
-                    </div>
-                </form>
-            </div>
-
+                        <% } %>
+                    </select>
+                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow-md">Simpan Siswa</button>
+                </div>
+            </form>
         </div>
 
-        <!-- Tabel Monitoring Presensi Hari Ini -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-blue-600 text-lg"></i>
-                    <h3 class="font-extrabold text-slate-800 text-sm">Riwayat Presensi Masuk & Pulang Hari Ini</h3>
+        <div id="section-siswa" class="card-pro card-emerald-theme p-5 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-emerald-200/60 pb-3 relative z-10">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-emerald-700"></i> Direktori Peserta Didik
+                    </h3>
+                    <p class="text-[11px] text-slate-600 mt-0.5">Daftar kartu identitas digital siswa yang valid untuk presensi kehadiran.</p>
                 </div>
-                <span class="text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
-                    Total: <%= absensiHariIni.length %> Presensi
-                </span>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <form action="/api/siswa/hapus-semua" method="POST" onsubmit="return confirm('RESET TOTAL DATABASE?\n\nSeluruh data siswa, riwayat absensi, dan rombel akan DIHAPUS PERMANEN.');" class="inline">
+                        <button type="submit" class="btn-interactive bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate-left text-rose-600"></i> Reset Total Database
+                        </button>
+                    </form>
+
+                    <a href="/admin/cetak-kartu" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-address-card"></i> Cetak Kartu Siswa
+                    </a>
+                </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-slate-700">
-                    <thead class="bg-slate-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+            <div class="overflow-x-auto relative z-10">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
+                    <thead class="bg-emerald-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-emerald-200">
                         <tr>
-                            <th class="p-3.5">Waktu WIB</th>
-                            <th class="p-3.5">Nama Siswa</th>
-                            <th class="p-3.5">Kelas / Rombel</th>
-                            <th class="p-3.5">Tipe Presensi</th>
+                            <th class="p-3">ID Siswa</th>
+                            <th class="p-3">Nama Lengkap Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3">No. WhatsApp Orang Tua</th>
+                            <th class="p-3 text-center">Tindakan</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <% if (absensiHariIni && absensiHariIni.length > 0) { %>
-                            <% absensiHariIni.forEach(row => { %>
-                                <tr class="hover:bg-slate-50 transition">
-                                    <td class="p-3.5 font-bold text-slate-900"><%= row.waktu_formatted %></td>
-                                    <td class="p-3.5 font-semibold text-slate-800"><%= row.nama_siswa %></td>
-                                    <td class="p-3.5"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold border border-slate-200"><%= row.nama_kelas %></span></td>
-                                    <td class="p-3.5">
-                                        <% if (row.tipe === 'PULANG') { %>
-                                            <span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2.5 py-1 rounded-full text-[10px]">🏠 PULANG</span>
-                                        <% } else { %>
-                                            <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2.5 py-1 rounded-full text-[10px]">✅ MASUK</span>
-                                        <% } %>
+                    <tbody class="divide-y divide-emerald-100 bg-white/70">
+                        <% if (siswaList && siswaList.length > 0) { %>
+                            <% siswaList.forEach(s => { %>
+                                <tr class="hover:bg-emerald-50/50 transition-colors">
+                                    <td class="p-3 font-mono font-bold text-emerald-800">#<%= s.id %></td>
+                                    <td class="p-3 font-semibold text-slate-900"><%= s.nama %></td>
+                                    <td class="p-3">
+                                        <span class="bg-white text-slate-700 text-[10px] font-bold px-2.5 py-1 rounded border border-slate-200">
+                                            <%= s.nama_kelas %>
+                                        </span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-700">
+                                        <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button" 
+                                                    data-id="<%= s.id %>" 
+                                                    data-nama="<%= encodeURIComponent(s.nama) %>" 
+                                                    data-wa="<%= encodeURIComponent(s.nomor_wa_ortu || '') %>" 
+                                                    data-kelas="<%= s.kelas_id || '' %>" 
+                                                    onclick="bukaModalEditSiswa(this)" 
+                                                    class="btn-interactive text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition">
+                                                <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
+                                            </button>
+
+                                            <button type="button" 
+                                                    data-id="<%= s.id %>" 
+                                                    data-nama="<%= encodeURIComponent(s.nama) %>" 
+                                                    onclick="hapusSiswa(this)" 
+                                                    class="btn-interactive text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition">
+                                                <i class="fa-solid fa-trash mr-1"></i> Hapus
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="4" class="p-6 text-center text-slate-400 font-medium">Belum ada data presensi masuk/pulang hari ini.</td>
+                                <td colspan="5" class="p-8 text-center text-slate-400 italic">
+                                    <i class="fa-solid fa-folder-open text-2xl mb-1 block text-slate-300"></i>
+                                    Belum ada siswa terdaftar. Silakan lakukan impor data Excel Dapodik atau tambah manual.
+                                </td>
                             </tr>
                         <% } %>
                     </tbody>
@@ -213,49 +451,55 @@
             </div>
         </div>
 
-        <!-- Tabel Daftar Siswa Sekolah (Semua Kelas) -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-users text-slate-600"></i>
-                    <h3 class="font-extrabold text-slate-800 text-sm">Daftar Seluruh Siswa Sekolah</h3>
+        <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-user text-purple-700"></i> Rekapitulasi Presensi Kehadiran Hari Ini
+                    </h3>
+                    <p class="text-[11px] text-slate-600 mt-0.5">Daftar log aktivitas scan kartu siswa yang tercatat hari ini.</p>
                 </div>
-                <span class="text-xs font-semibold text-slate-500">Total: <%= siswaList.length %> Siswa</span>
+
+                <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa dan rombel kelas TIDAK akan terhapus.');">
+                    <button type="submit" class="btn-interactive bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold px-3.5 py-2 rounded-xl border border-amber-300 transition flex items-center gap-1.5 shadow-xs">
+                        <i class="fa-solid fa-broom text-amber-600"></i> Bersihkan Riwayat Uji Coba
+                    </button>
+                </form>
             </div>
 
-            <div class="p-4 border-b border-slate-100">
-                <input type="text" id="inputCariSiswa" onkeyup="filterSiswa()" placeholder="Cari nama siswa atau kelas..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-blue-500">
-            </div>
-
-            <div class="overflow-x-auto max-h-96 overflow-y-auto">
-                <table class="w-full text-left text-xs text-slate-700" id="tabelSiswa">
-                    <thead class="bg-slate-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider sticky top-0 border-b border-slate-200">
+            <div class="overflow-x-auto relative z-10">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
+                    <thead class="bg-purple-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-purple-200">
                         <tr>
-                            <th class="p-3.5">Nama Siswa</th>
-                            <th class="p-3.5">Kelas / Rombel</th>
-                            <th class="p-3.5">Nomor WA Orang Tua</th>
-                            <th class="p-3.5 text-center">Aksi</th>
+                            <th class="p-3">Nama Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3">Waktu Presensi</th>
+                            <th class="p-3 text-center">Tipe Presensi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <% if (siswaList && siswaList.length > 0) { %>
-                            <% siswaList.forEach(s => { %>
-                                <tr class="baris-siswa hover:bg-slate-50 transition">
-                                    <td class="p-3.5 font-bold text-slate-800 cell-nama"><%= s.nama %></td>
-                                    <td class="p-3.5 cell-kelas"><span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-semibold border border-slate-200"><%= s.nama_kelas %></span></td>
-                                    <td class="p-3.5 text-slate-500 font-mono"><%= s.nomor_wa_ortu || '-' %></td>
-                                    <td class="p-3.5 text-center">
-                                        <form action="/api/siswa/hapus/<%= s.id %>" method="POST" onsubmit="return confirm('Hapus siswa <%= s.nama %>?')" class="inline">
-                                            <button type="submit" class="text-rose-600 hover:text-rose-800 font-bold text-xs p-1">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </form>
+                    <tbody class="divide-y divide-purple-100 bg-white/70">
+                        <% if (typeof absensiHariIni !== 'undefined' && absensiHariIni && absensiHariIni.length > 0) { %>
+                            <% absensiHariIni.forEach(a => { %>
+                                <tr class="hover:bg-purple-50/50 transition-colors">
+                                    <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
+                                    <td class="p-3 text-slate-600"><%= a.nama_kelas %></td>
+                                    <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
+                                    <td class="p-3 text-center">
+                                        <% if (a.tipe === 'PULANG') { %>
+                                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                🏠 PULANG
+                                            </span>
+                                        <% } else { %>
+                                            <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                ✅ MASUK
+                                            </span>
+                                        <% } %>
                                     </td>
                                 </tr>
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="4" class="p-6 text-center text-slate-400">Belum ada data siswa terdaftar.</td>
+                                <td colspan="4" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk/pulang untuk hari ini.</td>
                             </tr>
                         <% } %>
                     </tbody>
@@ -265,157 +509,267 @@
 
     </main>
 
-    <!-- Modal Upload Excel -->
-    <div id="modalImport" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 relative">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-file-excel text-emerald-600"></i> Impor Siswa dari Excel
+    <form id="formHapusUmum" action="" method="POST" class="hidden"></form>
+
+    <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-emerald-600"></i> Edit Data Siswa / WhatsApp
                 </h3>
-                <button onclick="toggleImportModal()" class="text-slate-400 hover:text-slate-600">
+                <button type="button" onclick="tutupModalEditSiswa()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            
-            <form id="formImportExcel" onsubmit="submitImportExcel(event)" enctype="multipart/form-data" class="space-y-4">
-                <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-emerald-500 transition">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-emerald-600 mb-2"></i>
-                    <p class="text-xs font-semibold text-slate-700">Pilih berkas Excel (.xlsx / .csv)</p>
-                    <p class="text-[10px] text-slate-400 mt-1">Pastikan kolom bernama 'Nama', 'Kelas', 'No HP/WA'</p>
-                    <input type="file" name="file_excel" accept=".xlsx, .xls, .csv" required class="mt-3 text-xs text-slate-500 w-full">
+
+            <form id="formEditSiswa" action="" method="POST" class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Nama Lengkap Siswa</label>
+                    <input type="text" id="editNamaSiswa" name="nama" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
                 </div>
 
-                <div class="flex gap-2">
-                    <button type="button" onclick="toggleImportModal()" class="w-1/2 bg-slate-100 text-slate-600 font-bold text-xs py-2.5 rounded-xl">Batal</button>
-                    <button type="submit" id="btnSubmitImport" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition">
-                        Unggah & Impor
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">No. WhatsApp Ortu/Wali</label>
+                    <input type="text" id="editWaSiswa" name="nomor_wa_ortu" placeholder="Contoh: 082371729760" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Rombongan Belajar (Kelas)</label>
+                    <select id="editKelasSiswa" name="kelas_id" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                        <option value="">-- Tanpa Rombel --</option>
+                        <% if (kelasList && kelasList.length > 0) { %>
+                            <% kelasList.forEach(k => { %>
+                                <option value="<%= k.id %>"><%= k.nama_kelas %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="tutupModalEditSiswa()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl border border-slate-300 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2.5 rounded-xl border border-emerald-800 transition">
+                        Simpan Perubahan
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
-        <p>&copy; <%= new Date().getFullYear() %> Sistem Presensi QR Code - <%= namaSekolah %></p>
-    </footer>
+    <!-- SCRIPT JAVASCRIPT BOOTSTRAP & UTILS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Script Pengelola Status WA, Filter & Import -->
     <script>
-        const userId = "<%= userId %>";
+        const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
 
-        async function checkWAStatus() {
-            try {
-                const res = await fetch(`/api/wa-status?userId=${userId}`);
-                const data = await res.json();
-                
-                const badge = document.getElementById('badgeStatusWA');
-                const txtInfo = document.getElementById('txtInfoWA');
-                const qrContainer = document.getElementById('qrContainer');
-                const imgQR = document.getElementById('imgQR');
-                const pairingContainer = document.getElementById('pairingContainer');
-                const txtPairingCode = document.getElementById('txtPairingCode');
+        function cekStatusWA() {
+            fetch(`/api/wa-status?userId=${currentUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const statusText = document.getElementById('waStatusText');
+                    const qrContainer = document.getElementById('qrContainer');
+                    const qrImage = document.getElementById('qrImageWA');
+                    const pairingContainer = document.getElementById('pairingContainer');
+                    const pairingCodeText = document.getElementById('pairingCodeText');
 
-                if (data.statusWA === 'TERHUBUNG') {
-                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200";
-                    badge.innerText = "TERHUBUNG ✅";
-                    txtInfo.innerText = "Layanan WhatsApp Petugas aktif dan siap mengirim notifikasi.";
-                    qrContainer.classList.add('hidden');
-                    pairingContainer.classList.add('hidden');
-                } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' && data.pairingCode) {
-                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200";
-                    badge.innerText = "KODE TAUTAN 🔑";
-                    txtInfo.innerText = "Masukkan kode tautan ini ke WhatsApp HP Anda.";
-                    txtPairingCode.innerText = data.pairingCode;
-                    pairingContainer.classList.remove('hidden');
-                    qrContainer.classList.add('hidden');
-                } else if (data.statusWA === 'MENUNGGU_SCAN' && data.qrCodeWA) {
-                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200";
-                    badge.innerText = "SCAN QR WA 📲";
-                    txtInfo.innerText = "Silakan scan kode QR ini dari WhatsApp di HP Petugas.";
-                    imgQR.src = data.qrCodeWA;
-                    qrContainer.classList.remove('hidden');
-                    pairingContainer.classList.add('hidden');
-                } else {
-                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200";
-                    badge.innerText = "BELUM TERHUBUNG ❌";
-                    txtInfo.innerText = "Minta kode tautan HP atau klik 'QR Code Saja' untuk menghubungkan.";
-                    qrContainer.classList.add('hidden');
-                    pairingContainer.classList.add('hidden');
-                }
-            } catch (e) {}
+                    if (!statusText) return;
+
+                    if (data.statusWA === 'TERHUBUNG') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-emerald-700 font-bold">Terhubung & Siap Terkirim ✅</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
+                    } else if (data.pairingCode) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-blue-700 font-bold">Masukkan Kode di WA HP 📲</span>`;
+                        pairingCodeText.innerText = data.pairingCode;
+                        pairingContainer.classList.remove('hidden');
+                        qrContainer.classList.add('hidden');
+                    } else if (data.qrCodeWA) {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Pindai Kode QR Di Bawah 📲</span>`;
+                        qrImage.src = data.qrCodeWA;
+                        qrContainer.classList.remove('hidden');
+                        pairingContainer.classList.add('hidden');
+                    } else if (data.statusWA === 'MENUNGGU_PAIRING_CODE' || data.statusWA === 'PROSES_INIT') {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
+                    } else {
+                        statusText.innerHTML = `Koneksi Layanan: <span class="text-rose-600 font-bold">Belum Terhubung ❌</span>`;
+                        qrContainer.classList.add('hidden');
+                        pairingContainer.classList.add('hidden');
+                    }
+                })
+                .catch(err => console.error("Gagal cek WA status:", err));
         }
 
-        async function hubungkanWA() {
-            await fetch(`/api/start-wa?userId=${userId}`);
-            checkWAStatus();
-        }
-
-        async function mintaKodePairing() {
-            const phone = document.getElementById('inputNoHP').value.trim();
-            if (!phone) return alert("Masukkan nomor WhatsApp terlebih dahulu!");
-            
-            await fetch(`/api/request-pairing?userId=${userId}&phone=${phone}`);
-            checkWAStatus();
-        }
-
-        async function resetWA() {
-            if (confirm("Reset sesi WA petugas ini?")) {
-                await fetch(`/api/reset-wa?userId=${userId}`);
-                checkWAStatus();
+        function mintaQRWA() {
+            const btn = document.getElementById('btnGenerateWA');
+            const statusText = document.getElementById('waStatusText');
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+                btn.disabled = true;
             }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan QR Code... ⏳</span>`;
+            }
+
+            fetch(`/api/start-wa?userId=${currentUserId}`)
+                .then(() => {
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan QR`;
+                            btn.disabled = false;
+                        }
+                        cekStatusWA();
+                    }, 3000);
+                });
         }
 
-        setInterval(checkWAStatus, 5000);
-        checkWAStatus();
+        function mintaPairingWA() {
+            const noHp = prompt("Masukkan Nomor WhatsApp Petugas (Contoh: 082371729760):");
+            if (!noHp) return;
 
-        function filterSiswa() {
-            const input = document.getElementById('inputCariSiswa').value.toLowerCase();
-            const rows = document.querySelectorAll('.baris-siswa');
+            const btn = document.getElementById('btnPairingWA');
+            const statusText = document.getElementById('waStatusText');
+            
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+                btn.disabled = true;
+            }
+            if (statusText) {
+                statusText.innerHTML = `Koneksi Layanan: <span class="text-amber-600 font-bold">Menyiapkan Tautan WA... ⏳</span>`;
+            }
 
-            rows.forEach(row => {
-                const nama = row.querySelector('.cell-nama').innerText.toLowerCase();
-                const kelas = row.querySelector('.cell-kelas').innerText.toLowerCase();
-                if (nama.includes(input) || kelas.includes(input)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
+            fetch(`/api/request-pairing?userId=${currentUserId}&phone=${encodeURIComponent(noHp)}`)
+                .then(res => res.json())
+                .then(data => {
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                            btn.disabled = false;
+                        }
+                        cekStatusWA();
+                    }, 4000);
+                })
+                .catch(err => {
+                    console.error("Error minta pairing:", err);
+                    if (btn) {
+                        btn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA`;
+                        btn.disabled = false;
+                    }
+                    cekStatusWA();
+                });
+        }
+
+        function resetWA() {
+            if (!confirm('Apakah Anda yakin ingin mereset sesi WhatsApp Petugas?')) return;
+            fetch(`/api/reset-wa?userId=${currentUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    cekStatusWA();
+                });
+        }
+
+        function prosesImportExcel(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileExcelInput');
+            const btn = document.getElementById('btnImportExcel');
+
+            if (!fileInput.files.length) return alert("Pilih berkas Excel terlebih dahulu!");
+
+            const formData = new FormData();
+            formData.append('file_excel', fileInput.files[0]);
+
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memproses...`;
+            btn.disabled = true;
+
+            fetch('/api/siswa/import-excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data`;
+                btn.disabled = false;
+                if (data.success) location.reload();
+            })
+            .catch(err => {
+                console.error("Error Import:", err);
+                alert("Terjadi kesalahan saat mengunggah berkas.");
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload & Impor Data`;
+                btn.disabled = false;
             });
         }
 
-        function toggleImportModal() {
-            document.getElementById('modalImport').classList.toggle('hidden');
+        function bukaModalEditSiswa(btn) {
+            const id = btn.getAttribute('data-id');
+            const nama = decodeURIComponent(btn.getAttribute('data-nama'));
+            const wa = decodeURIComponent(btn.getAttribute('data-wa'));
+            const kelasId = btn.getAttribute('data-kelas');
+
+            document.getElementById('formEditSiswa').action = `/api/siswa/edit/${id}`;
+            document.getElementById('editNamaSiswa').value = nama;
+            document.getElementById('editWaSiswa').value = wa;
+            document.getElementById('editKelasSiswa').value = kelasId;
+            document.getElementById('modalEditSiswa').classList.remove('hidden');
         }
 
-        async function submitImportExcel(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnSubmitImport');
-            btn.disabled = true;
-            btn.innerText = "Memproses...";
+        function tutupModalEditSiswa() {
+            document.getElementById('modalEditSiswa').classList.add('hidden');
+        }
 
-            const formData = new FormData(document.getElementById('formImportExcel'));
+        function hapusSiswa(btn) {
+            const id = btn.getAttribute('data-id');
+            const nama = decodeURIComponent(btn.getAttribute('data-nama'));
 
-            try {
-                const res = await fetch('/api/siswa/import-excel', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    alert(data.message);
-                    window.location.reload();
-                } else {
-                    alert("Gagal: " + data.message);
-                    btn.disabled = false;
-                    btn.innerText = "Unggah & Impor";
-                }
-            } catch (err) {
-                alert("Kendala mengunggah file: " + err.message);
-                btn.disabled = false;
-                btn.innerText = "Unggah & Impor";
+            if (confirm(`Hapus data siswa "${nama}"?`)) {
+                const formHapus = document.getElementById('formHapusUmum');
+                formHapus.action = `/api/siswa/hapus/${id}`;
+                formHapus.submit();
             }
         }
+
+        function bukaSidebar() {
+            document.getElementById('sidebarMenu').classList.remove('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.remove('hidden');
+        }
+
+        function tutupSidebar() {
+            document.getElementById('sidebarMenu').classList.add('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.add('hidden');
+        }
+
+        document.getElementById('formSettings')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nama_sekolah = document.getElementById('namaSekolahInput').value;
+            
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nama_sekolah })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            } catch(err) {
+                alert('Terjadi kesalahan koneksi!');
+            }
+        });
+
+        // Jalankan pengecekan otomatis per 3 detik
+        setInterval(cekStatusWA, 3000);
+        document.addEventListener("DOMContentLoaded", cekStatusWA);
     </script>
+
+    <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
+        <p>&copy; <%= new Date().getFullYear() %> Sistem Presensi QR Code.</p>
+        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-200">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a></p>
+    </footer>
+
 </body>
 </html>
