@@ -554,6 +554,94 @@
             </div>
         </div>
 
+<!-- ========================================================================= -->
+<!-- 💾 MODUL BACKUP & RESTORE DATA (PETUGAS) -->
+<!-- ========================================================================= -->
+<div class="card my-4 shadow-sm border-0">
+    <div class="card-header bg-secondary text-white fw-bold d-flex align-items-center gap-2">
+        <i class="bi bi-database-gear"></i> CADANGAN & PEMULIHAN DATA
+    </div>
+    <div class="card-body bg-light">
+        <div class="row g-3 align-items-center">
+            <!-- Unduh Backup -->
+            <div class="col-md-6">
+                <div class="p-3 bg-white rounded border h-100">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-download text-success me-1"></i> Download File Backup (.JSON)
+                    </label>
+                    <p class="small text-muted mb-2">
+                        Unduh salinan data siswa, rombel, dan absensi sekolah untuk cadangan.
+                    </p>
+                    <a href="/api/backup/export?userId=<%= userId %>" class="btn btn-outline-success w-100 fw-bold">
+                        <i class="bi bi-download me-1"></i> UNDUH CADANGAN DATA
+                    </a>
+                </div>
+            </div>
+
+            <!-- Restore Backup -->
+            <div class="col-md-6">
+                <div class="p-3 bg-white rounded border h-100">
+                    <label class="form-label fw-bold text-dark">
+                        <i class="bi bi-upload text-warning me-1"></i> Restore Data
+                    </label>
+                    <p class="small text-muted mb-2">
+                        Pilih berkas format .json untuk memulihkan data yang tersimpan.
+                    </p>
+                    <form id="formRestorePetugas" onsubmit="prosesRestorePetugas(event)" class="d-flex gap-2">
+                        <input type="file" id="inputBackupJsonPetugas" accept=".json" class="form-control" required>
+                        <button type="submit" id="btnSubmitRestorePetugas" class="btn btn-warning fw-bold text-nowrap">
+                            <i class="bi bi-upload me-1"></i> RESTORE
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function prosesRestorePetugas(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('inputBackupJsonPetugas');
+    const btnSubmit = document.getElementById('btnSubmitRestorePetugas');
+
+    if (!fileInput.files.length) {
+        return alert('Silakan pilih berkas JSON cadangan terlebih dahulu!');
+    }
+
+    if (!confirm('Apakah Anda yakin ingin memulihkan data ini?')) {
+        return;
+    }
+
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>...';
+
+    const formData = new FormData();
+    formData.append('file_backup', fileInput.files[0]);
+    formData.append('userId', '<%= userId %>');
+
+    fetch('/api/backup/restore', {
+        method: 'POST',
+        body: formData
+    })
+    .then(async (res) => {
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) {
+            window.location.reload();
+        } else {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="bi bi-upload me-1"></i> RESTORE';
+        }
+    })
+    .catch(err => {
+        alert('Gagal memproses berkas! Pastikan format file .json valid.');
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<i class="bi bi-upload me-1"></i> RESTORE';
+    });
+}
+</script>
+
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
