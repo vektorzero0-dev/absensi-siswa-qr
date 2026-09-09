@@ -470,9 +470,39 @@
                                             <% } %>
                                         </td>
                                         <td class="text-center">
-                                            <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Detail">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
+    <!-- Tombol Masuk / Kontrol Penuh Sekolah -->
+    <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-success btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
+        <i class="bi bi-door-open-fill"></i> KELOLA
+    </a>
+
+    <!-- Button Intip Ringkas -->
+    <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail Ringkas">
+        <i class="bi bi-eye"></i>
+    </button>
+
+    <!-- Form Toggle Status -->
+    <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
+        <% if (s.is_active) { %>
+            <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
+                <i class="bi bi-slash-circle"></i>
+            </button>
+        <% } else { %>
+            <button type="submit" class="btn btn-cyber-success btn-sm me-1" title="Aktifkan">
+                <i class="bi bi-check-circle"></i>
+            </button>
+        <% } %>
+    </form>
+
+    <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit Nama Sekolah">
+        <i class="bi bi-pencil-square"></i>
+    </button>
+    
+    <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini?')">
+        <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus Sekolah">
+            <i class="bi bi-trash"></i>
+        </button>
+    </form>
+</td>
 
                                             <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
                                                 <% if (s.is_active) { %>
