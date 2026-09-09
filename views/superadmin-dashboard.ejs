@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Super Admin Control Center - Bumblebee Edition</title>
+    <title>Super Admin Control Center</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -15,19 +15,20 @@
         :root {
             --cyber-bg: #030a0e;
             --cyber-card: rgba(10, 25, 35, 0.85);
-            --bumblebee-yellow: #ffe600;
-            --bumblebee-glow: 0 0 12px rgba(255, 230, 0, 0.8);
-            --neon-green: #00ff66;
             --neon-cyan: #00f3ff;
+            --neon-yellow: #ffb700;
+            --neon-green: #00ff66;
             --neon-red: #ff0055;
             --neon-blue: #0088ff;
-            --border-glow: rgba(255, 230, 0, 0.35);
+            --border-glow: rgba(0, 243, 255, 0.3);
+            --text-glow-cyan: 0 0 8px rgba(0, 243, 255, 0.6);
+            --text-glow-yellow: 0 0 8px rgba(255, 183, 0, 0.6);
             --sidebar-width: 250px;
         }
 
         body {
             background-color: var(--cyber-bg);
-            color: #fff8d1;
+            color: #d1f4ff;
             font-family: 'Share Tech Mono', monospace;
             overflow-x: hidden;
             position: relative;
@@ -40,7 +41,7 @@
             width: 100vw;
             height: 100vh;
             z-index: -1;
-            opacity: 0.22;
+            opacity: 0.18;
             pointer-events: none;
         }
 
@@ -57,9 +58,9 @@
             position: fixed;
             top: 0;
             left: 0;
-            background: rgba(8, 12, 16, 0.95);
-            border-right: 2px solid var(--bumblebee-yellow);
-            box-shadow: 5px 0 20px rgba(255, 230, 0, 0.25);
+            background: rgba(3, 15, 22, 0.95);
+            border-right: 2px solid var(--neon-cyan);
+            box-shadow: 5px 0 15px rgba(0, 243, 255, 0.2);
             backdrop-filter: blur(10px);
             z-index: 1000;
             transition: all 0.3s ease;
@@ -70,8 +71,8 @@
         .sidebar-brand {
             padding: 20px 15px;
             border-bottom: 1px solid var(--border-glow);
-            color: var(--bumblebee-yellow);
-            text-shadow: var(--bumblebee-glow);
+            color: var(--neon-cyan);
+            text-shadow: var(--text-glow-cyan);
             font-size: 1.1rem;
         }
 
@@ -84,7 +85,7 @@
             display: flex;
             align-items: center;
             padding: 12px 15px;
-            color: #e6dfb8;
+            color: #a2d2e2;
             text-decoration: none;
             border-radius: 6px;
             margin-bottom: 8px;
@@ -97,14 +98,14 @@
         .sidebar-item i {
             font-size: 1.1rem;
             margin-right: 12px;
-            color: var(--bumblebee-yellow);
+            color: var(--neon-cyan);
         }
 
         .sidebar-item:hover, .sidebar-item.active {
-            background: rgba(255, 230, 0, 0.12);
-            border-color: var(--bumblebee-yellow);
+            background: rgba(0, 243, 255, 0.1);
+            border-color: var(--neon-cyan);
             color: #fff;
-            box-shadow: var(--bumblebee-glow);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
         }
 
         .sidebar-footer {
@@ -119,36 +120,34 @@
             transition: all 0.3s ease;
         }
 
-        /* Top Navbar Cyber */
         .navbar-cyber {
-            background: rgba(8, 12, 16, 0.85);
-            border: 1px solid var(--bumblebee-yellow);
+            background: rgba(3, 15, 22, 0.85);
+            border: 1px solid var(--border-glow);
             border-radius: 8px;
-            box-shadow: 0 0 15px rgba(255, 230, 0, 0.25);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
             backdrop-filter: blur(8px);
         }
 
-        /* Cyber Cards */
         .cyber-card {
             background: var(--cyber-card);
             border: 1px solid var(--border-glow);
             border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(255, 230, 0, 0.05);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(0, 243, 255, 0.05);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
 
         .cyber-card:hover {
-            border-color: var(--bumblebee-yellow);
-            box-shadow: 0 0 20px rgba(255, 230, 0, 0.3);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.25);
         }
 
         .cyber-header {
-            background: rgba(255, 230, 0, 0.08);
+            background: rgba(0, 243, 255, 0.08);
             border-bottom: 1px solid var(--border-glow);
             padding: 12px 20px;
-            color: var(--bumblebee-yellow);
-            text-shadow: var(--bumblebee-glow);
+            color: var(--neon-cyan);
+            text-shadow: var(--text-glow-cyan);
         }
 
         .cyber-header-green {
@@ -163,50 +162,36 @@
             color: var(--neon-blue);
         }
 
-        /* ----- FORM INPUT BUMBLEBEE SERAGAM ----- */
+        /* ----- FORM INPUT SERAGAM ----- */
         .form-label {
-            color: var(--bumblebee-yellow) !important;
+            color: var(--neon-cyan) !important;
             font-size: 0.75rem;
             font-weight: bold;
             letter-spacing: 1px;
             margin-bottom: 4px;
-            text-shadow: 0 0 5px rgba(255, 230, 0, 0.4);
         }
 
         .form-control, .form-select-cyber, .input-group-text {
             background-color: rgba(5, 18, 26, 0.8) !important;
             border: 1px solid var(--border-glow) !important;
-            color: var(--bumblebee-yellow) !important;
+            color: var(--neon-cyan) !important;
             font-family: 'Share Tech Mono', monospace;
             font-size: 14px;
             border-radius: 6px;
         }
 
+        /* Sentuhan aksen Kuning Glow saat fokus input */
         .form-control:focus, .form-select-cyber:focus {
-            box-shadow: var(--bumblebee-glow) !important;
-            border-color: var(--bumblebee-yellow) !important;
+            box-shadow: 0 0 12px rgba(255, 183, 0, 0.6) !important;
+            border-color: var(--neon-yellow) !important;
+            color: #fff8d1 !important;
         }
 
         .form-control::placeholder {
-            color: rgba(255, 230, 0, 0.4);
+            color: rgba(0, 243, 255, 0.35);
         }
 
-        /* Buttons Cyber Bumblebee */
-        .btn-bumblebee {
-            background: transparent;
-            border: 1px solid var(--bumblebee-yellow);
-            color: var(--bumblebee-yellow);
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-        }
-        .btn-bumblebee:hover {
-            background: var(--bumblebee-yellow);
-            color: #000;
-            box-shadow: var(--bumblebee-glow);
-            font-weight: bold;
-        }
-
+        /* Buttons Cyber & Aksen Kuning Glow */
         .btn-cyber-primary {
             background: transparent;
             border: 1px solid var(--neon-cyan);
@@ -219,6 +204,20 @@
             background: var(--neon-cyan);
             color: #000;
             box-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .btn-cyber-warning {
+            background: transparent;
+            border: 1px solid var(--neon-yellow);
+            color: var(--neon-yellow);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+        .btn-cyber-warning:hover {
+            background: var(--neon-yellow);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-yellow);
         }
 
         .btn-cyber-blue {
@@ -253,6 +252,7 @@
             border: 1px solid var(--neon-red);
             color: var(--neon-red);
             font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
         }
         .btn-cyber-danger:hover {
             background: var(--neon-red);
@@ -260,36 +260,25 @@
             box-shadow: 0 0 15px var(--neon-red);
         }
 
-        .btn-cyber-warning {
-            background: transparent;
-            border: 1px solid var(--bumblebee-yellow);
-            color: var(--bumblebee-yellow);
-        }
-        .btn-cyber-warning:hover {
-            background: var(--bumblebee-yellow);
-            color: #000;
-            box-shadow: var(--bumblebee-glow);
-        }
-
         /* Tables */
         .table-cyber {
-            color: #fff8d1;
+            color: #d1f4ff;
             background: transparent;
         }
 
         .table-cyber th {
-            background: rgba(255, 230, 0, 0.1);
-            color: var(--bumblebee-yellow);
-            border-bottom: 2px solid var(--bumblebee-yellow);
+            background: rgba(0, 243, 255, 0.1);
+            color: var(--neon-cyan);
+            border-bottom: 2px solid var(--neon-cyan);
             font-family: 'Orbitron', sans-serif;
             font-size: 0.75rem;
             white-space: nowrap;
         }
 
         .table-cyber td {
-            border-bottom: 1px solid rgba(255, 230, 0, 0.1);
+            border-bottom: 1px solid rgba(0, 243, 255, 0.1);
             background: transparent !important;
-            color: #eee1a8;
+            color: #c0eaef;
             white-space: nowrap;
         }
 
@@ -299,9 +288,10 @@
         }
 
         .badge-cyber-yellow {
-            background: rgba(255, 230, 0, 0.15);
-            border: 1px solid var(--bumblebee-yellow);
-            color: var(--bumblebee-yellow);
+            background: rgba(255, 183, 0, 0.15);
+            border: 1px solid var(--neon-yellow);
+            color: var(--neon-yellow);
+            box-shadow: 0 0 5px rgba(255, 183, 0, 0.4);
         }
 
         .badge-cyber-success {
@@ -318,29 +308,29 @@
 
         .modal-content {
             background: var(--cyber-bg);
-            border: 1px solid var(--bumblebee-yellow);
-            box-shadow: 0 0 25px rgba(255, 230, 0, 0.35);
-            color: #fff8d1;
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.3);
+            color: #d1f4ff;
         }
 
         .nav-tabs .nav-link {
-            color: var(--bumblebee-yellow);
+            color: var(--neon-cyan);
             border: 1px solid transparent;
             font-family: 'Orbitron', sans-serif;
             font-size: 0.8rem;
         }
 
         .nav-tabs .nav-link.active {
-            background: rgba(255, 230, 0, 0.18);
-            border-color: var(--bumblebee-yellow);
+            background: rgba(0, 243, 255, 0.15);
+            border-color: var(--neon-cyan);
             color: #fff;
-            box-shadow: var(--bumblebee-glow);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
         }
 
         .list-group-item {
             background: rgba(5, 20, 30, 0.8);
-            border: 1px solid rgba(255, 230, 0, 0.2);
-            color: #fff8d1;
+            border: 1px solid rgba(0, 243, 255, 0.15);
+            color: #d1f4ff;
         }
 
         /* RESPONSIVE UNTUK LAYAR MOBIL / ANDROID */
@@ -377,7 +367,7 @@
     <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand cyber-font">
-            <i class="bi bi-robot text-warning me-2"></i> BUMBLEBEE // SUPER ADMIN
+            <i class="bi bi-cpu text-info me-2"></i> SUPER ADMIN
         </div>
         <div class="sidebar-menu">
             <a href="#sec-sekolah" class="sidebar-item active">
@@ -409,15 +399,15 @@
         <nav class="navbar navbar-cyber navbar-dark mb-4 px-3">
             <div class="container-fluid p-0 d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-bumblebee me-3 d-lg-none" type="button" onclick="toggleSidebar()">
+                    <button class="btn btn-cyber-primary me-3 d-lg-none" type="button" onclick="toggleSidebar()">
                         <i class="bi bi-list fs-5"></i>
                     </button>
-                    <span class="navbar-brand mb-0 h1 cyber-font text-warning fs-6">
-                        <i class="bi bi-lightning-charge-fill"></i> TRANSFORMERS CONTROL CENTER
+                    <span class="navbar-brand mb-0 h1 cyber-font text-info fs-6">
+                        <i class="bi bi-gear-wide-connected"></i> CONTROL CENTER
                     </span>
                 </div>
                 <div class="d-flex align-items-center">
-                    <span class="text-warning text-xs me-2">
+                    <span class="text-info text-xs me-2">
                         OPERATOR: <strong class="text-white"><%= user.nama %></strong>
                     </span>
                 </div>
@@ -431,7 +421,7 @@
                     
                     <!-- 1. Form Pendaftaran Sekolah Baru -->
                     <div class="cyber-card mb-4" id="sec-form-sekolah">
-                        <div class="cyber-header d-flex align-items-center">
+                        <div class="cyber-header cyber-header-green d-flex align-items-center">
                             <i class="bi bi-building-add me-2 fs-5"></i>
                             <h5 class="mb-0 fs-6">PENDAFTARAN SEKOLAH</h5>
                         </div>
@@ -442,7 +432,7 @@
                                     <input type="text" name="nama_sekolah" class="form-control" placeholder="Ex: SDN 03 Pagardewa" autocomplete="off" required>
                                 </div>
                                 <hr class="border-secondary my-3">
-                                <h6 class="text-warning cyber-font mb-2 fs-6"><i class="bi bi-person-gear"></i> AKUN ADMIN SEKOLAH</h6>
+                                <h6 class="text-success cyber-font mb-2 fs-6"><i class="bi bi-person-gear"></i> AKUN ADMIN SEKOLAH</h6>
                                 <div class="mb-3">
                                     <label class="form-label">NAMA ADMIN</label>
                                     <input type="text" name="admin_nama" class="form-control" placeholder="Ex: Pak Budi (Operator)" autocomplete="off">
@@ -455,12 +445,12 @@
                                     <label class="form-label">PASSWORD ADMIN</label>
                                     <div class="input-group">
                                         <input type="password" id="inputPassTambah" name="admin_password" class="form-control" placeholder="******" autocomplete="new-password" required>
-                                        <button class="btn btn-bumblebee" type="button" onclick="togglePassword('inputPassTambah', 'iconPassTambah')">
+                                        <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassTambah', 'iconPassTambah')">
                                             <i id="iconPassTambah" class="bi bi-eye"></i>
                                         </button>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-bumblebee w-100 py-2 mt-2">
+                                <button type="submit" class="btn btn-cyber-success w-100 py-2 mt-2">
                                     <i class="bi bi-plus-circle"></i> INISIALISASI SEKOLAH
                                 </button>
                             </form>
@@ -496,7 +486,7 @@
                                     <label class="form-label">PASSWORD ADMIN</label>
                                     <div class="input-group">
                                         <input type="password" id="inputPassAdminTarget" name="password" class="form-control" placeholder="******" autocomplete="new-password" required>
-                                        <button class="btn btn-bumblebee" type="button" onclick="togglePassword('inputPassAdminTarget', 'iconPassAdminTarget')">
+                                        <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassAdminTarget', 'iconPassAdminTarget')">
                                             <i id="iconPassAdminTarget" class="bi bi-eye"></i>
                                         </button>
                                     </div>
@@ -537,7 +527,7 @@
                                     <label class="form-label">PASSWORD</label>
                                     <div class="input-group">
                                         <input type="password" id="inputPassPetugas" name="password" class="form-control" placeholder="******" autocomplete="new-password" required>
-                                        <button class="btn btn-bumblebee" type="button" onclick="togglePassword('inputPassPetugas', 'iconPassPetugas')">
+                                        <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassPetugas', 'iconPassPetugas')">
                                             <i id="iconPassPetugas" class="bi bi-eye"></i>
                                         </button>
                                     </div>
@@ -558,7 +548,7 @@
                     <div class="cyber-card mb-4" id="sec-sekolah">
                         <div class="cyber-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0 fs-6"><i class="bi bi-buildings"></i> DAFTAR SEKOLAH</h5>
-                            <span class="badge badge-cyber-yellow">AUTOBOT ONLINE</span>
+                            <span class="badge badge-cyber-success">SYSTEM ONLINE</span>
                         </div>
                         <div class="card-body p-0 table-responsive">
                             <table class="table table-cyber align-middle mb-0">
@@ -575,7 +565,7 @@
                                 <tbody>
                                     <% sekolahList.forEach(s => { %>
                                         <tr class="<%= s.is_active ? '' : 'tr-danger' %>">
-                                            <td><strong class="text-warning">#<%= s.id %></strong></td>
+                                            <td><strong class="text-info">#<%= s.id %></strong></td>
                                             <td>
                                                 <strong class="text-white"><%= s.nama_sekolah %></strong>
                                                 <% if (!s.is_active) { %>
@@ -601,8 +591,8 @@
                                                 <% } %>
                                             </td>
                                             <td class="text-center">
-                                                <!-- Tombol Masuk / Kelola Penuh Sekolah -->
-                                                <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-bumblebee btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
+                                                <!-- Tombol Masuk / Kelola Penuh Sekolah (Aksen Kuning Glow) -->
+                                                <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-warning btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
                                                     <i class="bi bi-door-open-fill"></i> KELOLA
                                                 </a>
 
@@ -660,7 +650,7 @@
                                     <% adminList.forEach(a => { %>
                                         <tr>
                                             <td class="text-white"><%= a.nama %></td>
-                                            <td><code class="text-warning"><%= a.username %></code></td>
+                                            <td><code class="text-info"><%= a.username %></code></td>
                                             <td><%= a.nama_sekolah %></td>
                                             <td class="text-center">
                                                 <button class="btn btn-cyber-warning btn-sm me-1" onclick="editAdmin('<%= a.id %>', '<%= a.nama %>', '<%= a.username %>')">
@@ -689,7 +679,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-warning cyber-font fs-6" id="lihatJudulSekolah">DATABASE INSPECTOR</h5>
+                    <h5 class="modal-title text-info cyber-font fs-6" id="lihatJudulSekolah">DATABASE INSPECTOR</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -726,7 +716,7 @@
             <div class="modal-content">
                 <form id="formEditSekolah" method="POST" autocomplete="off">
                     <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning cyber-font fs-6">EDIT ENTITAS SEKOLAH</h5>
+                        <h5 class="modal-title text-info cyber-font fs-6">EDIT ENTITAS SEKOLAH</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -737,7 +727,7 @@
                     </div>
                     <div class="modal-footer border-secondary">
                         <button type="button" class="btn btn-cyber-danger" data-bs-dismiss="modal">BATAL</button>
-                        <button type="submit" class="btn btn-bumblebee">SIMPAN</button>
+                        <button type="submit" class="btn btn-cyber-success">SIMPAN</button>
                     </div>
                 </form>
             </div>
@@ -750,7 +740,7 @@
             <div class="modal-content">
                 <form id="formEditAdmin" method="POST" autocomplete="off">
                     <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning cyber-font fs-6">EDIT KREDENSIAL ADMIN</h5>
+                        <h5 class="modal-title text-info cyber-font fs-6">EDIT KREDENSIAL ADMIN</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -766,7 +756,7 @@
                             <label class="form-label">PASSWORD BARU *(KOSONGKAN JIKA TIDAK DIBUAT BARU)*</label>
                             <div class="input-group">
                                 <input type="password" id="inputPassEdit" name="password" class="form-control" placeholder="Password Baru" autocomplete="new-password">
-                                <button class="btn btn-bumblebee" type="button" onclick="togglePassword('inputPassEdit', 'iconPassEdit')">
+                                <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassEdit', 'iconPassEdit')">
                                     <i id="iconPassEdit" class="bi bi-eye"></i>
                                 </button>
                             </div>
@@ -774,7 +764,7 @@
                     </div>
                     <div class="modal-footer border-secondary">
                         <button type="button" class="btn btn-cyber-danger" data-bs-dismiss="modal">BATAL</button>
-                        <button type="submit" class="btn btn-bumblebee">UPDATE DATA</button>
+                        <button type="submit" class="btn btn-cyber-success">UPDATE DATA</button>
                     </div>
                 </form>
             </div>
@@ -783,7 +773,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Matrix Rain Canvas Effect (Yellow Bumblebee Glow Variant)
+        // Matrix Rain Canvas Effect (Cyber Green)
         const canvas = document.getElementById('matrixCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -794,7 +784,7 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        const characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*+-/<>[]{}';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-/<>[]{}';
         const fontSize = 14;
         let columns = Math.floor(canvas.width / fontSize);
         let drops = [];
@@ -807,8 +797,7 @@
             ctx.fillStyle = 'rgba(3, 10, 14, 0.08)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Matrix rain dengan warna Bumblebee Yellow
-            ctx.fillStyle = '#ffe600';
+            ctx.fillStyle = '#00ff66';
             ctx.font = fontSize + 'px "Share Tech Mono", monospace';
 
             for (let i = 0; i < drops.length; i++) {
@@ -846,20 +835,20 @@
                 const listP = document.getElementById('listPengguna');
                 listP.innerHTML = data.penggunaList.length ? data.penggunaList.map(p => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div><strong class="text-warning">${p.nama}</strong> (${p.username})</div>
-                        <span class="badge badge-cyber-yellow">${p.role} - ${p.nama_kelas}</span>
+                        <div><strong class="text-info">${p.nama}</strong> (${p.username})</div>
+                        <span class="badge badge-cyber-success">${p.role} - ${p.nama_kelas}</span>
                     </li>`
                 ).join('') : '<li class="list-group-item text-muted">Belum ada pengguna</li>';
 
                 const listR = document.getElementById('listRombel');
                 listR.innerHTML = data.kelasList.length ? data.kelasList.map(k => 
-                    `<li class="list-group-item text-warning">CLASS NODE: <strong>${k.nama_kelas}</strong></li>`
+                    `<li class="list-group-item text-info">CLASS NODE: <strong>${k.nama_kelas}</strong></li>`
                 ).join('') : '<li class="list-group-item text-muted">Belum ada rombel</li>';
 
                 const listS = document.getElementById('listSiswa');
                 listS.innerHTML = data.siswaList.length ? data.siswaList.map(s => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center">
-                        ${s.nama} <span class="badge badge-cyber-yellow">${s.nama_kelas}</span>
+                        ${s.nama} <span class="badge badge-cyber-success">${s.nama_kelas}</span>
                     </li>`
                 ).join('') : '<li class="list-group-item text-muted">Belum ada siswa</li>';
 
