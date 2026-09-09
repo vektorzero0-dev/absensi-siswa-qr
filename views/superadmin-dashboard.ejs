@@ -256,32 +256,32 @@
             <!-- KOLOM KIRI (FORM PENDAFTARAN & AKTIVASI) -->
             <div class="col-lg-4 mb-4">
                 
-                <!-- 1. Form Pendaftaran Sekolah Baru -->
+                <!-- 1. Form Pendaftaran Sekolah Baru (NO AUTOFILL) -->
                 <div class="cyber-card mb-4">
                     <div class="cyber-header cyber-header-green d-flex align-items-center">
                         <i class="bi bi-building-add me-2 fs-5"></i>
                         <h5 class="mb-0">PENDAFTARAN SEKOLAH</h5>
                     </div>
                     <div class="card-body p-3">
-                        <form action="/api/sekolah/tambah" method="POST">
+                        <form action="/api/sekolah/tambah" method="POST" autocomplete="off">
                             <div class="mb-3">
                                 <label class="form-label text-info">NAMA SEKOLAH RESMI</label>
-                                <input type="text" name="nama_sekolah" class="form-control" placeholder="Ex: SDN 03 Pagardewa" required>
+                                <input type="text" name="nama_sekolah" class="form-control" placeholder="Ex: SDN 03 Pagardewa" autocomplete="off" required>
                             </div>
                             <hr class="border-secondary">
                             <h6 class="text-success cyber-font mb-3"><i class="bi bi-person-gear"></i> AKUN ADMIN SEKOLAH</h6>
                             <div class="mb-3">
                                 <label class="form-label text-info">NAMA ADMIN</label>
-                                <input type="text" name="admin_nama" class="form-control" placeholder="Ex: Pak Budi (Operator)">
+                                <input type="text" name="admin_nama" class="form-control" placeholder="Ex: Pak Budi (Operator)" autocomplete="off">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">USERNAME ADMIN</label>
-                                <input type="text" name="admin_username" class="form-control" placeholder="admin_sd3" required>
+                                <input type="text" name="admin_username" class="form-control" placeholder="admin_sd3" autocomplete="new-password" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">PASSWORD ADMIN</label>
                                 <div class="input-group">
-                                    <input type="password" id="inputPassTambah" name="admin_password" class="form-control" placeholder="******" required>
+                                    <input type="password" id="inputPassTambah" name="admin_password" class="form-control" placeholder="******" autocomplete="new-password" required>
                                     <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassTambah', 'iconPassTambah')">
                                         <i id="iconPassTambah" class="bi bi-eye"></i>
                                     </button>
@@ -294,7 +294,7 @@
                     </div>
                 </div>
 
-                <!-- 2. Form Tambah Admin Baru ke Sekolah yang Sudah Ada (CYBER EDITION) -->
+                <!-- 2. Form Tambah Admin Baru ke Sekolah yang Sudah Ada (NO AUTOFILL) -->
                 <div class="cyber-card mb-4">
                     <div class="cyber-header cyber-header-blue d-flex align-items-center">
                         <i class="bi bi-person-plus-fill me-2 fs-5"></i>
@@ -313,16 +313,16 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">NAMA LENGKAP ADMIN</label>
-                                <input type="text" name="nama" class="form-control" placeholder="Ex: Pak Budi (Operator)" required>
+                                <input type="text" name="nama" class="form-control" placeholder="Ex: Pak Budi (Operator)" autocomplete="off" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">USERNAME ADMIN</label>
-                                <input type="text" name="username" class="form-control" placeholder="admin_sekolah2" required>
+                                <input type="text" name="username" class="form-control" placeholder="admin_sekolah2" autocomplete="new-password" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">PASSWORD ADMIN</label>
                                 <div class="input-group">
-                                    <input type="password" id="inputPassAdminTarget" name="password" class="form-control" placeholder="******" required>
+                                    <input type="password" id="inputPassAdminTarget" name="password" class="form-control" placeholder="******" autocomplete="new-password" required>
                                     <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassAdminTarget', 'iconPassAdminTarget')">
                                         <i id="iconPassAdminTarget" class="bi bi-eye"></i>
                                     </button>
@@ -335,14 +335,14 @@
                     </div>
                 </div>
 
-                <!-- 3. Form Tambah Akun Petugas oleh Super Admin -->
+                <!-- 3. Form Tambah Akun Petugas oleh Super Admin (NO AUTOFILL) -->
                 <div class="cyber-card">
                     <div class="cyber-header cyber-header-green d-flex align-items-center">
                         <i class="bi bi-person-badge-fill me-2 fs-5"></i>
                         <h5 class="mb-0">AKTIVASI AKUN PETUGAS</h5>
                     </div>
                     <div class="card-body p-3">
-                        <form action="/api/superadmin/petugas/tambah" method="POST">
+                        <form action="/api/superadmin/petugas/tambah" method="POST" autocomplete="off">
                             <div class="mb-3">
                                 <label class="form-label text-info">PILIH SEKOLAH TARGET</label>
                                 <select name="sekolah_id" class="form-select form-select-cyber" required>
@@ -354,16 +354,16 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">NAMA PETUGAS ABSEN</label>
-                                <input type="text" name="nama" class="form-control" placeholder="Ex: Petugas Absen Utama" required>
+                                <input type="text" name="nama" class="form-control" placeholder="Ex: Petugas Absen Utama" autocomplete="off" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">USERNAME LOGIN</label>
-                                <input type="text" name="username" class="form-control" placeholder="petugas_sd1" required>
+                                <input type="text" name="username" class="form-control" placeholder="petugas_sd1" autocomplete="new-password" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-info">PASSWORD</label>
                                 <div class="input-group">
-                                    <input type="password" id="inputPassPetugas" name="password" class="form-control" placeholder="******" required>
+                                    <input type="password" id="inputPassPetugas" name="password" class="form-control" placeholder="******" autocomplete="new-password" required>
                                     <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassPetugas', 'iconPassPetugas')">
                                         <i id="iconPassPetugas" class="bi bi-eye"></i>
                                     </button>
@@ -543,7 +543,7 @@
     <div class="modal fade" id="modalSekolah" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form id="formEditSekolah" method="POST">
+                <form id="formEditSekolah" method="POST" autocomplete="off">
                     <div class="modal-header border-secondary">
                         <h5 class="modal-title text-info cyber-font">EDIT ENTITAS SEKOLAH</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -551,7 +551,7 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label text-info">NAMA SEKOLAH RESMI</label>
-                            <input type="text" id="editNamaSekolah" name="nama_sekolah" class="form-control" required>
+                            <input type="text" id="editNamaSekolah" name="nama_sekolah" class="form-control" autocomplete="off" required>
                         </div>
                     </div>
                     <div class="modal-footer border-secondary">
@@ -567,7 +567,7 @@
     <div class="modal fade" id="modalAdmin" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form id="formEditAdmin" method="POST">
+                <form id="formEditAdmin" method="POST" autocomplete="off">
                     <div class="modal-header border-secondary">
                         <h5 class="modal-title text-info cyber-font">EDIT KREDENSIAL ADMIN</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -575,16 +575,16 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label text-info">NAMA ADMIN</label>
-                            <input type="text" id="editNamaAdmin" name="nama" class="form-control" required>
+                            <input type="text" id="editNamaAdmin" name="nama" class="form-control" autocomplete="off" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-info">USERNAME</label>
-                            <input type="text" id="editUsernameAdmin" name="username" class="form-control" required>
+                            <input type="text" id="editUsernameAdmin" name="username" class="form-control" autocomplete="new-password" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-info">PASSWORD BARU *(KOSONGKAN JIKA TIDAK DIBUAT BARU)*</label>
                             <div class="input-group">
-                                <input type="password" id="inputPassEdit" name="password" class="form-control" placeholder="Password Baru">
+                                <input type="password" id="inputPassEdit" name="password" class="form-control" placeholder="Password Baru" autocomplete="new-password">
                                 <button class="btn btn-cyber-primary" type="button" onclick="togglePassword('inputPassEdit', 'iconPassEdit')">
                                     <i id="iconPassEdit" class="bi bi-eye"></i>
                                 </button>
