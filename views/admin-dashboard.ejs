@@ -390,17 +390,22 @@
                 </div>
             </div>
 
+            <!-- BAGIAN REGISTRASI GURU DENGAN ANTI-AUTOFILL -->
             <div class="card-pro card-blue-theme p-5">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-blue-200/60 pb-2 relative z-10">
                     <i class="fa-solid fa-user-plus text-blue-700"></i> Registrasi Akun Wali Kelas / Guru
                 </h3>
-                <form action="/api/guru/tambah" method="POST" class="space-y-3 relative z-10">
+                <form action="/api/guru/tambah" method="POST" autocomplete="off" class="space-y-3 relative z-10">
+                    <!-- Dummy Inputs pencegah autofill otomatis -->
+                    <input type="text" style="display:none;" aria-hidden="true">
+                    <input type="password" style="display:none;" aria-hidden="true">
+
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" name="nama" required placeholder="Nama Lengkap Tenaga Pendidik" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                        <input type="text" name="username" required placeholder="Nama Pengguna (Username)" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <input type="text" name="nama" required placeholder="Nama Lengkap Tenaga Pendidik" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <input type="text" name="username" required placeholder="Nama Pengguna (Username)" autocomplete="username-off" readonly onfocus="this.removeAttribute('readonly');" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="password" name="password" required placeholder="Kata Sandi" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <input type="password" name="password" required placeholder="Kata Sandi" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                         <select name="kelas_id" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
                             <option value="">-- Tanpa Penugasan / Guru Mapel (Semua Kelas) --</option>
                             <% kelas.forEach(k => { %>
