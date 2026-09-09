@@ -51,7 +51,7 @@ async function isMaintenanceActive() {
 }
 
 app.use(async (req, res, next) => {
-    // Biarkan file publik/aset (CSS, JS, Gambar, Favicon) tetap dapat diakses
+    // Biarkan file publik/aset (CSS, JS, Gambar) tetap dapat diakses
     if (req.path.startsWith('/public') || req.path.includes('.')) {
         return next();
     }
@@ -59,28 +59,28 @@ app.use(async (req, res, next) => {
     const maintenance = await isMaintenanceActive();
     
     if (maintenance) {
-        // Cek ID Super Admin dari Sesi khusus agar tidak terblokir saat switch sekolah
-        const currentUserId = req.session?.superAdminId || req.session?.userId || parseInt(req.query.userId);
+        // PERBAIKAN: Hanya cek dari Sesi Resmi Server (Bukan dari URL query)
+        const currentUserId = req.session?.superAdminId || req.session?.userId;
         
         if (currentUserId) {
             try {
                 // Izinkan SUPER_ADMIN untuk tetap mengakses seluruh halaman
                 const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [currentUserId]);
                 if (userRes.rows.length > 0 && userRes.rows[0].role === 'SUPER_ADMIN') {
-                    return next();
+                    return next(); // Super Admin bebas akses
                 }
             } catch (err) {
                 console.error("Error maintenance check:", err.message);
             }
         }
 
-        // Rute yang tetap dibuka agar Super Admin bisa login dan mematikan maintenance
+        // Rute yang tetap dibuka untuk login Super Admin
         const allowedRoutes = ['/login', '/superadmin', '/api/settings/maintenance'];
         if (allowedRoutes.includes(req.path)) {
             return next();
         }
 
-        // Alihkan halaman ke tampilan maintenance untuk akun Admin, Petugas, dan Wali Kelas
+        // Blokir total untuk pengguna umum
         return res.status(530).render('maintenance');
     }
 
