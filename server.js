@@ -41,7 +41,7 @@ app.use(session({
 // ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE MULTI-TENANT ----------------- //
 async function initDB() {
     try {
-        // 1. Tabel Sekolah (Dengan Kolom is_active & wa_mode)
+        // 1. Tabel Sekolah
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sekolah (
                 id SERIAL PRIMARY KEY,
@@ -49,21 +49,21 @@ async function initDB() {
                 is_active BOOLEAN DEFAULT TRUE,
                 wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS'
             );
-            ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
-            ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS';
         `);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS';`);
 
-        // 2. Tabel Kelas (Terhubung ke Sekolah)
+        // 2. Tabel Kelas
         await pool.query(`
             CREATE TABLE IF NOT EXISTS kelas (
                 id SERIAL PRIMARY KEY,
                 nama_kelas VARCHAR(50) NOT NULL,
                 sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE
             );
-            ALTER TABLE kelas ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;
         `);
+        await pool.query(`ALTER TABLE kelas ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;`);
 
-        // 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS, PETUGAS)
+        // 3. Tabel Users
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -74,8 +74,8 @@ async function initDB() {
                 kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL,
                 sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE
             );
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;
         `);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;`);
 
         // 4. Tabel Siswa
         await pool.query(`
@@ -85,8 +85,8 @@ async function initDB() {
                 nomor_wa_ortu VARCHAR(20),
                 kelas_id INT REFERENCES kelas(id) ON DELETE SET NULL
             );
-            ALTER TABLE siswa ADD COLUMN IF NOT EXISTS nomor_wa_ortu VARCHAR(20);
         `);
+        await pool.query(`ALTER TABLE siswa ADD COLUMN IF NOT EXISTS nomor_wa_ortu VARCHAR(20);`);
 
         // 5. Tabel Absensi
         await pool.query(`
@@ -98,16 +98,18 @@ async function initDB() {
                 scanned_by INT,
                 tipe VARCHAR(10) DEFAULT 'MASUK'
             );
-            ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';
-            ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;
         `);
+        await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';`);
+        await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;`);
 
-        // 6. Tabel Settings (Lama) & Migrasi ke Sekolah
+        // 6. Tabel Settings
         await pool.query(`
             CREATE TABLE IF NOT EXISTS settings (
                 key VARCHAR(50) PRIMARY KEY,
                 value VARCHAR(255)
             );
+        `);
+        await pool.query(`
             INSERT INTO settings (key, value) 
             VALUES ('pengirim_wa', 'ADMIN'), ('nama_sekolah', 'NAMA SEKOLAH BELUM DIATUR')
             ON CONFLICT (key) DO NOTHING;
@@ -118,11 +120,15 @@ async function initDB() {
         const oldSetting = await pool.query("SELECT value FROM settings WHERE key = 'nama_sekolah'");
         const defaultNama = oldSetting.rows.length > 0 ? oldSetting.rows[0].value : 'SEKOLAH UTAMA';
 
+        // Perintah dipisah agar tidak memicu error "cannot insert multiple commands"
         await pool.query(`
             INSERT INTO sekolah (id, nama_sekolah, is_active) VALUES ($1, $2, TRUE)
             ON CONFLICT (id) DO NOTHING;
-            SELECT setval('sekolah_id_seq', (SELECT GREATEST(MAX(id), 1) FROM sekolah));
         `, [currentSekolahId, defaultNama]);
+
+        await pool.query(`
+            SELECT setval('sekolah_id_seq', (SELECT GREATEST(MAX(id), 1) FROM sekolah));
+        `);
 
         // Paksa buat/update akun superadmin berdasarkan USERNAME
         await pool.query(`
