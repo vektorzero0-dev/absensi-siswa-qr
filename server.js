@@ -41,14 +41,16 @@ app.use(session({
 // ----------------- AUTO-CREATE & MIGRATE TABEL DATABASE MULTI-TENANT ----------------- //
 async function initDB() {
     try {
-        // 1. Tabel Sekolah (Dengan Kolom is_active)
+        // 1. Tabel Sekolah (Dengan Kolom is_active & wa_mode)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sekolah (
                 id SERIAL PRIMARY KEY,
                 nama_sekolah VARCHAR(100) NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE
+                is_active BOOLEAN DEFAULT TRUE,
+                wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS'
             );
             ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+            ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS';
         `);
 
         // 2. Tabel Kelas (Terhubung ke Sekolah)
@@ -61,7 +63,7 @@ async function initDB() {
             ALTER TABLE kelas ADD COLUMN IF NOT EXISTS sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE;
         `);
 
-        // 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS)
+        // 3. Tabel Users (Mendukung SUPER_ADMIN, ADMIN, WALI_KELAS, PETUGAS)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -334,50 +336,8 @@ app.post('/login', async (req, res) => {
             return res.redirect(`/superadmin?userId=${user.id}`);
         } else if (user.role === 'ADMIN') {
             return res.redirect(`/admin?userId=${user.id}`);
-        } else {
-            return res.redirect(`/wali?userId=${user.id}`);
-        }
-    } catch (err) {
-        return res.render('login', { error: 'Kesalahan Sistem Database: ' + err.message, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
-    }
-});
-
-// ----------------- 1. PENYESUAIAN RUTE LOGIN ----------------- //
-app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    try {
-        const namaSekolah = await getNamaSekolah();
-        if (!username || !password) return res.render('login', { error: 'Username dan kata sandi wajib diisi.', namaSekolah });
-
-        // Tarik data user beserta status keaktifan sekolah
-        const result = await pool.query(`
-            SELECT u.*, COALESCE(s.is_active, TRUE) AS is_active 
-            FROM users u 
-            LEFT JOIN sekolah s ON u.sekolah_id = s.id 
-            WHERE LOWER(u.username) = LOWER($1) AND u.password = $2
-        `, [username.trim(), password.trim()]);
-
-        if (result.rows.length === 0) return res.render('login', { error: 'Username atau kata sandi tidak valid.', namaSekolah });
-
-        const user = result.rows[0];
-
-        // Ditolak login jika sekolah NONAKTIF (kecuali SUPER_ADMIN)
-        if (user.role !== 'SUPER_ADMIN' && user.is_active === false) {
-            return res.render('login', { 
-                error: 'Akses sekolah Anda telah dinonaktifkan oleh Super Admin.', 
-                namaSekolah 
-            });
-        }
-
-        req.session.userId = user.id;
-
-        // DIUBAH: Pengarahan berdasarkan role pengguna
-        if (user.role === 'SUPER_ADMIN') {
-            return res.redirect(`/superadmin?userId=${user.id}`);
-        } else if (user.role === 'ADMIN') {
-            return res.redirect(`/admin?userId=${user.id}`);
         } else if (user.role === 'PETUGAS') {
-            return res.redirect(`/petugas?userId=${user.id}`); // Redirect khusus Petugas
+            return res.redirect(`/petugas?userId=${user.id}`);
         } else {
             return res.redirect(`/wali?userId=${user.id}`);
         }
@@ -386,8 +346,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
-
-// ----------------- 2. RUTE DASBOR PETUGAS ABSEN ----------------- //
+// ----------------- DASBOR PETUGAS ABSEN ----------------- //
 app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
     if (!userId) return res.redirect('/');
@@ -447,61 +406,6 @@ app.get(['/petugas', '/petugas-dashboard'], async (req, res) => {
     }
 });
 
-
-// ----------------- 3. PERBAIKAN RUTE MANAJEMEN SISWA/KELAS (PENYESUAIAN PETUGAS) ----------------- //
-
-// Tambah Siswa Manual (Bisa dipanggil dari Admin atau Petugas)
-app.post('/api/siswa/tambah', async (req, res) => {
-    const { nama, nomor_wa_ortu, kelas_id } = req.body;
-    const userId = req.session.userId || 1;
-
-    try {
-        if (!nama) return res.status(400).send("Nama siswa wajib diisi.");
-        const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
-        
-        await pool.query(
-            'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
-            [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId]
-        );
-
-        // Redirect sesuai lokasi pemicu (Petugas atau Admin)
-        const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
-        const userRole = userRes.rows.length > 0 ? userRes.rows[0].role : 'ADMIN';
-
-        if (userRole === 'PETUGAS') {
-            return res.redirect(`/petugas?userId=${userId}`);
-        } else {
-            return res.redirect(`/admin?userId=${userId}`);
-        }
-    } catch (err) {
-        return res.status(500).send("Gagal menambah siswa: " + err.message);
-    }
-});
-
-// Tambah Rombel / Kelas (Bisa dipanggil dari Admin atau Petugas)
-app.post('/api/kelas/tambah', async (req, res) => {
-    const { nama_kelas } = req.body;
-    const userId = req.session.userId || 1;
-
-    try {
-        if (!nama_kelas) return res.status(400).send("Nama kelas wajib diisi.");
-
-        const userRes = await pool.query('SELECT sekolah_id, role FROM users WHERE id = $1', [userId]);
-        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
-        const userRole = userRes.rows.length > 0 ? userRes.rows[0].role : 'ADMIN';
-
-        await pool.query('INSERT INTO kelas (nama_kelas, sekolah_id) VALUES ($1, $2)', [nama_kelas.trim(), userSekolahId]);
-
-        if (userRole === 'PETUGAS') {
-            return res.redirect(`/petugas?userId=${userId}`);
-        } else {
-            return res.redirect(`/admin?userId=${userId}`);
-        }
-    } catch (err) {
-        return res.status(500).send("Gagal menambah kelas: " + err.message);
-    }
-});
-
 // ----------------- DASBOR SUPER ADMIN ----------------- //
 app.get('/superadmin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId;
@@ -511,10 +415,9 @@ app.get('/superadmin', async (req, res) => {
         const userRes = await pool.query('SELECT * FROM users WHERE id = $1 AND role = $2', [userId, 'SUPER_ADMIN']);
         if (userRes.rows.length === 0) return res.redirect('/');
 
-        // Ganti query sekolahRes di dalam app.get('/superadmin', ...) di server.js
-        // Ganti query sekolahRes di dalam app.get('/superadmin', ...) pada server.js
         const sekolahRes = await pool.query(`
             SELECT s.id, s.nama_sekolah, COALESCE(s.is_active, TRUE) AS is_active,
+                   COALESCE(s.wa_mode, 'WALI_KELAS') AS wa_mode,
                    COUNT(DISTINCT k.id) AS total_kelas,
                    COUNT(DISTINCT sis.id) AS total_siswa,
                    COUNT(DISTINCT CASE WHEN u.role != 'SUPER_ADMIN' THEN u.id END) AS total_pengguna
@@ -522,7 +425,7 @@ app.get('/superadmin', async (req, res) => {
              LEFT JOIN kelas k ON k.sekolah_id = s.id
              LEFT JOIN siswa sis ON sis.kelas_id = k.id
              LEFT JOIN users u ON u.sekolah_id = s.id
-             GROUP BY s.id, s.nama_sekolah, s.is_active
+             GROUP BY s.id, s.nama_sekolah, s.is_active, s.wa_mode
              ORDER BY s.id ASC
         `);
         
@@ -706,7 +609,6 @@ app.post('/api/superadmin/petugas/tambah', async (req, res) => {
             return res.status(400).send("Semua kolom wajib diisi.");
         }
 
-        // Buat akun khusus dengan role PETUGAS
         await pool.query(
             `INSERT INTO users (nama, username, password, role, sekolah_id) 
              VALUES ($1, $2, $3, 'PETUGAS', $4)`,
@@ -730,7 +632,6 @@ app.get('/admin', async (req, res) => {
         const currentUser = userRes.rows[0];
         const userSekolahId = currentUser.sekolah_id || parseInt(process.env.SEKOLAH_ID) || 1;
 
-        // DIUBAH: Sembunyikan SUPER_ADMIN dari daftar pengguna sekolah
         const usersRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
             FROM users u 
@@ -772,7 +673,6 @@ app.get('/admin', async (req, res) => {
 
         const usersCleaned = usersRes.rows.map(u => ({ ...u, nama: bersihkanGelar(u.nama) }));
         
-        // FORMAT QR UNIK MULTI-TENANT: SCH[sekolah_id]-S[siswa_id]
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(`SCH${s.sekolah_id || userSekolahId}-S${s.id}`);
             return { ...s, qrImage };
@@ -958,11 +858,17 @@ app.post('/api/kelas/tambah', async (req, res) => {
     try {
         if (!nama_kelas) return res.status(400).send("Nama kelas wajib diisi.");
 
-        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        const userRes = await pool.query('SELECT sekolah_id, role FROM users WHERE id = $1', [userId]);
         const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
+        const userRole = userRes.rows.length > 0 ? userRes.rows[0].role : 'ADMIN';
 
         await pool.query('INSERT INTO kelas (nama_kelas, sekolah_id) VALUES ($1, $2)', [nama_kelas.trim(), userSekolahId]);
-        return res.redirect(`/admin?userId=${userId}`);
+
+        if (userRole === 'PETUGAS') {
+            return res.redirect(`/petugas?userId=${userId}`);
+        } else {
+            return res.redirect(`/admin?userId=${userId}`);
+        }
     } catch (err) {
         return res.status(500).send("Gagal menambah kelas: " + err.message);
     }
@@ -974,7 +880,7 @@ app.post('/api/kelas/hapus/:id', async (req, res) => {
         await pool.query('UPDATE users SET kelas_id = NULL WHERE kelas_id = $1', [kelasId]);
         await pool.query('UPDATE siswa SET kelas_id = NULL WHERE kelas_id = $1', [kelasId]);
         await pool.query('DELETE FROM kelas WHERE id = $1', [kelasId]);
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        return res.redirect(req.headers.referer || `/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
         return res.status(500).send("Gagal menghapus rombel: " + err.message);
     }
@@ -1053,14 +959,25 @@ app.post('/api/guru/hapus/:id', async (req, res) => {
 
 app.post('/api/siswa/tambah', async (req, res) => {
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
+    const userId = req.session.userId || 1;
+
     try {
         if (!nama) return res.status(400).send("Nama siswa wajib diisi.");
         const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+        
         await pool.query(
             'INSERT INTO siswa (nama, nomor_wa_ortu, kelas_id) VALUES ($1, $2, $3)',
             [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId]
         );
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+
+        const userRes = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+        const userRole = userRes.rows.length > 0 ? userRes.rows[0].role : 'ADMIN';
+
+        if (userRole === 'PETUGAS') {
+            return res.redirect(`/petugas?userId=${userId}`);
+        } else {
+            return res.redirect(`/admin?userId=${userId}`);
+        }
     } catch (err) {
         return res.status(500).send("Gagal menambah siswa: " + err.message);
     }
@@ -1079,7 +996,7 @@ app.post('/api/siswa/edit/:id', async (req, res) => {
             [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId, siswaId]
         );
 
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        return res.redirect(req.headers.referer || `/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
         return res.status(500).send("Gagal memperbarui data siswa: " + err.message);
     }
@@ -1088,7 +1005,7 @@ app.post('/api/siswa/edit/:id', async (req, res) => {
 app.post('/api/siswa/hapus/:id', async (req, res) => {
     try {
         await pool.query('DELETE FROM siswa WHERE id = $1', [parseInt(req.params.id)]);
-        return res.redirect(`/admin?userId=${req.session.userId || 1}`);
+        return res.redirect(req.headers.referer || `/admin?userId=${req.session.userId || 1}`);
     } catch (err) {
         return res.status(500).send("Gagal menghapus siswa: " + err.message);
     }
