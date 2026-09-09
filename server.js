@@ -975,46 +975,41 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
         userRaw.nama = bersihkanGelar(userRaw.nama);
         const namaSekolah = await getNamaSekolah(userSekolahId);
 
-        // Ambil Parameter Bulan dari URL (?bulan=2026-03), default ke bulan berjalan
+        // Ambil Parameter Bulan dari URL (?bulan=2026-03)
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
 
-        // 2. Query Daftar Siswa (Prioritas berdasarkan kelas_id wali kelas)
+        // 2. Query Daftar Siswa (Gunakan k.sekolah_id, BUKAN s.sekolah_id)
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
-                   COALESCE(s.sekolah_id, $1) AS sekolah_id 
+                   COALESCE(k.sekolah_id, $1) AS sekolah_id 
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE 1=1
+            WHERE k.sekolah_id = $1
         `;
         const queryParamsSiswa = [userSekolahId];
 
         if (userRaw.kelas_id) {
             siswaQuery += ` AND s.kelas_id = $2`;
             queryParamsSiswa.push(parseInt(userRaw.kelas_id));
-        } else {
-            siswaQuery += ` AND s.sekolah_id = $1`;
         }
 
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // 3. Query Absensi HARI INI (Untuk Monitor Harian)
+        // 3. Query Absensi HARI INI
         let absensiHariIniQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+            WHERE k.sekolah_id = $1 AND DATE(a.waktu AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
         `;
-        const queryParamsHarian = [];
+        const queryParamsHarian = [userSekolahId];
 
         if (userRaw.kelas_id) {
-            absensiHariIniQuery += ` AND s.kelas_id = $1`;
+            absensiHariIniQuery += ` AND s.kelas_id = $2`;
             queryParamsHarian.push(parseInt(userRaw.kelas_id));
-        } else {
-            absensiHariIniQuery += ` AND s.sekolah_id = $1`;
-            queryParamsHarian.push(userSekolahId);
         }
 
         absensiHariIniQuery += ` ORDER BY a.waktu DESC`;
@@ -1026,7 +1021,7 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // 4. Query REKAP ABSENSI BULANAN (Untuk Fitur Rekapitulasi & Download)
+        // 4. Query REKAP ABSENSI BULANAN (Gunakan k.sekolah_id)
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, '-') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
@@ -1034,16 +1029,13 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $1
+            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
         `;
-        const queryParamsBulanan = [bulanPilihan];
+        const queryParamsBulanan = [userSekolahId, bulanPilihan];
 
         if (userRaw.kelas_id) {
-            absensiBulananQuery += ` AND s.kelas_id = $2`;
+            absensiBulananQuery += ` AND s.kelas_id = $3`;
             queryParamsBulanan.push(parseInt(userRaw.kelas_id));
-        } else {
-            absensiBulananQuery += ` AND s.sekolah_id = $2`;
-            queryParamsBulanan.push(userSekolahId);
         }
 
         absensiBulananQuery += ` ORDER BY a.waktu DESC`;
@@ -1057,19 +1049,20 @@ app.get(['/wali', '/walikelas-dashboard'], async (req, res) => {
 
         req.session.userId = userId;
 
-        // 6. Kirim Seluruh Data ke Template EJS
+        // 6. Kirim Data ke walikelas-dashboard.ejs
         res.render('walikelas-dashboard', {
             user: userRaw,
             siswaList: siswaData,
             absensiHariIni: absensiHariIniFormatted,
-            rekapAbsensi: absensiBulananRes.rows, // DATA REKAP BULANAN
-            bulanPilihan: bulanPilihan,          // UNTUK BINDING INPUT MONTH
+            rekapAbsensi: absensiBulananRes.rows,
+            bulanPilihan: bulanPilihan,
             userId: userId,
             statusWA: waStatus[userId] || 'BELUM_TERHUBUNG',
             qrCodeWA: qrCodes[userId] || null,
             namaSekolah
         });
     } catch (err) {
+        console.error("Error Dashboard Wali Kelas:", err);
         res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
