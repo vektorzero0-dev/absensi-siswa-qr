@@ -134,8 +134,12 @@
       <a href="/scan?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-qrcode text-emerald-600"></i> Pemindai QR Presensi
       </a>
-      <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
-        <i class="fa-solid fa-address-card"></i> Cetak Kartu Siswa
+      <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
+      </a>
+      <!-- TOMBOL BARU REKAPITULASI ABSENSI DI SIDEBAR -->
+      <a href="#section-rekap-bulanan" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition bg-amber-50 text-amber-900">
+        <i class="fa-solid fa-file-invoice text-amber-600"></i> Rekapitulasi Absensi
       </a>
       <a href="#section-settings" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-school text-amber-600"></i> Pengaturan Sekolah
@@ -235,6 +239,79 @@
                 <div class="bg-purple-600 text-white p-3 rounded-xl relative z-10 shadow-md">
                     <i class="fa-solid fa-school text-lg"></i>
                 </div>
+            </div>
+        </div>
+
+        <!-- PANEL REKAPITULASI ABSENSI BULANAN LENGKAP DENGAN TABEL -->
+        <div id="section-rekap-bulanan" class="card-pro card-amber-theme p-5 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-amber-200/60 pb-3 relative z-10">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-amber-600 text-white shadow-md">
+                        <i class="fa-solid fa-file-invoice text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Rekapitulasi Absensi Bulanan</h3>
+                        <p class="text-[11px] text-slate-600">Filter dan unduh rekapitulasi absensi seluruh siswa per bulan.</p>
+                    </div>
+                </div>
+
+                <form action="/admin" method="GET" class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <input type="hidden" name="userId" value="<%= userId %>">
+                    
+                    <input type="month" name="bulan" required value="<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" class="bg-white border border-amber-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                    
+                    <button type="submit" class="btn-interactive bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-magnifying-glass"></i> Lihat Rekap
+                    </button>
+
+                    <!-- Download Excel -->
+                    <a href="/api/admin/rekap/excel?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : '' %>" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel"></i> Excel
+                    </a>
+
+                    <!-- Download / Cetak PDF -->
+                    <a href="/api/admin/rekap/pdf?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : '' %>" target="_blank" class="btn-interactive bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-pdf"></i> PDF
+                    </a>
+                </form>
+            </div>
+
+            <!-- Tabel Hasil Rekap Bulanan -->
+            <div class="overflow-x-auto relative z-10">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
+                    <thead class="bg-amber-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-amber-200">
+                        <tr>
+                            <th class="p-3">Tanggal</th>
+                            <th class="p-3">Jam Scan</th>
+                            <th class="p-3">Nama Siswa</th>
+                            <th class="p-3">Rombel Kelas</th>
+                            <th class="p-3 text-center">Status Kehadiran</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-amber-100 bg-white/70">
+                        <% if (typeof rekapAbsensi !== 'undefined' && rekapAbsensi && rekapAbsensi.length > 0) { %>
+                            <% rekapAbsensi.forEach(r => { %>
+                                <tr class="hover:bg-amber-50/50 transition-colors">
+                                    <td class="p-3 font-mono font-bold text-slate-800"><%= r.tanggal_formatted %></td>
+                                    <td class="p-3 font-mono text-slate-600"><%= r.jam_formatted %> WIB</td>
+                                    <td class="p-3 font-semibold text-slate-900"><%= r.nama_siswa %></td>
+                                    <td class="p-3 text-slate-600"><%= r.nama_kelas %></td>
+                                    <td class="p-3 text-center">
+                                        <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                            <%= r.status || 'HADIR' %>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-400 italic">
+                                    Belum ada data rekaman presensi pada bulan <%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : 'ini' %>.
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -390,13 +467,12 @@
                 </div>
             </div>
 
-            <!-- BAGIAN REGISTRASI GURU DENGAN ANTI-AUTOFILL -->
+            <!-- REGISTRASI GURU -->
             <div class="card-pro card-blue-theme p-5">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-blue-200/60 pb-2 relative z-10">
                     <i class="fa-solid fa-user-plus text-blue-700"></i> Registrasi Akun Wali Kelas / Guru
                 </h3>
                 <form action="/api/guru/tambah" method="POST" autocomplete="off" class="space-y-3 relative z-10">
-                    <!-- Dummy Inputs pencegah autofill otomatis -->
                     <input type="text" style="display:none;" aria-hidden="true">
                     <input type="password" style="display:none;" aria-hidden="true">
 
@@ -584,46 +660,11 @@
             </div>
         </div>
 
-<!-- PANEL KONTROL REKAP ABSENSI BULANAN (ADMIN) -->
-<div id="section-rekap-bulanan" class="card-pro card-amber-theme p-5 mb-6">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-amber-200/60 pb-3 relative z-10">
-        <div class="flex items-center gap-3">
-            <div class="p-2.5 rounded-xl bg-amber-600 text-white shadow-md">
-                <i class="fa-solid fa-file-invoice text-lg"></i>
-            </div>
-            <div>
-                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Rekapitulasi Absensi Bulanan</h3>
-                <p class="text-[11px] text-slate-600">Filter dan unduh rekapitulasi absensi seluruh siswa per bulan.</p>
-            </div>
-        </div>
-
-        <!-- Form Filter Bulan & Tombol Download -->
-        <form action="/admin" method="GET" class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <input type="hidden" name="userId" value="<%= userId %>">
-            
-            <input type="month" name="bulan" required value="<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : new Date().toISOString().slice(0, 7) %>" class="bg-white border border-amber-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-600">
-            
-            <button type="submit" class="btn-interactive bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
-                <i class="fa-solid fa-magnifying-glass"></i> Lihat Rekap
-            </button>
-
-            <!-- Download Excel -->
-            <a href="/api/admin/rekap/excel?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : '' %>" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
-                <i class="fa-solid fa-file-excel"></i> Excel
-            </a>
-
-            <!-- Download / Cetak PDF -->
-            <a href="/api/admin/rekap/pdf?userId=<%= userId %>&bulan=<%= typeof bulanPilihan !== 'undefined' ? bulanPilihan : '' %>" target="_blank" class="btn-interactive bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
-                <i class="fa-solid fa-file-pdf"></i> PDF
-            </a>
-        </form>
-    </div>
-</div>
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-user text-purple-700"></i> Rekapitulasi Presensi Kehadiran Hari Ini
+                        <i class="fa-solid fa-clipboard-user text-purple-700"></i> Log Scan Kehadiran Hari Ini
                     </h3>
                     <p class="text-[11px] text-slate-600 mt-0.5">Daftar log aktivitas scan kartu siswa yang tercatat hari ini.</p>
                 </div>
@@ -673,6 +714,7 @@
 
     <form id="formHapusUmum" action="" method="POST" class="hidden"></form>
 
+    <!-- MODAL EDIT GURU -->
     <div id="modalEditGuru" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
@@ -724,6 +766,7 @@
         </div>
     </div>
 
+    <!-- MODAL EDIT SISWA -->
     <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
