@@ -1488,6 +1488,7 @@ app.post('/api/scan', async (req, res) => {
         let parsedSiswaId;
         const rawStr = siswa_id.toString().trim();
         
+        // Extract ID Siswa dari string format SCH{id}-S{id} atau angka murni
         if (rawStr.includes('S')) {
             parsedSiswaId = parseInt(rawStr.split('S').pop());
         } else {
@@ -1499,6 +1500,15 @@ app.post('/api/scan', async (req, res) => {
         const parsedScannedBy = parseInt(scanned_by) || 1;
         const tipeAbsen = tipe.toUpperCase() === 'PULANG' ? 'PULANG' : 'MASUK';
 
+        // 1. Ambil Data Petugas / User yang Melakukan Scan
+        const scannerUserRes = await pool.query(
+            "SELECT sekolah_id, role FROM users WHERE id = $1", 
+            [parsedScannedBy]
+        );
+        const scannerSekolahId = scannerUserRes.rows.length > 0 ? scannerUserRes.rows[0].sekolah_id : null;
+        const scannerRole = scannerUserRes.rows.length > 0 ? scannerUserRes.rows[0].role : '';
+
+        // 2. Ambil Data Siswa beserta Sekolahnya
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -1514,9 +1524,21 @@ app.post('/api/scan', async (req, res) => {
             WHERE s.id = $1
         `, [parsedSiswaId]);
 
-        if (siswaRes.rows.length === 0) return res.status(404).json({ success: false, message: `ID Siswa #${parsedSiswaId} Tidak Terdaftar!` });
+        if (siswaRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: `ID Siswa #${parsedSiswaId} Tidak Terdaftar!` });
+        }
 
         const siswa = siswaRes.rows[0];
+
+        // 🛡️ PROTEKSI ISOLASI SEKOLAH (Penting!)
+        // Cegah Petugas/Guru Sekolah A melakukan scan pada siswa milik Sekolah B
+        if (scannerRole !== 'SUPER_ADMIN' && scannerSekolahId && siswa.sekolah_id && scannerSekolahId !== siswa.sekolah_id) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `Gagal! Siswa (${siswa.nama}) terdaftar di sekolah lain dan tidak dapat di-scan oleh akun Anda.` 
+            });
+        }
+
         const namaSekolahResmi = siswa.nama_sekolah_siswa;
         const modePengirim = siswa.wa_mode;
 
@@ -1524,13 +1546,16 @@ app.post('/api/scan', async (req, res) => {
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+        // 3. Simpan Riwayat Absensi ke Database
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
              VALUES ($1, 'HADIR', $2, $3, NOW() AT TIME ZONE 'Asia/Jakarta')`,
             [siswa.id, parsedScannedBy, tipeAbsen]
         );
 
+        // 4. Cari Client WhatsApp Sesuai Pengaturan Sekolah Siswa
         let waClient = null;
+
         if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
             waClient = waSessions[siswa.wali_kelas_user_id];
         } else if (modePengirim === 'PETUGAS') {
@@ -1547,7 +1572,7 @@ app.post('/api/scan', async (req, res) => {
             }
         }
 
-        // CARI WA CLIENT DARI ADMIN SEKOLAH YANG SAMA (ISOLASI)
+        // Fallback: Cari Sesi WA Admin Sekolah jika Sesi Petugas / Wali Kelas Belum Terhubung
         if (!waClient) {
             const adminSekolahRes = await pool.query(
                 "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC",
@@ -1563,6 +1588,7 @@ app.post('/api/scan', async (req, res) => {
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
+        // 5. Kirimkan Pesan Notifikasi WA ke Orang Tua
         if (waClient && siswa.nomor_wa_ortu) {
             let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
             if (phone.startsWith('0')) phone = '62' + phone.slice(1);
@@ -1608,29 +1634,116 @@ app.post('/api/scan', async (req, res) => {
         });
 
     } catch (err) {
+        console.error("Error Scan API:", err);
         return res.status(500).json({ success: false, message: "Kendala Sistem: " + err.message });
     }
 });
 
-// TERISOLASI PER SEKOLAH
-app.post('/api/absensi/reset-riwayat', async (req, res) => {
-    const userId = req.session.userId || parseInt(req.query.userId) || 1;
-    try {
-        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
-        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : 1;
+        // CARI WA CLIENT DARI ADMIN SEKOLAH YANG SAMA (FALLBACK ISOLASI)
+        if (!waClient) {
+            const adminSekolahRes = await pool.query(
+                "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC",
+                [siswa.sekolah_id || 1]
+            );
+            for (const adm of adminSekolahRes.rows) {
+                if (waSessions[adm.id]) {
+                    waClient = waSessions[adm.id];
+                    break;
+                }
+            }
+        }
 
+        // Tentukan Status Awal Notifikasi WA
+        let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Sekolah Belum Terhubung)";
+
+        if (!siswa.nomor_wa_ortu || siswa.nomor_wa_ortu.trim() === '') {
+            statusWA = "Presensi Berhasil (Nomor WA Orang Tua Belum Terdaftar)";
+        } else if (waClient) {
+            let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+            if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+            const formattedJid = phone + '@s.whatsapp.net';
+
+            let pesan = '';
+            if (tipeAbsen === 'MASUK') {
+                pesan = `*${namaSekolahResmi.toUpperCase()}*\n` +
+                        `*PEMBERITAHUAN PRESENSI KEHADIRAN SISWA*\n` +
+                        `_________________________________________\n\n` +
+                        `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                        `Diberitahukan bahwa putra/putri Anda telah tiba di sekolah dan melakukan presensi masuk:\n\n` +
+                        `• Nama Siswa : *${siswa.nama}*\n` +
+                        `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                        `• Waktu Masuk : *${jamWib}*\n` +
+                        `• Tanggal : *${tglWib}*\n` +
+                        `• Status : *HADIR (Scan Masuk) ✅*\n\n` +
+                        `Terima kasih atas perhatian dan kerja samanya.\n\n` +
+                        `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+            } else {
+                pesan = `*${namaSekolahResmi.toUpperCase()}*\n` +
+                        `*PEMBERITAHUAN PRESENSI KEPULANGAN SISWA*\n` +
+                        `_________________________________________\n\n` +
+                        `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                        `Diberitahukan bahwa putra/putri Anda telah selesai mengikuti KBM dan melakukan presensi pulang:\n\n` +
+                        `• Nama Siswa : *${siswa.nama}*\n` +
+                        `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                        `• Waktu Pulang : *${jamWib}*\n` +
+                        `• Tanggal : *${tglWib}*\n` +
+                        `• Status : *PULANG (Scan Kepulangan) 🏠*\n\n` +
+                        `Hati-hati di jalan dan terima kasih.\n\n` +
+                        `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+            }
+
+            // Kirim Pesan di Background tanpa Menghambat Respon API Ke Scanner
+            waClient.sendMessage(formattedJid, { text: pesan })
+                .then(() => console.log(`✅ [WA] Notifikasi ${tipeAbsen} terkirim ke ${phone}`))
+                .catch(e => console.error("❌ [WA Error] Gagal Mengirim WA:", e.message));
+
+            statusWA = `Notifikasi WA (${tipeAbsen}) Berhasil Dikirimkan ke Wali Murid ✅`;
+        }
+
+        return res.json({
+            success: true,
+            message: statusWA,
+            siswa: { 
+                id: siswa.id, 
+                nama: siswa.nama, 
+                nama_kelas: siswa.nama_kelas, 
+                waktu: jamWib, 
+                tipe: tipeAbsen 
+            }
+        });
+
+    } catch (err) {
+        console.error("Error Scan Process:", err);
+        return res.status(500).json({ success: false, message: "Kendala Sistem: " + err.message });
+    }
+});
+// TERISOLASI PER SEKOLAH (FIXED & AMAN DARI SISWA TANPA KELAS)
+app.post('/api/absensi/reset-riwayat', async (req, res) => {
+    const userId = req.session?.userId || parseInt(req.query.userId) || 1;
+    try {
+        // 1. Cari sekolah_id milik pengguna yang sedang menekan tombol reset
+        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        
+        if (userRes.rows.length === 0) {
+            return res.status(403).send("Pengguna tidak ditemukan.");
+        }
+
+        const userSekolahId = userRes.rows[0].sekolah_id || 1;
+
+        // 2. Hapus absensi seluruh siswa yang terhubung dengan sekolah_id tersebut
         await pool.query(`
             DELETE FROM absensi 
             WHERE siswa_id IN (
                 SELECT s.id 
                 FROM siswa s 
-                JOIN kelas k ON s.kelas_id = k.id 
+                LEFT JOIN kelas k ON s.kelas_id = k.id 
                 WHERE k.sekolah_id = $1
             )
         `, [userSekolahId]);
 
         return res.redirect(`/admin?userId=${userId}`);
     } catch (err) {
+        console.error("Gagal reset absensi:", err);
         return res.status(500).send("Gagal membersihkan riwayat absensi: " + err.message);
     }
 });
