@@ -943,5 +943,42 @@
             }
         }
     </script>
+// ==========================================
+        // FUNGSI SAKELAR MODE MAINTENANCE (FIXED)
+        // ==========================================
+        function setMaintenance(status) {
+            const isEnable = String(status) === 'true';
+            const pesan = isEnable 
+                ? 'Apakah Anda yakin ingin MENGAKTIFKAN mode maintenance?\n\nSemua pengguna (Admin Sekolah, Petugas, Wali Kelas) akan diblokir dari sistem.' 
+                : 'Apakah Anda yakin ingin MEMATIKAN mode maintenance?\n\nAplikasi akan kembali berjalan normal.';
+
+            if (!confirm(pesan)) return;
+
+            // Mengambil ID User dari URL jika ada
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId') || '';
+
+            fetch('/api/settings/maintenance' + (userId ? '?userId=' + userId : ''), {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ active: isEnable ? 'true' : 'false' })
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Gagal: ' + (data.message || 'Terjadi kesalahan sistem'));
+                }
+            })
+            .catch(err => {
+                console.error('Error Maintenance:', err);
+                alert('Gagal terhubung ke server! Periksa koneksi internet Anda.');
+            });
+        }
 </body>
 </html>
