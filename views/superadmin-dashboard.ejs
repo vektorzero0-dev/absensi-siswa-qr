@@ -89,14 +89,14 @@
         }
 
         /* Forms & Inputs */
-        .form-control, .input-group-text {
+        .form-control, .input-group-text, .form-select-cyber {
             background-color: rgba(5, 18, 26, 0.8) !important;
             border: 1px solid var(--border-glow) !important;
             color: var(--neon-cyan) !important;
             font-family: 'Share Tech Mono', monospace;
         }
 
-        .form-control:focus {
+        .form-control:focus, .form-select-cyber:focus {
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.5) !important;
             border-color: var(--neon-cyan) !important;
         }
@@ -299,8 +299,7 @@
                                     <th>ID</th>
                                     <th>NAMA SEKOLAH</th>
                                     <th>PENGGUNA</th>
-                                    <th>ROMBEL</th>
-                                    <th>SISWA</th>
+                                    <th>PENGIRIM WA</th>
                                     <th>STATUS</th>
                                     <th class="text-center">KENDALI</th>
                                 </tr>
@@ -316,8 +315,17 @@
                                             <% } %>
                                         </td>
                                         <td><%= s.total_pengguna %> Acc</td>
-                                        <td><%= s.total_kelas %> Class</td>
-                                        <td><%= s.total_siswa %> User</td>
+                                        
+                                        <!-- OPSI WA MODE DARI SUPER ADMIN -->
+                                        <td>
+                                            <form action="/api/sekolah/wa-mode/<%= s.id %>" method="POST">
+                                                <select name="wa_mode" onchange="this.form.submit()" class="form-select form-select-sm form-select-cyber py-1 px-2 text-xs">
+                                                    <option value="WALI_KELAS" <%= s.wa_mode === 'WALI_KELAS' ? 'selected' : '' %>>📱 Wali Kelas</option>
+                                                    <option value="PETUGAS" <%= s.wa_mode === 'PETUGAS' ? 'selected' : '' %>>🏢 Petugas Absen</option>
+                                                </select>
+                                            </form>
+                                        </td>
+
                                         <td>
                                             <% if (s.is_active) { %>
                                                 <span class="badge badge-cyber-success">ACTIVE</span>
