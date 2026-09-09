@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Kartu Presensi Siswa - NAMA SEKOLAH BELUM DIATUR</title>
+    <title>Cetak Kartu Presensi Siswa - <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'SISTEM ABSENSI' %></title>
     
     <!-- CSS Tailwind & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -135,13 +135,12 @@
     <!-- NAVBAR HEADER ATAS (NO PRINT) -->
     <nav class="no-print bg-slate-900/90 backdrop-blur-md text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between border-b border-teal-500/50">
         <div class="flex items-center gap-3">
-            <!-- KODE BARU: -->
-<button type="button" onclick="window.close(); if(!window.closed){ history.back(); }" class="btn-interactive bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-xl border border-teal-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
-    <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Dashboard</span>
-</button>
+            <button type="button" onclick="window.close(); if(!window.closed){ history.back(); }" class="btn-interactive bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-xl border border-teal-500 font-bold text-xs flex items-center gap-2 transition shadow-sm">
+                <i class="fa-solid fa-arrow-left text-sm"></i> <span>Kembali ke Dashboard</span>
+            </button>
             
             <span class="font-bold text-xs sm:text-sm tracking-wide text-amber-400 uppercase truncate">
-                UPTD SD NEGERI 1 KARYA MULYA SARI
+                <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'NAMA SEKOLAH BELUM DIATUR' %>
             </span>
         </div>
 
@@ -161,7 +160,9 @@
                     <i class="fa-solid fa-graduation-cap text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">UPTD SD NEGERI 1 KARYA MULYA SARI</h1>
+                    <h1 class="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-100">
+                        <%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'NAMA SEKOLAH BELUM DIATUR' %>
+                    </h1>
                     <p class="text-[11px] text-teal-200">Format Cetak Presisi: 9 Kartu Per Lembar A4 (Grid 3x3)</p>
                 </div>
             </div>
