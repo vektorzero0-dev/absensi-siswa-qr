@@ -525,6 +525,19 @@ app.get('/api/sekolah/detail/:id', async (req, res) => {
     }
 });
 
+// TOGGLE / UBAH MODE PENGIRIM WA SEKOLAH (SUPER ADMIN)
+app.post('/api/sekolah/wa-mode/:id', async (req, res) => {
+    const sekolahId = parseInt(req.params.id);
+    const { wa_mode } = req.body;
+    try {
+        const validMode = ['WALI_KELAS', 'PETUGAS'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
+        await pool.query('UPDATE sekolah SET wa_mode = $1 WHERE id = $2', [validMode, sekolahId]);
+        return res.redirect(`/superadmin?userId=${req.session.userId || 1}`);
+    } catch (err) {
+        return res.status(500).send("Gagal mengupdate mode pengirim WA: " + err.message);
+    }
+});
+
 // ----------------- DASBOR ADMIN SEKOLAH (TERISOLASI PER SEKOLAH) ----------------- //
 app.get('/admin', async (req, res) => {
     const userId = parseInt(req.query.userId) || req.session.userId || 1;
