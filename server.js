@@ -731,14 +731,22 @@ app.post('/api/settings', async (req, res) => {
 });
 
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
-    const userId = parseInt(req.query.userId) || req.session.userId || 1;
+    // Ambil userId dari query URL ATAU dari session login yang sedang aktif
+    const userId = parseInt(req.query.userId) || req.session.userId;
     
-    try {
-        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
-        const userSekolahId = userRes.rows.length > 0 && userRes.rows[0].sekolah_id ? userRes.rows[0].sekolah_id : (parseInt(process.env.SEKOLAH_ID) || 1);
+    if (!userId) return res.redirect('/');
 
+    try {
+        // 1. Cari data user untuk tahu dia ada di sekolah mana
+        const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [userId]);
+        if (userRes.rows.length === 0) return res.redirect('/');
+
+        const userSekolahId = userRes.rows[0].sekolah_id || 1;
+
+        // 2. Ambil nama sekolah yang SESUAI dengan userSekolahId
         const namaSekolah = await getNamaSekolah(userSekolahId);
         
+        // 3. Ambil data siswa HANYA milik sekolah tersebut
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -750,7 +758,7 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], async (req, res) => {
         `, [userSekolahId]);
 
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
-            const qrImage = await generateQRDataURL(`SCH${s.sekolah_id || userSekolahId}-S${s.id}`);
+            const qrImage = await generateQRDataURL(`SCH${s.sekolah_id}-S${s.id}`);
             return { ...s, qrImage };
         }));
 
