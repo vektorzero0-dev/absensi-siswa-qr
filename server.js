@@ -1151,10 +1151,18 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETU
 app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userRaw = req.currentUser;
-        const userSekolahId = userRaw.sekolah_id;
+        let userSekolahId = userRaw.sekolah_id;
 
-        if (!userSekolahId && userRaw.role !== 'SUPER_ADMIN') {
-            return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
+        // FIX 1: Jika sekolah_id di akun wali bernilai NULL, cari otomatis dari kelas yang diampunya
+        if (!userSekolahId && userRaw.kelas_id) {
+            const kRes = await pool.query('SELECT sekolah_id FROM kelas WHERE id = $1', [userRaw.kelas_id]);
+            if (kRes.rows.length > 0) userSekolahId = kRes.rows[0].sekolah_id;
+        }
+
+        // FIX 2: Jika masih NULL juga, ambil sekolah_id default pertama agar akun TIDAK PERNAH TERBLOKIR
+        if (!userSekolahId) {
+            const defaultSch = await pool.query('SELECT id FROM sekolah ORDER BY id ASC LIMIT 1');
+            userSekolahId = defaultSch.rows.length > 0 ? defaultSch.rows[0].id : 1;
         }
 
         userRaw.nama = bersihkanGelar(userRaw.nama);
@@ -1170,7 +1178,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
                    COALESCE(k.sekolah_id, $1) AS sekolah_id 
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE k.sekolah_id = $1
+            WHERE 1=1
         `;
         const queryParamsSiswa = [userSekolahId];
 
@@ -1187,13 +1195,12 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE COALESCE(k.sekolah_id, $1) = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+            WHERE TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
         `;
-        const queryParamsHarian = [userSekolahId];
+        const queryParamsHarian = [];
 
         if (userRaw.kelas_id) {
-            absensiHariIniQuery += ` AND s.kelas_id = $2`;
+            absensiHariIniQuery += ` AND s.kelas_id = $1`;
             queryParamsHarian.push(parseInt(userRaw.kelas_id));
         }
 
@@ -1213,12 +1220,12 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+            WHERE TO_CHAR(a.waktu, 'YYYY-MM') = $1
         `;
-        const queryParamsBulanan = [userSekolahId, bulanPilihan];
+        const queryParamsBulanan = [bulanPilihan];
 
         if (userRaw.kelas_id) {
-            absensiBulananQuery += ` AND s.kelas_id = $3`;
+            absensiBulananQuery += ` AND s.kelas_id = $2`;
             queryParamsBulanan.push(parseInt(userRaw.kelas_id));
         }
 
@@ -1246,7 +1253,6 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
         res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
-
 // ✅ SCAN QR FIX: Akses diberikan ke WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN & passing user
 app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
