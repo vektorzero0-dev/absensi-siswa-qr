@@ -131,7 +131,6 @@
       <a href="/petugas?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
         <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
       </a>
-      <!-- NAVIGASI BACKUP RESTORE -->
       <a href="#section-backup" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-database text-emerald-600"></i> Backup & Restore Data
       </a>
@@ -213,9 +212,7 @@
             </div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- 💾 MODUL BACKUP & RESTORE DATA (PETUGAS - ATAS) -->
-        <!-- ========================================================================= -->
+        <!-- MODUL BACKUP & RESTORE DATA -->
         <div id="section-backup" class="card-pro card-emerald-theme p-5 mb-6">
             <div class="flex items-center gap-3 mb-4 border-b border-emerald-200/60 pb-2 relative z-10">
                 <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
@@ -228,7 +225,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-                <!-- Unduh Backup -->
                 <div class="bg-white/80 p-4 rounded-xl border border-emerald-200 flex flex-col justify-between">
                     <div>
                         <h4 class="text-xs font-bold text-slate-900 flex items-center gap-2 mb-1">
@@ -243,7 +239,6 @@
                     </a>
                 </div>
 
-                <!-- Restore Backup -->
                 <div class="bg-white/80 p-4 rounded-xl border border-emerald-200 flex flex-col justify-between">
                     <div>
                         <h4 class="text-xs font-bold text-slate-900 flex items-center gap-2 mb-1">
@@ -618,6 +613,7 @@
             </div>
         </div>
 
+        <!-- 📌 TABEL REKAPITULASI PRESENSI HARIAN DENGAN BADGE DINAMIS -->
         <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
@@ -641,7 +637,7 @@
                             <th class="p-3">Nama Siswa</th>
                             <th class="p-3">Rombel Kelas</th>
                             <th class="p-3">Waktu Presensi</th>
-                            <th class="p-3 text-center">Tipe Presensi</th>
+                            <th class="p-3 text-center">Status Kehadiran</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-purple-100 bg-white/70">
@@ -652,7 +648,15 @@
                                     <td class="p-3 text-slate-600"><%= a.nama_kelas %></td>
                                     <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
                                     <td class="p-3 text-center">
-                                        <% if (a.tipe === 'PULANG') { %>
+                                        <% if (a.status === 'ALPA') { %>
+                                            <span class="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                ALPA
+                                            </span>
+                                        <% } else if (a.status === 'IZIN' || a.status === 'SAKIT') { %>
+                                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                <%= a.status %>
+                                            </span>
+                                        <% } else if (a.tipe === 'PULANG') { %>
                                             <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
                                                 🏠 PULANG
                                             </span>
