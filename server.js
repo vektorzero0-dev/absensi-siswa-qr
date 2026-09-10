@@ -1111,8 +1111,8 @@ app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res
     }
 });
 
-// ✅ CETAK KARTU PERBAIKAN: Diberikan akses untuk WALI_KELAS, ADMIN, SUPER_ADMIN
-app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+// ✅ CETAK KARTU PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
         const namaSekolah = await getNamaSekolah(userSekolahId);
@@ -1245,14 +1245,14 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
     }
 });
 
-// ✅ SCAN QR PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+// ✅ SCAN QR PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN & passing user
 app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(userSekolahId);
-        res.render('scan', { userId: req.currentUser.id, namaSekolah });
+        res.render('scan', { user: req.currentUser, userId: req.currentUser.id, namaSekolah });
     } catch (err) {
-        res.render('scan', { userId: req.currentUser.id, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
+        res.render('scan', { user: req.currentUser, userId: req.currentUser.id, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
     }
 });
 
