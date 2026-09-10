@@ -449,20 +449,20 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        // REKAP HARIAN PRESISI
+        // REKAP HARIAN PETUGAS (DENGAN PENYESUAIAN FORMAT WAKTU)
         const absensiRes = await pool.query(`
             SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
             WHERE COALESCE(k.sekolah_id, $1) = $1 
-              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
         const absensiFormatted = absensiRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
-            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
             return { ...row, waktu_formatted: waktuWIB };
         });
 
@@ -912,26 +912,26 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        // REKAP HARIAN PRESISI
+        // REKAP HARIAN ADMIN (DENGAN PENYESUAIAN FORMAT WAKTU)
         const absensiHariIniRes = await pool.query(`
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
             WHERE COALESCE(k.sekolah_id, $1) = $1 
-              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
         const rekapBulananRes = await pool.query(`
             SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
-                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
             WHERE COALESCE(k.sekolah_id, $1) = $1 
-              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+              AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
             ORDER BY a.waktu DESC
         `, [userSekolahId, bulanPilihan]);
 
@@ -941,7 +941,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
 
         const absensiFormatted = absensiHariIniRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
-            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
             return { ...row, waktu_formatted: waktuWIB };
         });
 
@@ -979,12 +979,12 @@ app.get('/api/admin/rekap/excel', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (
 
         const dataRes = await pool.query(`
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS kelas,
-                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD HH24:MI:SS') AS waktu,
+                   TO_CHAR(a.waktu, 'YYYY-MM-DD HH24:MI:SS') AS waktu,
                    COALESCE(a.status, 'HADIR') AS status
             FROM absensi a
             JOIN siswa s ON a.siswa_id = s.id
             LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
             ORDER BY a.waktu ASC
         `, [sekolahId, bulan]);
 
@@ -1010,12 +1010,12 @@ app.get('/api/admin/rekap/pdf', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
 
         const dataRes = await pool.query(`
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS kelas,
-                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD HH24:MI:SS') AS waktu,
+                   TO_CHAR(a.waktu, 'YYYY-MM-DD HH24:MI:SS') AS waktu,
                    COALESCE(a.status, 'HADIR') AS status
             FROM absensi a
             JOIN siswa s ON a.siswa_id = s.id
             LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
             ORDER BY a.waktu ASC
         `, [sekolahId, bulan]);
 
@@ -1161,14 +1161,14 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // REKAP HARIAN PRESISI
+        // REKAP HARIAN WALI KELAS (DENGAN PENYESUAIAN FORMAT WAKTU)
         let absensiHariIniQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
             WHERE COALESCE(k.sekolah_id, $1) = $1 
-              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
         `;
         const queryParamsHarian = [userSekolahId];
 
@@ -1182,18 +1182,18 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
 
         const absensiHariIniFormatted = absensiHariIniRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
-            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+            const waktuWIB = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
             return { ...row, waktu_formatted: waktuWIB };
         });
 
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
-                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             JOIN siswa s ON a.siswa_id = s.id 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
         `;
         const queryParamsBulanan = [userSekolahId, bulanPilihan];
 
@@ -1580,10 +1580,10 @@ app.post('/api/scan', requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (r
         const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // MENYIMPAN WAKTU PRESISI WIB
+        // MENYIMPAN WAKTU DENGAN CURRENT_TIMESTAMP
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
-             VALUES ($1, 'HADIR', $2, $3, NOW() AT TIME ZONE 'Asia/Jakarta')`,
+             VALUES ($1, 'HADIR', $2, $3, CURRENT_TIMESTAMP)`,
             [siswa.id, scannedByUserId, tipeAbsen]
         );
 
@@ -1901,7 +1901,7 @@ cron.schedule('0 9 * * 1-6', async () => {
             WHERE s.id NOT IN (
                 SELECT DISTINCT siswa_id 
                 FROM absensi 
-                WHERE TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
+                WHERE TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
                   AND tipe = 'MASUK'
             )
         `;
@@ -1918,7 +1918,7 @@ cron.schedule('0 9 * * 1-6', async () => {
             try {
                 await pool.query(
                     `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
-                     VALUES ($1, 'ALPA', 'MASUK', NOW() AT TIME ZONE 'Asia/Jakarta')`,
+                     VALUES ($1, 'ALPA', 'MASUK', CURRENT_TIMESTAMP)`,
                     [siswa.id]
                 );
                 console.log(`📌 [DB Alpa] Siswa ${siswa.nama} berhasil dicatat ALPA di database.`);
