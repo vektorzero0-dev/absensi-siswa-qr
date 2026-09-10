@@ -496,6 +496,14 @@
                                     <label class="form-label">NAMA SEKOLAH RESMI</label>
                                     <input type="text" name="nama_sekolah" class="form-control" placeholder="Ex: SDN 03 Pagardewa" autocomplete="off" required>
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label">MODE NOTIFIKASI WA</label>
+                                    <select name="wa_mode" class="form-select form-select-cyber">
+                                        <option value="WALI_KELAS">📱 Wali Kelas</option>
+                                        <option value="PETUGAS">🏢 Petugas Absen</option>
+                                        <option value="TANPA_WA">🚫 Tanpa WA (Nonaktif)</option>
+                                    </select>
+                                </div>
                                 <hr class="border-secondary my-3">
                                 <h6 class="text-success cyber-font mb-2 fs-6"><i class="bi bi-person-gear"></i> AKUN ADMIN SEKOLAH</h6>
                                 <div class="mb-3">
@@ -644,6 +652,7 @@
                                                     <select name="wa_mode" onchange="this.form.submit()" class="form-select form-select-sm form-select-cyber py-1 px-2 text-xs">
                                                         <option value="WALI_KELAS" <%= s.wa_mode === 'WALI_KELAS' ? 'selected' : '' %>>📱 Wali Kelas</option>
                                                         <option value="PETUGAS" <%= s.wa_mode === 'PETUGAS' ? 'selected' : '' %>>🏢 Petugas Absen</option>
+                                                        <option value="TANPA_WA" <%= s.wa_mode === 'TANPA_WA' ? 'selected' : '' %>>🚫 Tanpa WA (Nonaktif)</option>
                                                     </select>
                                                 </form>
                                             </td>
