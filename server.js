@@ -1111,20 +1111,29 @@ app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res
     }
 });
 
-app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+// ✅ CETAK KARTU PERBAIKAN: Diberikan akses untuk WALI_KELAS, ADMIN, SUPER_ADMIN
+app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
         const namaSekolah = await getNamaSekolah(userSekolahId);
-        
-        const siswaRes = await pool.query(`
+
+        let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
                    COALESCE(k.sekolah_id, $1) AS sekolah_id
             FROM siswa s 
             LEFT JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-            ORDER BY s.nama ASC
-        `, [userSekolahId]);
+        `;
+        const queryParams = [userSekolahId];
+
+        if (req.currentUser.role === 'WALI_KELAS' && req.currentUser.kelas_id) {
+            siswaQuery += ` AND s.kelas_id = $2`;
+            queryParams.push(req.currentUser.kelas_id);
+        }
+
+        siswaQuery += ` ORDER BY s.nama ASC`;
+        const siswaRes = await pool.query(siswaQuery, queryParams);
 
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(`SCH${s.sekolah_id}-S${s.id}`);
@@ -1236,7 +1245,8 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
     }
 });
 
-app.get(['/scan', '/scanner'], requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+// ✅ SCAN QR PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(userSekolahId);
@@ -1347,7 +1357,7 @@ app.post('/api/guru/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
 });
 
 // TAMBAH SISWA DENGAN ISOLASI SESI
-app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
+app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
 
     try {
@@ -1363,6 +1373,8 @@ app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), 
 
         if (userRole === 'PETUGAS') {
             return res.redirect('/petugas');
+        } else if (userRole === 'WALI_KELAS') {
+            return res.redirect('/wali');
         } else {
             return res.redirect('/admin');
         }
@@ -1371,7 +1383,7 @@ app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), 
     }
 });
 
-app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const siswaId = parseInt(req.params.id);
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
 
@@ -1384,15 +1396,21 @@ app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
             [nama.trim(), nomor_wa_ortu ? nomor_wa_ortu.trim() : '', parsedKelasId, siswaId]
         );
 
+        if (req.currentUser.role === 'WALI_KELAS') {
+            return res.redirect('/wali');
+        }
         return res.redirect('/admin');
     } catch (err) {
         return res.status(500).send("Gagal memperbarui data siswa: " + err.message);
     }
 });
 
-app.post('/api/siswa/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.post('/api/siswa/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     try {
         await pool.query('DELETE FROM siswa WHERE id = $1', [parseInt(req.params.id)]);
+        if (req.currentUser.role === 'WALI_KELAS') {
+            return res.redirect('/wali');
+        }
         return res.redirect('/admin');
     } catch (err) {
         return res.status(500).send("Gagal menghapus siswa: " + err.message);
@@ -1534,7 +1552,8 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
 });
 
 // ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR ----------------- //
-app.post('/api/scan', requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+// ✅ PROSES SCAN PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe = 'MASUK' } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
 
@@ -1704,7 +1723,7 @@ app.post('/api/scan', requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (r
     }
 });
 
-app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
 
@@ -1718,13 +1737,16 @@ app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN']), as
             )
         `, [userSekolahId]);
 
+        if (req.currentUser.role === 'WALI_KELAS') {
+            return res.redirect('/wali');
+        }
         return res.redirect('/admin');
     } catch (err) {
         return res.status(500).send("Gagal membersihkan riwayat absensi: " + err.message);
     }
 });
 
-app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
 
@@ -1756,7 +1778,7 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
     }
 });
 
-app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
 
     if (!bulan || !tahun) return res.status(400).send("Bulan dan Tahun wajib diisi.");
