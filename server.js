@@ -1589,9 +1589,9 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
-// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (OTOMATIS MASUK / PULANG) ----------------- //
+// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (UTAMAKAN PILIHAN DARI SCANNER) ----------------- //
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
-    const { siswa_id } = req.body;
+    const { siswa_id, tipe } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
 
     try {
@@ -1638,19 +1638,19 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 2. LOGIKA OTOMATIS: Cek Apakah Siswa Sudah Absen MASUK Hari Ini
-        const cekAbsenHariIni = await pool.query(`
-            SELECT id, tipe FROM absensi 
-            WHERE siswa_id = $1 
-              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
-            ORDER BY waktu ASC
-        `, [siswa.id]);
+        // 2. LOGIKA PENETAPAN TIPE ABSENSI (Utamakan Pilihan Pilihan dari Tampilan Scanner)
+        let tipeAbsen;
 
-        let tipeAbsen = 'MASUK';
+        if (tipe && (tipe.toString().toUpperCase() === 'MASUK' || tipe.toString().toUpperCase() === 'PULANG')) {
+            tipeAbsen = tipe.toString().toUpperCase();
+        } else {
+            const cekAbsenHariIni = await pool.query(`
+                SELECT id FROM absensi 
+                WHERE siswa_id = $1 
+                  AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+            `, [siswa.id]);
 
-        // Jika siswa sudah pernah scan hari ini, ubah tipe menjadi PULANG
-        if (cekAbsenHariIni.rows.length > 0) {
-            tipeAbsen = 'PULANG';
+            tipeAbsen = cekAbsenHariIni.rows.length > 0 ? 'PULANG' : 'MASUK';
         }
 
         const namaSekolahResmi = siswa.nama_sekolah_siswa;
@@ -1660,7 +1660,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         const jamWib = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // 3. Simpan Ke Database dengan Tipe yang Ditentukan Otomatis
+        // 3. Simpan Ke Database
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
              VALUES ($1, 'HADIR', $2, $3, CURRENT_TIMESTAMP)`,
