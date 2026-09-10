@@ -474,7 +474,7 @@
                         <tr>
                             <th class="p-3">Nama Siswa</th>
                             <th class="p-3">Waktu Presensi</th>
-                            <th class="p-3">Status Kehadiran</th>
+                            <th class="p-3 text-center">Status Kehadiran</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-emerald-100 bg-white/70">
@@ -483,16 +483,30 @@
                                 <tr class="hover:bg-emerald-50/50 transition-colors">
                                     <td class="p-3 font-semibold text-slate-900"><%= a.nama_siswa %></td>
                                     <td class="p-3 font-mono text-slate-600"><%= a.waktu_formatted %></td>
-                                    <td class="p-3">
-                                        <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
-                                            HADIR
-                                        </span>
+                                    <td class="p-3 text-center">
+                                        <% if (a.status === 'ALPA') { %>
+                                            <span class="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                ALPA
+                                            </span>
+                                        <% } else if (a.status === 'IZIN' || a.status === 'SAKIT') { %>
+                                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                <%= a.status %>
+                                            </span>
+                                        <% } else if (a.tipe === 'PULANG') { %>
+                                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                🏠 PULANG
+                                            </span>
+                                        <% } else { %>
+                                            <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                ✅ MASUK
+                                            </span>
+                                        <% } %>
                                     </td>
                                 </tr>
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="3" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk untuk hari ini.</td>
+                                <td colspan="3" class="p-6 text-center text-slate-400 italic">Belum ada data rekaman presensi masuk/pulang untuk hari ini.</td>
                             </tr>
                         <% } %>
                     </tbody>
