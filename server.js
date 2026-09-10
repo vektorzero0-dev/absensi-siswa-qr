@@ -437,6 +437,8 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
         }
 
         const namaSekolah = await getNamaSekolah(userSekolahId);
+        const schRes = await pool.query("SELECT COALESCE(wa_mode, 'WALI_KELAS') AS wa_mode FROM sekolah WHERE id = $1", [userSekolahId]);
+        const waMode = schRes.rows.length > 0 ? schRes.rows[0].wa_mode : 'WALI_KELAS';
 
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
@@ -449,7 +451,7 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        // REKAP HARIAN PETUGAS (DENGAN PENYESUAIAN FORMAT WAKTU)
+        // REKAP HARIAN PETUGAS
         const absensiRes = await pool.query(`
             SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
@@ -469,12 +471,13 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
         res.render('petugas-dashboard', {
             user,
             namaSekolah,
+            waMode,
             siswaList: siswaRes.rows || [],
             kelasList: kelasRes.rows || [],
             absensiHariIni: absensiFormatted,
             userId: user.id,
-            statusWA: waStatus[user.id] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[user.id] || null
+            statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[user.id] || 'BELUM_TERHUBUNG'),
+            qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[user.id] || null)
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database Petugas: " + err.message);
@@ -543,15 +546,17 @@ app.post('/api/settings/maintenance', requireAuth(['SUPER_ADMIN']), async (req, 
 });
 
 app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) => {
-    const { nama_sekolah, admin_nama, admin_username, admin_password } = req.body;
+    const { nama_sekolah, admin_nama, admin_username, admin_password, wa_mode } = req.body;
     const client = await pool.connect();
     try {
         if (!nama_sekolah || !admin_username || !admin_password) {
             return res.status(400).send("Nama Sekolah, Username Admin, dan Password wajib diisi.");
         }
 
+        const validMode = ['WALI_KELAS', 'PETUGAS', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
+
         await client.query('BEGIN');
-        const schRes = await client.query('INSERT INTO sekolah (nama_sekolah, is_active) VALUES ($1, TRUE) RETURNING id', [nama_sekolah.trim()]);
+        const schRes = await client.query('INSERT INTO sekolah (nama_sekolah, is_active, wa_mode) VALUES ($1, TRUE, $2) RETURNING id', [nama_sekolah.trim(), validMode]);
         const newSekolahId = schRes.rows[0].id;
 
         await client.query(`
@@ -678,7 +683,7 @@ app.post('/api/sekolah/wa-mode/:id', requireAuth(['SUPER_ADMIN']), async (req, r
     const sekolahId = parseInt(req.params.id);
     const { wa_mode } = req.body;
     try {
-        const validMode = ['WALI_KELAS', 'PETUGAS'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
+        const validMode = ['WALI_KELAS', 'PETUGAS', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
         await pool.query('UPDATE sekolah SET wa_mode = $1 WHERE id = $2', [validMode, sekolahId]);
         return res.redirect('/superadmin');
     } catch (err) {
@@ -880,7 +885,7 @@ app.post('/api/backup/restore', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS'])
     }
 });
 
-// ----------------- DASBOR ADMIN SEKOLAH (AMAN DARI BOCCOR) ----------------- //
+// ----------------- DASBOR ADMIN SEKOLAH ----------------- //
 app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const currentUser = req.currentUser;
@@ -891,6 +896,9 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
         }
 
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
+        const schRes = await pool.query("SELECT COALESCE(wa_mode, 'WALI_KELAS') AS wa_mode FROM sekolah WHERE id = $1", [userSekolahId]);
+        const waMode = schRes.rows.length > 0 ? schRes.rows[0].wa_mode : 'WALI_KELAS';
 
         const usersRes = await pool.query(`
             SELECT u.id, u.nama, u.username, u.role, u.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Penugasan') AS nama_kelas 
@@ -912,7 +920,6 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        // REKAP HARIAN ADMIN (DENGAN PENYESUAIAN FORMAT WAKTU)
         const absensiHariIniRes = await pool.query(`
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
@@ -960,8 +967,9 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             rekapAbsensi: rekapBulananRes.rows,
             bulanPilihan: bulanPilihan,
             userId: currentUser.id,
-            statusWA: waStatus[currentUser.id] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[currentUser.id] || null,
+            waMode: waMode,
+            statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[currentUser.id] || 'BELUM_TERHUBUNG'),
+            qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[currentUser.id] || null),
             pengirimWA: pengirimWA,
             namaSekolah: namaSekolah
         });
@@ -1140,6 +1148,8 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
 
         userRaw.nama = bersihkanGelar(userRaw.nama);
         const namaSekolah = await getNamaSekolah(userSekolahId);
+        const schRes = await pool.query("SELECT COALESCE(wa_mode, 'WALI_KELAS') AS wa_mode FROM sekolah WHERE id = $1", [userSekolahId]);
+        const waMode = schRes.rows.length > 0 ? schRes.rows[0].wa_mode : 'WALI_KELAS';
 
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
 
@@ -1161,7 +1171,6 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
-        // REKAP HARIAN WALI KELAS (DENGAN PENYESUAIAN FORMAT WAKTU)
         let absensiHariIniQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
@@ -1217,8 +1226,9 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             rekapAbsensi: absensiBulananRes.rows,
             bulanPilihan: bulanPilihan,
             userId: userRaw.id,
-            statusWA: waStatus[userRaw.id] || 'BELUM_TERHUBUNG',
-            qrCodeWA: qrCodes[userRaw.id] || null,
+            waMode: waMode,
+            statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[userRaw.id] || 'BELUM_TERHUBUNG'),
+            qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[userRaw.id] || null),
             namaSekolah
         });
     } catch (err) {
@@ -1577,15 +1587,29 @@ app.post('/api/scan', requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (r
         const modePengirim = siswa.wa_mode;
 
         const now = new Date();
-        const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
-        const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const jamWib = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+        const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // MENYIMPAN WAKTU DENGAN CURRENT_TIMESTAMP
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
              VALUES ($1, 'HADIR', $2, $3, CURRENT_TIMESTAMP)`,
             [siswa.id, scannedByUserId, tipeAbsen]
         );
+
+        // BYPASS PENGIRIMAN WA JIKA SEKOLAH MEMAKAI MODE TANPA_WA
+        if (modePengirim === 'TANPA_WA') {
+            return res.json({
+                success: true,
+                message: `Presensi ${tipeAbsen} Berhasil Disimpan! ✅ (Tanpa Notifikasi WA)`,
+                siswa: { 
+                    id: siswa.id, 
+                    nama: siswa.nama, 
+                    nama_kelas: siswa.nama_kelas, 
+                    waktu: jamWib, 
+                    tipe: tipeAbsen 
+                }
+            });
+        }
 
         let waClient = null;
 
@@ -1926,7 +1950,8 @@ cron.schedule('0 9 * * 1-6', async () => {
                 console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
             }
 
-            if (!siswa.nomor_wa_ortu) continue;
+            // BYPASS PENGIRIMAN WA JIKA SEKOLAH MEMAKAI MODE TANPA_WA
+            if (siswa.wa_mode === 'TANPA_WA' || !siswa.nomor_wa_ortu) continue;
 
             const modePengirim = siswa.wa_mode;
             let waClient = null;
