@@ -775,9 +775,13 @@
                                             <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
                                                 <%= a.status %>
                                             </span>
+                                        <% } else if (a.tipe === 'PULANG') { %>
+                                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
+                                                🏠 PULANG
+                                            </span>
                                         <% } else { %>
                                             <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
-                                                HADIR
+                                                ✅ HADIR
                                             </span>
                                         <% } %>
                                     </td>
