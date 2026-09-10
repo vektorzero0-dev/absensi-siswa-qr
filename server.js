@@ -39,7 +39,7 @@ app.use(session({
 }));
 
 // =========================================================================
-// 🔒 MIDDLEWARE AUTENTIKASI & ISOLASI SEKOLAH KETAT (DIPERBAIKI)
+// 🔒 MIDDLEWARE AUTENTIKASI & ISOLASI SEKOLAH KETAT
 // =========================================================================
 function requireAuth(allowedRoles = []) {
     return async (req, res, next) => {
@@ -57,11 +57,8 @@ function requireAuth(allowedRoles = []) {
             }
 
             const currentUser = userRes.rows[0];
-
-            // Pasang currentUser ke req terlebih dahulu
             req.currentUser = currentUser;
 
-            // Validasi Hak Akses Role
             if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
                 return res.status(403).send("Akses Ditolak: Peran akun Anda (" + currentUser.role + ") tidak memiliki izin untuk halaman ini.");
             }
@@ -377,7 +374,6 @@ app.get(['/', '/login'], async (req, res) => {
     }
 });
 
-// ✅ RUTE LOGIN FIX: Mencegah pemblokiran salah sasaran pada akun Wali Kelas
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -395,7 +391,6 @@ app.post('/login', async (req, res) => {
 
         const user = result.rows[0];
 
-        // Proteksi: Hanya blokir jika sekolah secara eksplisit dinonaktifkan (is_active = FALSE)
         if (user.role !== 'SUPER_ADMIN' && user.is_active === false) {
             return res.render('login', { 
                 error: 'Akses sekolah Anda telah dinonaktifkan oleh Super Admin.', 
@@ -450,24 +445,25 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
         const schRes = await pool.query("SELECT COALESCE(wa_mode, 'WALI_KELAS') AS wa_mode FROM sekolah WHERE id = $1", [userSekolahId]);
         const waMode = schRes.rows.length > 0 ? schRes.rows[0].wa_mode : 'WALI_KELAS';
 
+        // FIX ISOLASI: Menggunakan INNER JOIN agar hanya siswa di sekolah ini yang tampil
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, 'Tanpa Rombel') AS nama_kelas
             FROM siswa s 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1
             ORDER BY s.nama ASC
         `, [userSekolahId]);
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
-        // REKAP HARIAN PETUGAS
+        // FIX ISOLASI REKAP HARIAN PETUGAS
         const absensiRes = await pool.query(`
             SELECT a.id, a.waktu, a.tipe, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
-            JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE COALESCE(k.sekolah_id, $1) = $1 
+            INNER JOIN siswa s ON a.siswa_id = s.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
               AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
@@ -672,7 +668,7 @@ app.get('/api/sekolah/detail/:id', requireAuth(['SUPER_ADMIN']), async (req, res
         const siswa = await pool.query(`
             SELECT s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM siswa s 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
             ORDER BY s.nama ASC
         `, [sekolahId]);
@@ -808,13 +804,13 @@ app.get('/api/backup/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), 
             const usr = await pool.query('SELECT id, nama, username, role, kelas_id, sekolah_id FROM users WHERE sekolah_id = $1', [sekolahId]);
             const sis = await pool.query(`
                 SELECT s.* FROM siswa s 
-                LEFT JOIN kelas k ON s.kelas_id = k.id 
+                INNER JOIN kelas k ON s.kelas_id = k.id 
                 WHERE k.sekolah_id = $1
             `, [sekolahId]);
             const abs = await pool.query(`
                 SELECT a.* FROM absensi a 
-                JOIN siswa s ON a.siswa_id = s.id 
-                LEFT JOIN kelas k ON s.kelas_id = k.id 
+                INNER JOIN siswa s ON a.siswa_id = s.id 
+                INNER JOIN kelas k ON s.kelas_id = k.id 
                 WHERE k.sekolah_id = $1
             `, [sekolahId]);
 
@@ -895,7 +891,7 @@ app.post('/api/backup/restore', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS'])
     }
 });
 
-// ----------------- DASBOR ADMIN SEKOLAH ----------------- //
+// ----------------- DASBOR ADMIN SEKOLAH (ISOLASI KETAT) ----------------- //
 app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const currentUser = req.currentUser;
@@ -918,36 +914,39 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             ORDER BY u.id ASC
         `, [userSekolahId]);
 
+        // FIX CEGAH KEBOCORAN: Menggunakan INNER JOIN ke kelas agar siswa tanpa kelas/sekolah lain tidak bocor
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
-                   COALESCE(k.sekolah_id, $1) AS sekolah_id
+                   k.sekolah_id
             FROM siswa s 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
             ORDER BY s.id ASC
         `, [userSekolahId]);
 
         const kelasRes = await pool.query(`SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY id ASC`, [userSekolahId]);
 
+        // FIX CEGAH KEBOCORAN REKAP HARIAN
         const absensiHariIniRes = await pool.query(`
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
-            JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE COALESCE(k.sekolah_id, $1) = $1 
+            INNER JOIN siswa s ON a.siswa_id = s.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
               AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
+        // FIX CEGAH KEBOCORAN REKAP BULANAN
         const rekapBulananRes = await pool.query(`
             SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
                    TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
-            JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE COALESCE(k.sekolah_id, $1) = $1 
+            INNER JOIN siswa s ON a.siswa_id = s.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
               AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
             ORDER BY a.waktu DESC
         `, [userSekolahId, bulanPilihan]);
@@ -1000,9 +999,9 @@ app.get('/api/admin/rekap/excel', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (
                    TO_CHAR(a.waktu, 'YYYY-MM-DD HH24:MI:SS') AS waktu,
                    COALESCE(a.status, 'HADIR') AS status
             FROM absensi a
-            JOIN siswa s ON a.siswa_id = s.id
-            LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+            INNER JOIN siswa s ON a.siswa_id = s.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
             ORDER BY a.waktu ASC
         `, [sekolahId, bulan]);
 
@@ -1031,9 +1030,9 @@ app.get('/api/admin/rekap/pdf', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
                    TO_CHAR(a.waktu, 'YYYY-MM-DD HH24:MI:SS') AS waktu,
                    COALESCE(a.status, 'HADIR') AS status
             FROM absensi a
-            JOIN siswa s ON a.siswa_id = s.id
-            LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE COALESCE(k.sekolah_id, $1) = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+            INNER JOIN siswa s ON a.siswa_id = s.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
             ORDER BY a.waktu ASC
         `, [sekolahId, bulan]);
 
@@ -1121,7 +1120,7 @@ app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res
     }
 });
 
-// ✅ CETAK KARTU FIX: Akses diberikan ke WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+// FIX ISOLASI CETAK KARTU
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -1130,9 +1129,9 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETU
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
-                   COALESCE(k.sekolah_id, $1) AS sekolah_id
+                   k.sekolah_id
             FROM siswa s 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
         `;
         const queryParams = [userSekolahId];
@@ -1156,19 +1155,17 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETU
     }
 });
 
-// ----------------- DASBOR WALI KELAS (DIPERBAIKI SECARA FULL) ----------------- //
+// ----------------- DASBOR WALI KELAS (ISOLASI KETAT) ----------------- //
 app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userRaw = req.currentUser;
         let userSekolahId = userRaw.sekolah_id;
 
-        // FIX 1: Cari sekolah_id dari kelas_id wali kelas jika di user bernilai NULL
         if (!userSekolahId && userRaw.kelas_id) {
             const kRes = await pool.query('SELECT sekolah_id FROM kelas WHERE id = $1', [userRaw.kelas_id]);
             if (kRes.rows.length > 0) userSekolahId = kRes.rows[0].sekolah_id;
         }
 
-        // FIX 2: Ambil ID sekolah default pertama agar akun TIDAK PERNAH TERBLOKIR
         if (!userSekolahId) {
             const defaultSch = await pool.query('SELECT id FROM sekolah ORDER BY id ASC LIMIT 1');
             userSekolahId = defaultSch.rows.length > 0 ? defaultSch.rows[0].id : 1;
@@ -1181,13 +1178,14 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
 
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
 
+        // FIX ISOLASI SISWA WALI KELAS
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
-                   COALESCE(k.sekolah_id, $1) AS sekolah_id 
+                   k.sekolah_id 
             FROM siswa s 
-            LEFT JOIN kelas k ON s.kelas_id = k.id
-            WHERE 1=1
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1
         `;
         const queryParamsSiswa = [userSekolahId];
 
@@ -1199,17 +1197,19 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
         siswaQuery += ` ORDER BY s.nama ASC`;
         const siswaRes = await pool.query(siswaQuery, queryParamsSiswa);
 
+        // FIX ISOLASI REKAP HARIAN WALI
         let absensiHariIniQuery = `
             SELECT a.id, a.waktu, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas 
             FROM absensi a 
-            JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+            INNER JOIN siswa s ON a.siswa_id = s.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
         `;
-        const queryParamsHarian = [];
+        const queryParamsHarian = [userSekolahId];
 
         if (userRaw.kelas_id) {
-            absensiHariIniQuery += ` AND s.kelas_id = $1`;
+            absensiHariIniQuery += ` AND s.kelas_id = $2`;
             queryParamsHarian.push(parseInt(userRaw.kelas_id));
         }
 
@@ -1222,19 +1222,21 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        // FIX ISOLASI REKAP BULANAN WALI
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
                    TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
-            JOIN siswa s ON a.siswa_id = s.id 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            WHERE TO_CHAR(a.waktu, 'YYYY-MM') = $1
+            INNER JOIN siswa s ON a.siswa_id = s.id 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            WHERE k.sekolah_id = $1 
+              AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
         `;
-        const queryParamsBulanan = [bulanPilihan];
+        const queryParamsBulanan = [userSekolahId, bulanPilihan];
 
         if (userRaw.kelas_id) {
-            absensiBulananQuery += ` AND s.kelas_id = $2`;
+            absensiBulananQuery += ` AND s.kelas_id = $3`;
             queryParamsBulanan.push(parseInt(userRaw.kelas_id));
         }
 
@@ -1263,7 +1265,6 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
     }
 });
 
-// ✅ SCAN QR FIX: Akses diberikan ke WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN & passing user
 app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
@@ -1374,7 +1375,6 @@ app.post('/api/guru/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
     }
 });
 
-// ✅ TAMBAH SISWA FIX: Akses diberikan ke ADMIN, SUPER_ADMIN, PETUGAS, WALI_KELAS
 app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
 
@@ -1401,7 +1401,6 @@ app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'W
     }
 });
 
-// ✅ EDIT SISWA FIX: Akses diberikan ke ADMIN, SUPER_ADMIN, WALI_KELAS
 app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const siswaId = parseInt(req.params.id);
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
@@ -1424,7 +1423,6 @@ app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS
     }
 });
 
-// ✅ HAPUS SISWA FIX: Akses diberikan ke ADMIN, SUPER_ADMIN, WALI_KELAS
 app.post('/api/siswa/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     try {
         await pool.query('DELETE FROM siswa WHERE id = $1', [parseInt(req.params.id)]);
@@ -1441,7 +1439,7 @@ app.post('/api/siswa/hapus-semua', requireAuth(['ADMIN', 'SUPER_ADMIN']), async 
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
 
-        await pool.query('DELETE FROM absensi WHERE siswa_id IN (SELECT s.id FROM siswa s JOIN kelas k ON s.kelas_id = k.id WHERE k.sekolah_id = $1)', [userSekolahId]);
+        await pool.query('DELETE FROM absensi WHERE siswa_id IN (SELECT s.id FROM siswa s INNER JOIN kelas k ON s.kelas_id = k.id WHERE k.sekolah_id = $1)', [userSekolahId]);
         await pool.query('DELETE FROM siswa WHERE kelas_id IN (SELECT id FROM kelas WHERE sekolah_id = $1)', [userSekolahId]);
 
         return res.redirect('/admin');
@@ -1524,7 +1522,7 @@ app.post('/api/siswa/import-excel', requireAuth(['ADMIN', 'SUPER_ADMIN']), uploa
     }
 });
 
-// ----------------- ENDPOINT WA (DENGAN REQ.SESSION) ----------------- //
+// ----------------- ENDPOINT WA ----------------- //
 
 app.get('/api/start-wa', requireAuth(), async (req, res) => {
     const userId = req.session.userId;
@@ -1572,7 +1570,6 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
 });
 
 // ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR ----------------- //
-// ✅ PROSES SCAN FIX: Akses diberikan ke WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe = 'MASUK' } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
@@ -1594,17 +1591,17 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         const scannerRole = req.currentUser.role;
         const tipeAbsen = tipe.toUpperCase() === 'PULANG' ? 'PULANG' : 'MASUK';
 
+        // FIX ISOLASI SCAN
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
-                   COALESCE(sch.nama_sekolah, set_sch.value, 'SEKOLAH') AS nama_sekolah_siswa,
+                   COALESCE(sch.nama_sekolah, 'SEKOLAH') AS nama_sekolah_siswa,
                    sch.id AS sekolah_id,
                    COALESCE(sch.wa_mode, 'WALI_KELAS') AS wa_mode,
                    u.id AS wali_kelas_user_id
             FROM siswa s 
-            LEFT JOIN kelas k ON s.kelas_id = k.id 
-            LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
-            LEFT JOIN settings set_sch ON set_sch.key = 'nama_sekolah'
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            INNER JOIN sekolah sch ON k.sekolah_id = sch.id
             LEFT JOIN users u ON u.kelas_id = s.kelas_id AND u.role = 'WALI_KELAS'
             WHERE s.id = $1
         `, [parsedSiswaId]);
@@ -1635,7 +1632,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             [siswa.id, scannedByUserId, tipeAbsen]
         );
 
-        // BYPASS PENGIRIMAN WA JIKA SEKOLAH MEMAKAI MODE TANPA_WA
         if (modePengirim === 'TANPA_WA') {
             return res.json({
                 success: true,
@@ -1743,7 +1739,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
     }
 });
 
-// ✅ RESET RIWAYAT FIX: Akses diberikan ke ADMIN, SUPER_ADMIN, WALI_KELAS
+// FIX ISOLASI RESET RIWAYAT
 app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -1753,8 +1749,8 @@ app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WAL
             WHERE siswa_id IN (
                 SELECT s.id 
                 FROM siswa s 
-                LEFT JOIN kelas k ON s.kelas_id = k.id 
-                WHERE k.sekolah_id = $1 OR k.sekolah_id IS NULL
+                INNER JOIN kelas k ON s.kelas_id = k.id 
+                WHERE k.sekolah_id = $1
             )
         `, [userSekolahId]);
 
@@ -1767,7 +1763,7 @@ app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WAL
     }
 });
 
-// ✅ PREVIEW ABSENSI FIX: Akses diberikan ke ADMIN, SUPER_ADMIN, WALI_KELAS
+// FIX ISOLASI PREVIEW ABSENSI
 app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
@@ -1778,11 +1774,11 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS
         let query = `
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
-            LEFT JOIN kelas k ON s.kelas_id = k.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN absensi a ON s.id = a.siswa_id 
                 AND EXTRACT(MONTH FROM a.waktu) = $1
                 AND EXTRACT(YEAR FROM a.waktu) = $2
-            WHERE COALESCE(k.sekolah_id, $3) = $3
+            WHERE k.sekolah_id = $3
         `;
         const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
 
@@ -1800,7 +1796,7 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS
     }
 });
 
-// ✅ EXPORT ABSENSI FIX: Akses diberikan ke ADMIN, SUPER_ADMIN, WALI_KELAS
+// FIX ISOLASI EXPORT ABSENSI
 app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
 
@@ -1812,11 +1808,11 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS'
         let query = `
             SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
             FROM siswa s
-            LEFT JOIN kelas k ON s.kelas_id = k.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN absensi a ON s.id = a.siswa_id 
                 AND EXTRACT(MONTH FROM a.waktu) = $1
                 AND EXTRACT(YEAR FROM a.waktu) = $2
-            WHERE COALESCE(k.sekolah_id, $3) = $3
+            WHERE k.sekolah_id = $3
         `;
         const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
 
@@ -1958,14 +1954,13 @@ cron.schedule('0 9 * * 1-6', async () => {
         const querySiswaAbsen = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas, 
-                   COALESCE(sch.nama_sekolah, set_sch.value, 'SEKOLAH') AS nama_sekolah_siswa,
+                   COALESCE(sch.nama_sekolah, 'SEKOLAH') AS nama_sekolah_siswa,
                    sch.id AS sekolah_id,
                    COALESCE(sch.wa_mode, 'WALI_KELAS') AS wa_mode,
                    u.id AS wali_kelas_user_id
             FROM siswa s
-            LEFT JOIN kelas k ON s.kelas_id = k.id
-            LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
-            LEFT JOIN settings set_sch ON set_sch.key = 'nama_sekolah'
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            INNER JOIN sekolah sch ON k.sekolah_id = sch.id
             LEFT JOIN users u ON u.kelas_id = s.kelas_id AND u.role = 'WALI_KELAS'
             WHERE s.id NOT IN (
                 SELECT DISTINCT siswa_id 
@@ -1995,7 +1990,6 @@ cron.schedule('0 9 * * 1-6', async () => {
                 console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
             }
 
-            // BYPASS PENGIRIMAN WA JIKA SEKOLAH MEMAKAI MODE TANPA_WA
             if (siswa.wa_mode === 'TANPA_WA' || !siswa.nomor_wa_ortu) continue;
 
             const modePengirim = siswa.wa_mode;
