@@ -33,13 +33,19 @@
                 </div>
             </div>
             
-            <!-- TOMBOL KEMBALI AMAN & DITERUSKAN SESUAI ROLE & USER ID -->
+            <!-- TOMBOL KEMBALI AMAN & DINAMIS SESUAI PERAN AKUN (ROLE) -->
             <% 
-                let backUrl = '/petugas?userId=' + userId;
-                if (typeof userRole !== 'undefined') {
-                    if (userRole === 'ADMIN') backUrl = '/admin?userId=' + userId;
-                    else if (userRole === 'WALI_KELAS') backUrl = '/wali?userId=' + userId;
-                    else if (userRole === 'SUPER_ADMIN') backUrl = '/superadmin?userId=' + userId;
+                let backUrl = '/login';
+                const roleSaatIni = (typeof userRole !== 'undefined') ? userRole : (typeof user !== 'undefined' ? user.role : '');
+
+                if (roleSaatIni === 'ADMIN') {
+                    backUrl = '/admin';
+                } else if (roleSaatIni === 'WALI_KELAS') {
+                    backUrl = '/wali';
+                } else if (roleSaatIni === 'PETUGAS') {
+                    backUrl = '/petugas';
+                } else if (roleSaatIni === 'SUPER_ADMIN') {
+                    backUrl = '/superadmin';
                 }
             %>
             <a href="<%= backUrl %>" class="bg-blue-950 hover:bg-blue-800 text-blue-100 text-xs px-3 py-2 rounded-xl border border-blue-700 transition flex items-center gap-1.5 shadow-xs">
