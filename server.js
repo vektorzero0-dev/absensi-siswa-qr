@@ -1111,7 +1111,7 @@ app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res
     }
 });
 
-// ✅ CETAK KARTU PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+// ✅ CETAK KARTU: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
 app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -1245,7 +1245,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
     }
 });
 
-// ✅ SCAN QR PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN & passing user
+// ✅ SCAN QR: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN & passing user
 app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
@@ -1356,7 +1356,7 @@ app.post('/api/guru/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (re
     }
 });
 
-// TAMBAH SISWA DENGAN ISOLASI SESI
+// ✅ TAMBAH SISWA: Diberikan akses untuk ADMIN, SUPER_ADMIN, PETUGAS, WALI_KELAS
 app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
 
@@ -1383,6 +1383,7 @@ app.post('/api/siswa/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'W
     }
 });
 
+// ✅ EDIT SISWA: Diberikan akses untuk ADMIN, SUPER_ADMIN, WALI_KELAS
 app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const siswaId = parseInt(req.params.id);
     const { nama, nomor_wa_ortu, kelas_id } = req.body;
@@ -1405,6 +1406,7 @@ app.post('/api/siswa/edit/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS
     }
 });
 
+// ✅ HAPUS SISWA: Diberikan akses untuk ADMIN, SUPER_ADMIN, WALI_KELAS
 app.post('/api/siswa/hapus/:id', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     try {
         await pool.query('DELETE FROM siswa WHERE id = $1', [parseInt(req.params.id)]);
@@ -1552,7 +1554,7 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
 });
 
 // ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR ----------------- //
-// ✅ PROSES SCAN PERBAIKAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
+// ✅ PROSES SCAN: Diberikan akses untuk WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe = 'MASUK' } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
@@ -1723,6 +1725,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
     }
 });
 
+// ✅ RESET RIWAYAT ABSENSI: Diberikan akses untuk ADMIN, SUPER_ADMIN, WALI_KELAS
 app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -1746,6 +1749,7 @@ app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WAL
     }
 });
 
+// ✅ PREVIEW ABSENSI: Diberikan akses untuk ADMIN, SUPER_ADMIN, WALI_KELAS
 app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
@@ -1778,6 +1782,7 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS
     }
 });
 
+// ✅ EXPORT ABSENSI: Diberikan akses untuk ADMIN, SUPER_ADMIN, WALI_KELAS
 app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
 
