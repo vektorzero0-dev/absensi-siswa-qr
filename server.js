@@ -2056,6 +2056,65 @@ cron.schedule('0 9 * * 1-6', async () => {
     }
 });
 
+// 📌 SISIPKAN ROUTE MANUAL CRON TEPAT DI SINI (BARIS 179)
+app.get('/api/cron/auto-alpa', async (req, res) => {
+    console.log('⏰ [MANUAL CRON] Menjalankan pengecekan auto-alpa secara manual...');
+
+    try {
+        const querySiswaAbsen = `
+            SELECT s.id, s.nama, s.nomor_wa_ortu, 
+                   COALESCE(k.nama_kelas, '-') AS nama_kelas, 
+                   COALESCE(sch.nama_sekolah, 'SEKOLAH') AS nama_sekolah_siswa,
+                   sch.id AS sekolah_id,
+                   COALESCE(sch.wa_mode, 'WALI_KELAS') AS wa_mode,
+                   u.id AS wali_kelas_user_id
+            FROM siswa s
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            INNER JOIN sekolah sch ON k.sekolah_id = sch.id
+            LEFT JOIN users u ON u.kelas_id = s.kelas_id AND u.role = 'WALI_KELAS'
+            WHERE s.id NOT IN (
+                SELECT DISTINCT siswa_id 
+                FROM absensi 
+                WHERE TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+                  AND tipe = 'MASUK'
+            )
+        `;
+
+        const result = await pool.query(querySiswaAbsen);
+        const siswaBelumPresensi = result.rows;
+
+        if (siswaBelumPresensi.length === 0) {
+            return res.json({
+                success: true,
+                message: "Tidak ada siswa yang perlu di-set ALPA. Semua siswa sudah presensi hari ini."
+            });
+        }
+
+        let totalBerhasil = 0;
+        for (const siswa of siswaBelumPresensi) {
+            try {
+                await pool.query(
+                    `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
+                     VALUES ($1, 'ALPA', 'MASUK', CURRENT_TIMESTAMP)`,
+                    [siswa.id]
+                );
+                totalBerhasil++;
+            } catch (dbErr) {
+                console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: `Berhasil mencatat status ALPA untuk ${totalBerhasil} siswa hari ini.`
+        });
+
+    } catch (err) {
+        console.error("Error Manual Cron Job Alpa:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.get('/ping', (req, res) => res.send('OK'));
 
 process.on('uncaughtException', (err) => {
