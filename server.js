@@ -1264,9 +1264,20 @@ app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'S
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(userSekolahId);
-        res.render('scan', { user: req.currentUser, userId: req.currentUser.id, namaSekolah });
+        
+        res.render('scan', { 
+            user: req.currentUser, 
+            userId: req.currentUser.id, 
+            userRole: req.currentUser.role, // <-- DITAMBAHKAN AGAR TOMBOL KEMBALI DI SCAN.EJS BERJALAN SESUAI ROLE
+            namaSekolah 
+        });
     } catch (err) {
-        res.render('scan', { user: req.currentUser, userId: req.currentUser.id, namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' });
+        res.render('scan', { 
+            user: req.currentUser, 
+            userId: req.currentUser.id, 
+            userRole: req.currentUser ? req.currentUser.role : '', // <-- DITAMBAHKAN
+            namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' 
+        });
     }
 });
 
