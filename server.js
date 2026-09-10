@@ -39,7 +39,7 @@ app.use(session({
 }));
 
 // =========================================================================
-// 🔒 MIDDLEWARE AUTENTIKASI & ISOLASI SEKOLAH KETAT
+// 🔒 MIDDLEWARE AUTENTIKASI & ISOLASI SEKOLAH KETAT (DIPERBAIKI)
 // =========================================================================
 function requireAuth(allowedRoles = []) {
     return async (req, res, next) => {
@@ -50,17 +50,22 @@ function requireAuth(allowedRoles = []) {
         try {
             const userRes = await pool.query('SELECT * FROM users WHERE id = $1', [req.session.userId]);
             if (userRes.rows.length === 0) {
-                req.session.destroy();
-                return res.redirect('/login');
+                req.session.destroy(() => {
+                    res.redirect('/login');
+                });
+                return;
             }
 
             const currentUser = userRes.rows[0];
 
+            // Pasang currentUser ke req terlebih dahulu
+            req.currentUser = currentUser;
+
+            // Validasi Hak Akses Role
             if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
-                return res.status(403).send("Akses Ditolak: Peran akun Anda tidak memiliki izin.");
+                return res.status(403).send("Akses Ditolak: Peran akun Anda (" + currentUser.role + ") tidak memiliki izin untuk halaman ini.");
             }
 
-            req.currentUser = currentUser;
             next();
         } catch (err) {
             return res.status(500).send("Gagal Memverifikasi Sesi: " + err.message);
@@ -405,7 +410,10 @@ app.post('/login', async (req, res) => {
         }
 
         req.session.save((err) => {
-            if (err) console.error("Gagal menyimpan session:", err);
+            if (err) {
+                console.error("Gagal menyimpan session:", err);
+                return res.render('login', { error: 'Gagal menyimpan sesi login.', namaSekolah });
+            }
 
             if (user.role === 'SUPER_ADMIN') {
                 return res.redirect('/superadmin');
@@ -1148,18 +1156,19 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETU
     }
 });
 
+// ----------------- DASBOR WALI KELAS (DIPERBAIKI SECARA FULL) ----------------- //
 app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userRaw = req.currentUser;
         let userSekolahId = userRaw.sekolah_id;
 
-        // FIX 1: Jika sekolah_id di akun wali bernilai NULL, cari otomatis dari kelas yang diampunya
+        // FIX 1: Cari sekolah_id dari kelas_id wali kelas jika di user bernilai NULL
         if (!userSekolahId && userRaw.kelas_id) {
             const kRes = await pool.query('SELECT sekolah_id FROM kelas WHERE id = $1', [userRaw.kelas_id]);
             if (kRes.rows.length > 0) userSekolahId = kRes.rows[0].sekolah_id;
         }
 
-        // FIX 2: Jika masih NULL juga, ambil sekolah_id default pertama agar akun TIDAK PERNAH TERBLOKIR
+        // FIX 2: Ambil ID sekolah default pertama agar akun TIDAK PERNAH TERBLOKIR
         if (!userSekolahId) {
             const defaultSch = await pool.query('SELECT id FROM sekolah ORDER BY id ASC LIMIT 1');
             userSekolahId = defaultSch.rows.length > 0 ? defaultSch.rows[0].id : 1;
@@ -1253,6 +1262,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
         res.status(500).send("Kesalahan Database: " + err.message);
     }
 });
+
 // ✅ SCAN QR FIX: Akses diberikan ke WALI_KELAS, PETUGAS, ADMIN, SUPER_ADMIN & passing user
 app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
