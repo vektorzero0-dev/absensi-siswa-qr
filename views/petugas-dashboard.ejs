@@ -586,23 +586,42 @@
                                         <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
                                     </td>
                                     <td class="p-3 text-center">
-                                        <div class="flex items-center justify-center gap-1.5">
+                                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                            <!-- Tombol Akses Cepat Izin / Sakit -->
+                                            <button type="button" 
+                                                    data-id="<%= s.id %>" 
+                                                    data-nama="<%= encodeURIComponent(s.nama) %>" 
+                                                    data-status="IZIN"
+                                                    onclick="bukaModalIzinSakit(this)" 
+                                                    class="btn-interactive text-amber-800 hover:text-amber-950 text-xs font-bold bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg transition flex items-center gap-1">
+                                                <i class="fa-solid fa-file-pen text-amber-600"></i> Izin
+                                            </button>
+
+                                            <button type="button" 
+                                                    data-id="<%= s.id %>" 
+                                                    data-nama="<%= encodeURIComponent(s.nama) %>" 
+                                                    data-status="SAKIT"
+                                                    onclick="bukaModalIzinSakit(this)" 
+                                                    class="btn-interactive text-sky-800 hover:text-sky-950 text-xs font-bold bg-sky-100 border border-sky-300 px-2 py-1 rounded-lg transition flex items-center gap-1">
+                                                <i class="fa-solid fa-notes-medical text-sky-600"></i> Sakit
+                                            </button>
+
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     data-wa="<%= encodeURIComponent(s.nomor_wa_ortu || '') %>" 
                                                     data-kelas="<%= s.kelas_id || '' %>" 
                                                     onclick="bukaModalEditSiswa(this)" 
-                                                    class="btn-interactive text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition">
-                                                <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
+                                                    class="btn-interactive text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                <i class="fa-solid fa-pen-to-square"></i> Edit
                                             </button>
 
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     onclick="hapusSiswa(this)" 
-                                                    class="btn-interactive text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition">
-                                                <i class="fa-solid fa-trash mr-1"></i> Hapus
+                                                    class="btn-interactive text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                <i class="fa-solid fa-trash"></i> Hapus
                                             </button>
                                         </div>
                                     </td>
@@ -733,6 +752,47 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL POP-UP INPUT IZIN / SAKIT (PETUGAS) -->
+    <div id="modalIzinSakit" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-notes-medical text-amber-600"></i> Catat Keterangan Kehadiran
+                </h3>
+                <button type="button" onclick="tutupModalIzinSakit()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <input type="hidden" id="modalSiswaId">
+                <input type="hidden" id="modalStatusTarget">
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <p class="text-[11px] text-slate-500 font-medium">Nama Siswa:</p>
+                    <p id="modalNamaSiswaText" class="text-xs font-bold text-slate-900"></p>
+                    
+                    <p class="text-[11px] text-slate-500 font-medium mt-2">Status yang Dicatat:</p>
+                    <span id="badgeStatusTarget" class="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded mt-0.5"></span>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Keterangan / Alasan (Opsional)</label>
+                    <textarea id="modalKeteranganInput" rows="3" placeholder="Contoh: Demam tinggi / Acara keluarga di luar kota" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-600"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="tutupModalIzinSakit()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl border border-slate-300 transition">
+                        Batal
+                    </button>
+                    <button type="button" id="btnSimpanIzinSakit" onclick="kirimIzinSakit()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-2.5 rounded-xl border border-amber-700 transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i> Simpan & Kirim WA
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -936,6 +996,66 @@
 
         function tutupModalEditSiswa() {
             document.getElementById('modalEditSiswa').classList.add('hidden');
+        }
+
+        /* FUNGSI MODAL IZIN / SAKIT PETUGAS */
+        function bukaModalIzinSakit(btn) {
+            const id = btn.getAttribute('data-id');
+            const nama = decodeURIComponent(btn.getAttribute('data-nama'));
+            const status = btn.getAttribute('data-status');
+
+            document.getElementById('modalSiswaId').value = id;
+            document.getElementById('modalStatusTarget').value = status;
+            document.getElementById('modalNamaSiswaText').innerText = nama;
+            document.getElementById('modalKeteranganInput').value = '';
+
+            const badge = document.getElementById('badgeStatusTarget');
+            badge.innerText = status;
+            
+            if (status === 'IZIN') {
+                badge.className = "inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded mt-0.5 bg-amber-100 text-amber-900 border border-amber-300";
+            } else {
+                badge.className = "inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded mt-0.5 bg-sky-100 text-sky-900 border border-sky-300";
+            }
+
+            document.getElementById('modalIzinSakit').classList.remove('hidden');
+        }
+
+        function tutupModalIzinSakit() {
+            document.getElementById('modalIzinSakit').classList.add('hidden');
+        }
+
+        async function kirimIzinSakit() {
+            const siswa_id = document.getElementById('modalSiswaId').value;
+            const status = document.getElementById('modalStatusTarget').value;
+            const keterangan = document.getElementById('modalKeteranganInput').value;
+
+            const btn = document.getElementById('btnSimpanIzinSakit');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...`;
+
+            try {
+                const response = await fetch('/api/absensi/izin-sakit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ siswa_id, status, keterangan })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();
+                } else {
+                    alert('Gagal: ' + result.message);
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Simpan & Kirim WA`;
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan jaringan: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Simpan & Kirim WA`;
+            }
         }
 
         function hapusSiswa(btn) {
