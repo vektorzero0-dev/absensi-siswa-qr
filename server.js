@@ -212,7 +212,6 @@ async function initDB() {
 
         console.log("✅ Database Multi-Tenant Initialized: Data Aman & Multi-Sekolah Siap!");
         
-        // Memuat ulang seluruh sesi WA yang tersimpan di auth_sessions saat server pertama dinyalakan
         autoRestoreWASessions();
     } catch (err) {
         console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
@@ -226,7 +225,6 @@ const waStatus = {};
 const pairingCodes = {};
 const reconnectTimers = {};
 
-// Auto Restore Sesi WA setelah restart server
 async function autoRestoreWASessions() {
     const authFolder = path.join(__dirname, 'auth_sessions');
     if (!fs.existsSync(authFolder)) return;
@@ -385,19 +383,19 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     }
 }
 
-// ---------------- FUNGSI PINTAR MEMILIH PENGIRIM WA ---------------- //
+// ---------------- FUNGSI MEMILIH PENGIRIM WA (WALI_KELAS, PETUGAS, ADMIN) ---------------- //
 async function dapatkanWAClient(siswa) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
     let waClient = null;
 
-    // 1. Opsi Wali Kelas
+    // 1. Mode Wali Kelas
     if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
         if (waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
             waClient = waSessions[siswa.wali_kelas_user_id];
         }
     } 
-    // 2. Opsi Petugas
+    // 2. Mode Petugas
     else if (modePengirim === 'PETUGAS') {
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
@@ -410,8 +408,21 @@ async function dapatkanWAClient(siswa) {
             }
         }
     }
+    // 3. Mode Admin Utama Sekolah
+    else if (modePengirim === 'ADMIN') {
+        const adminRes = await pool.query(
+            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
+            [sekolahId]
+        );
+        for (const adm of adminRes.rows) {
+            if (waSessions[adm.id] && waStatus[adm.id] === 'TERHUBUNG') {
+                waClient = waSessions[adm.id];
+                break;
+            }
+        }
+    }
 
-    // 3. Fallback Utama: Jika Wali Kelas / Petugas Belum Terhubung, Alihkan ke ADMIN
+    // Fallback: Jika mode terpilih tidak memiliki sesi aktif, alihkan ke ADMIN
     if (!waClient) {
         const adminSekolahRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
@@ -622,7 +633,8 @@ app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) =
             return res.status(400).send("Nama Sekolah, Username Admin, dan Password wajib diisi.");
         }
 
-        const validMode = ['WALI_KELAS', 'PETUGAS', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
+        // PERBAIKAN: Menambahkan 'ADMIN' dalam validasi wa_mode
+        const validMode = ['WALI_KELAS', 'PETUGAS', 'ADMIN', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
 
         await client.query('BEGIN');
         const schRes = await client.query('INSERT INTO sekolah (nama_sekolah, is_active, wa_mode) VALUES ($1, TRUE, $2) RETURNING id', [nama_sekolah.trim(), validMode]);
@@ -748,11 +760,12 @@ app.get('/api/sekolah/detail/:id', requireAuth(['SUPER_ADMIN']), async (req, res
     }
 });
 
+// PERBAIKAN: Menyesuaikan endpoint update wa_mode agar menerima opsi ADMIN
 app.post('/api/sekolah/wa-mode/:id', requireAuth(['SUPER_ADMIN']), async (req, res) => {
     const sekolahId = parseInt(req.params.id);
     const { wa_mode } = req.body;
     try {
-        const validMode = ['WALI_KELAS', 'PETUGAS', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
+        const validMode = ['WALI_KELAS', 'PETUGAS', 'ADMIN', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
         await pool.query('UPDATE sekolah SET wa_mode = $1 WHERE id = $2', [validMode, sekolahId]);
         return res.redirect('/superadmin');
     } catch (err) {
@@ -1654,7 +1667,7 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
 });
 
-// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (UTAMAKAN PILIHAN DARI SCANNER) ----------------- //
+// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR ----------------- //
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
@@ -1746,7 +1759,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 4. Pengambilan WA Client Terpusat (Wali Kelas / Petugas / Admin Fallback)
+        // 4. Pengambilan WA Client Terpusat (Mendukung Opsi WALI_KELAS, PETUGAS, ADMIN)
         let waClient = await dapatkanWAClient(siswa);
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
