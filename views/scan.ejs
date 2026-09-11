@@ -137,9 +137,27 @@
         let isProcessing = false;
         let html5QrCode = null;
 
+        // VARIABLE KONTROL PENCEGAHAN DOUBLE SCAN (DEBOUNCE/COOLDOWN)
+        let lastScannedCode = '';
+        let lastScanTime = 0;
+        const SCAN_COOLDOWN_MS = 4000; // Jeda 4 detik untuk kode QR/Siswa yang sama
+
         function onScanSuccess(decodedText, decodedResult) {
+            const currentTime = Date.now();
+
+            // 1. Apabila proses API sedang berjalan, baikan pembacaan berikutnya
             if (isProcessing) return;
+
+            // 2. Apabila kode QR yang sama terbaca ulang dalam rentang jeda 4 detik, ABAIKAN!
+            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN_MS) {
+                console.log(" Scan diabaikan (mencegah double/triple scan)");
+                return;
+            }
+
+            // Kunci status & catat data scan terakhir
             isProcessing = true;
+            lastScannedCode = decodedText;
+            lastScanTime = currentTime;
 
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(e => console.log('Audio error:', e));
@@ -173,12 +191,15 @@
                     document.getElementById('errorMsg').innerText = data.message;
                     errCard.classList.remove('hidden');
                 }
-
-                setTimeout(() => { isProcessing = false; }, 3000);
             })
             .catch(err => {
                 console.error("Kesalahan Pemindaian:", err);
-                setTimeout(() => { isProcessing = false; }, 3000);
+            })
+            .finally(() => {
+                // Beri jeda 2 detik sebelum kamera siap memindai siswa berikutnya
+                setTimeout(() => { 
+                    isProcessing = false; 
+                }, 2000);
             });
         }
 
