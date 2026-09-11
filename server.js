@@ -393,11 +393,13 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
         return waSessions[scannedByUserId];
     }
 
+    // 1. Mode Wali Kelas
     if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
         if (waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
             waClient = waSessions[siswa.wali_kelas_user_id];
         }
     } 
+    // 2. Mode Petugas (PERBAIKAN: mengambil id petugas dengan tepat)
     else if (modePengirim === 'PETUGAS') {
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
@@ -410,6 +412,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
             }
         }
     }
+    // 3. Mode Admin Sekolah
     else if (modePengirim === 'ADMIN') {
         const adminRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
@@ -418,6 +421,20 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
         for (const adm of adminRes.rows) {
             if (waSessions[adm.id] && waStatus[adm.id] === 'TERHUBUNG') {
                 waClient = waSessions[adm.id];
+                break;
+            }
+        }
+    }
+
+    // Fallback/Cadangan: Cari sesi mana pun yang aktif (PETUGAS / ADMIN)
+    if (!waClient) {
+        const petugasRes = await pool.query(
+            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
+            [sekolahId]
+        );
+        for (const p of petugasRes.rows) {
+            if (waSessions[p.id] && waStatus[p.id] === 'TERHUBUNG') {
+                waClient = waSessions[p.id];
                 break;
             }
         }
@@ -2120,11 +2137,14 @@ cron.schedule('0 9 * * 1-6', async () => {
 
                 try {
                     await waClient.sendMessage(formattedJid, { text: pesan });
+                    console.log(`✅ [CRON WA] Notifikasi ALPA terkirim ke orang tua ${siswa.nama} (${phone})`);
                 } catch (sendErr) {
                     console.error("Gagal kirim WA Cron:", sendErr.message);
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 3000));
+            } else {
+                console.log(`⚠️ [CRON WA] Sesi WA tidak terhubung untuk siswa ${siswa.nama}`);
             }
         }
     } catch (err) {
