@@ -211,6 +211,9 @@ async function initDB() {
         `, [currentSekolahId]);
 
         console.log("✅ Database Multi-Tenant Initialized: Data Aman & Multi-Sekolah Siap!");
+        
+        // Memuat ulang seluruh sesi WA yang tersimpan di auth_sessions saat server pertama dinyalakan
+        autoRestoreWASessions();
     } catch (err) {
         console.error("❌ Gagal inisialisasi/migrasi database:", err.message);
     }
@@ -222,6 +225,25 @@ const qrCodes = {};
 const waStatus = {};
 const pairingCodes = {};
 const reconnectTimers = {};
+
+// Auto Restore Sesi WA setelah restart server
+async function autoRestoreWASessions() {
+    const authFolder = path.join(__dirname, 'auth_sessions');
+    if (!fs.existsSync(authFolder)) return;
+
+    try {
+        const folders = fs.readdirSync(authFolder);
+        for (const folder of folders) {
+            if (folder.startsWith('user_')) {
+                const userId = folder.replace('user_', '');
+                console.log(`🔄 [Auto-Restore] Memulihkan sesi WhatsApp User #${userId}...`);
+                connectToWhatsApp(userId);
+            }
+        }
+    } catch (err) {
+        console.error("❌ Gagal auto-restore sesi WA:", err.message);
+    }
+}
 
 function bersihkanGelar(nama) {
     if (!nama) return '';
@@ -361,6 +383,49 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     } catch (err) {
         waStatus[userId] = 'ERROR';
     }
+}
+
+// ---------------- FUNGSI PINTAR MEMILIH PENGIRIM WA ---------------- //
+async function dapatkanWAClient(siswa) {
+    const modePengirim = siswa.wa_mode;
+    const sekolahId = siswa.sekolah_id || 1;
+    let waClient = null;
+
+    // 1. Opsi Wali Kelas
+    if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
+        if (waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
+            waClient = waSessions[siswa.wali_kelas_user_id];
+        }
+    } 
+    // 2. Opsi Petugas
+    else if (modePengirim === 'PETUGAS') {
+        const petugasRes = await pool.query(
+            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
+            [sekolahId]
+        );
+        for (const p of petugasRes.rows) {
+            if (waSessions[p.id] && waStatus[p.id] === 'TERHUBUNG') {
+                waClient = waSessions[p.id];
+                break;
+            }
+        }
+    }
+
+    // 3. Fallback Utama: Jika Wali Kelas / Petugas Belum Terhubung, Alihkan ke ADMIN
+    if (!waClient) {
+        const adminSekolahRes = await pool.query(
+            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
+            [sekolahId]
+        );
+        for (const adm of adminSekolahRes.rows) {
+            if (waSessions[adm.id] && waStatus[adm.id] === 'TERHUBUNG') {
+                waClient = waSessions[adm.id];
+                break;
+            }
+        }
+    }
+
+    return waClient;
 }
 
 // ---------------- ROUTES AUTH & HALAMAN ---------------- //
@@ -1268,14 +1333,14 @@ app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'S
         res.render('scan', { 
             user: req.currentUser, 
             userId: req.currentUser.id, 
-            userRole: req.currentUser.role, // <-- DITAMBAHKAN AGAR TOMBOL KEMBALI DI SCAN.EJS BERJALAN SESUAI ROLE
+            userRole: req.currentUser.role, 
             namaSekolah 
         });
     } catch (err) {
         res.render('scan', { 
             user: req.currentUser, 
             userId: req.currentUser.id, 
-            userRole: req.currentUser ? req.currentUser.role : '', // <-- DITAMBAHKAN
+            userRole: req.currentUser ? req.currentUser.role : '', 
             namaSekolah: 'NAMA SEKOLAH BELUM DIATUR' 
         });
     }
@@ -1638,7 +1703,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 2. LOGIKA PENETAPAN TIPE ABSENSI (Utamakan Pilihan Pilihan dari Tampilan Scanner)
+        // 2. LOGIKA PENETAPAN TIPE ABSENSI
         let tipeAbsen;
 
         if (tipe && (tipe.toString().toUpperCase() === 'MASUK' || tipe.toString().toUpperCase() === 'PULANG')) {
@@ -1681,36 +1746,8 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        let waClient = null;
-
-        if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
-            waClient = waSessions[siswa.wali_kelas_user_id];
-        } else if (modePengirim === 'PETUGAS') {
-            const targetSekolahId = siswa.sekolah_id || 1;
-            const petugasRes = await pool.query(
-                "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'PETUGAS' ORDER BY id ASC",
-                [targetSekolahId]
-            );
-            for (const p of petugasRes.rows) {
-                if (waSessions[p.id]) {
-                    waClient = waSessions[p.id];
-                    break;
-                }
-            }
-        }
-
-        if (!waClient) {
-            const adminSekolahRes = await pool.query(
-                "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC",
-                [siswa.sekolah_id || 1]
-            );
-            for (const adm of adminSekolahRes.rows) {
-                if (waSessions[adm.id]) {
-                    waClient = waSessions[adm.id];
-                    break;
-                }
-            }
-        }
+        // 4. Pengambilan WA Client Terpusat (Wali Kelas / Petugas / Admin Fallback)
+        let waClient = await dapatkanWAClient(siswa);
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
 
@@ -2016,7 +2053,6 @@ cron.schedule('0 9 * * 1-6', async () => {
 
         for (const siswa of siswaBelumPresensi) {
             try {
-                // Diperbarui: Tipe diisi 'ALPA' agar tidak muncul 'MASUK'
                 await pool.query(
                     `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
                      VALUES ($1, 'ALPA', 'ALPA', CURRENT_TIMESTAMP)`,
@@ -2029,37 +2065,7 @@ cron.schedule('0 9 * * 1-6', async () => {
 
             if (siswa.wa_mode === 'TANPA_WA' || !siswa.nomor_wa_ortu) continue;
 
-            const modePengirim = siswa.wa_mode;
-            let waClient = null;
-
-            if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
-                waClient = waSessions[siswa.wali_kelas_user_id];
-            } else if (modePengirim === 'PETUGAS') {
-                const targetSekolahId = siswa.sekolah_id || 1;
-                const petugasRes = await pool.query(
-                    "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'PETUGAS' ORDER BY id ASC",
-                    [targetSekolahId]
-                );
-                for (const p of petugasRes.rows) {
-                    if (waSessions[p.id]) {
-                        waClient = waSessions[p.id];
-                        break;
-                    }
-                }
-            }
-
-            if (!waClient) {
-                const adminSekolahRes = await pool.query(
-                    "SELECT id FROM users WHERE sekolah_id = $1 AND role = 'ADMIN' ORDER BY id ASC",
-                    [siswa.sekolah_id || 1]
-                );
-                for (const adm of adminSekolahRes.rows) {
-                    if (waSessions[adm.id]) {
-                        waClient = waSessions[adm.id];
-                        break;
-                    }
-                }
-            }
+            let waClient = await dapatkanWAClient(siswa);
 
             if (waClient) {
                 let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
@@ -2129,13 +2135,39 @@ app.get('/api/cron/auto-alpa', async (req, res) => {
         let totalBerhasil = 0;
         for (const siswa of siswaBelumPresensi) {
             try {
-                // Diperbarui: Tipe diisi 'ALPA' agar tidak muncul 'MASUK'
                 await pool.query(
                     `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
                      VALUES ($1, 'ALPA', 'ALPA', CURRENT_TIMESTAMP)`,
                     [siswa.id]
                 );
                 totalBerhasil++;
+
+                if (siswa.wa_mode !== 'TANPA_WA' && siswa.nomor_wa_ortu) {
+                    let waClient = await dapatkanWAClient(siswa);
+                    if (waClient) {
+                        let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+                        if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+                        const formattedJid = phone + '@s.whatsapp.net';
+
+                        const now = new Date();
+                        const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+                        const pesan = `*${siswa.nama_sekolah_siswa.toUpperCase()}*\n` +
+                                      `*PEMBERITAHUAN KETIDAKHADIRAN SISWA*\n` +
+                                      `_________________________________________\n\n` +
+                                      `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                                      `Diberitahukan bahwa hingga saat ini, putra/putri Anda belum melakukan presensi kehadiran di sekolah:\n\n` +
+                                      `• Nama Siswa : *${siswa.nama}*\n` +
+                                      `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                                      `• Tanggal : *${tglWib}*\n` +
+                                      `• Status : *BELUM PRESENSI / ALPA* ⚠️\n\n` +
+                                      `Apabila putra/putri Anda berhalangan hadir karena sakit atau izin, mohon konfirmasinya kepada Wali Kelas.\n\n` +
+                                      `Terima kasih atas perhatiannya.\n\n` +
+                                      `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+
+                        await waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error(e.message));
+                    }
+                }
             } catch (dbErr) {
                 console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
             }
@@ -2143,7 +2175,7 @@ app.get('/api/cron/auto-alpa', async (req, res) => {
 
         return res.json({
             success: true,
-            message: `Berhasil mencatat status ALPA untuk ${totalBerhasil} siswa hari ini.`
+            message: `Berhasil mencatat status ALPA dan menembak notifikasi untuk ${totalBerhasil} siswa hari ini.`
         });
 
     } catch (err) {
