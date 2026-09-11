@@ -383,7 +383,7 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     }
 }
 
-// ---------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT MURNI ---------------- //
+// ---------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT MURNI KETAT ---------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
@@ -399,7 +399,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[p.id];
             }
         }
-        // Fallback jika WA Petugas terputus: Gunakan WA Admin
+        // Fallback jika WA Petugas tidak terhubung: Alihkan ke WA Admin Sekolah
         const adminRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
             [sekolahId]
@@ -409,7 +409,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[adm.id];
             }
         }
-        return null;
+        return null; // Pengaturan terpusat PETUGAS aktif -> Dilarang memakai WA Wali Kelas
     }
 
     // 2. MODE TERPUSAT: ADMIN
@@ -423,7 +423,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[adm.id];
             }
         }
-        // Fallback jika WA Admin terputus: Gunakan WA Petugas
+        // Fallback jika WA Admin tidak terhubung: Alihkan ke WA Petugas
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
             [sekolahId]
@@ -433,20 +433,22 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[p.id];
             }
         }
-        return null;
+        return null; // Pengaturan terpusat ADMIN aktif -> Dilarang memakai WA Wali Kelas
     }
 
     // 3. MODE DESENTRALISASI: WALI_KELAS
     else if (modePengirim === 'WALI_KELAS') {
-        // Jika yang scan adalah Wali Kelas siswa tersebut, pakai WA-nya
+        // Jika yang melakukan scan adalah Wali Kelas siswa tersebut & WA-nya terhubung
         if (scannedByUserId && waSessions[scannedByUserId] && waStatus[scannedByUserId] === 'TERHUBUNG') {
             return waSessions[scannedByUserId];
         }
-        // Jika discan oleh orang lain (Petugas/Admin), cari WA Wali Kelas siswa tersebut
+
+        // Jika discan oleh orang lain (Admin/Petugas), cari WA Wali Kelas siswa tersebut
         if (siswa.wali_kelas_user_id && waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
             return waSessions[siswa.wali_kelas_user_id];
         }
-        // Fallback jika WA Wali Kelas mati: Gunakan Petugas/Admin
+
+        // Fallback jika WA Wali Kelas mati: Alihkan ke Petugas/Admin agar ortu tetap terima pesan
         const fallbackRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role IN ('PETUGAS', 'ADMIN') ORDER BY role ASC, id ASC",
             [sekolahId]
