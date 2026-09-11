@@ -399,7 +399,6 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[p.id];
             }
         }
-        // Fallback jika WA Petugas tidak terhubung: Alihkan ke WA Admin Sekolah
         const adminRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
             [sekolahId]
@@ -409,7 +408,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[adm.id];
             }
         }
-        return null; // Pengaturan terpusat PETUGAS aktif -> Dilarang memakai WA Wali Kelas
+        return null;
     }
 
     // 2. MODE TERPUSAT: ADMIN
@@ -423,7 +422,6 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[adm.id];
             }
         }
-        // Fallback jika WA Admin tidak terhubung: Alihkan ke WA Petugas
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
             [sekolahId]
@@ -433,22 +431,19 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
                 return waSessions[p.id];
             }
         }
-        return null; // Pengaturan terpusat ADMIN aktif -> Dilarang memakai WA Wali Kelas
+        return null;
     }
 
     // 3. MODE DESENTRALISASI: WALI_KELAS
     else if (modePengirim === 'WALI_KELAS') {
-        // Jika yang melakukan scan adalah Wali Kelas siswa tersebut & WA-nya terhubung
         if (scannedByUserId && waSessions[scannedByUserId] && waStatus[scannedByUserId] === 'TERHUBUNG') {
             return waSessions[scannedByUserId];
         }
 
-        // Jika discan oleh orang lain (Admin/Petugas), cari WA Wali Kelas siswa tersebut
         if (siswa.wali_kelas_user_id && waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
             return waSessions[siswa.wali_kelas_user_id];
         }
 
-        // Fallback jika WA Wali Kelas mati: Alihkan ke Petugas/Admin agar ortu tetap terima pesan
         const fallbackRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role IN ('PETUGAS', 'ADMIN') ORDER BY role ASC, id ASC",
             [sekolahId]
@@ -1088,111 +1083,6 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     }
 });
 
-// ----------------- ENDPOINT EKSPOR REKAP ABSENSI ----------------- //
-app.get('/api/admin/rekap/excel', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
-    const bulan = req.query.bulan || new Date().toISOString().slice(0, 7);
-
-    try {
-        const sekolahId = req.currentUser.sekolah_id;
-
-        const dataRes = await pool.query(`
-            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS kelas,
-                   TO_CHAR(a.waktu, 'YYYY-MM-DD HH24:MI:SS') AS waktu,
-                   COALESCE(a.status, 'HADIR') AS status,
-                   COALESCE(a.tipe, 'MASUK') AS tipe
-            FROM absensi a
-            INNER JOIN siswa s ON a.siswa_id = s.id
-            INNER JOIN kelas k ON s.kelas_id = k.id
-            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
-            ORDER BY a.waktu ASC
-        `, [sekolahId, bulan]);
-
-        let csvContent = "Nama Siswa,Kelas,Waktu Presensi,Status,Tipe\n";
-        dataRes.rows.forEach(r => {
-            csvContent += `"${r.nama_siswa}","${r.kelas}","${r.waktu}","${r.status}","${r.tipe}"\n`;
-        });
-
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="Rekap_Absensi_${bulan}.csv"`);
-        res.status(200).send(csvContent);
-    } catch (err) {
-        res.status(500).send("Gagal mengunduh Excel: " + err.message);
-    }
-});
-
-app.get('/api/admin/rekap/pdf', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
-    const bulan = req.query.bulan || new Date().toISOString().slice(0, 7);
-
-    try {
-        const sekolahId = req.currentUser.sekolah_id;
-        const namaSekolah = await getNamaSekolah(sekolahId);
-
-        const dataRes = await pool.query(`
-            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, '-') AS kelas,
-                   TO_CHAR(a.waktu, 'YYYY-MM-DD HH24:MI:SS') AS waktu,
-                   COALESCE(a.status, 'HADIR') AS status,
-                   COALESCE(a.tipe, 'MASUK') AS tipe
-            FROM absensi a
-            INNER JOIN siswa s ON a.siswa_id = s.id
-            INNER JOIN kelas k ON s.kelas_id = k.id
-            WHERE k.sekolah_id = $1 AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
-            ORDER BY a.waktu ASC
-        `, [sekolahId, bulan]);
-
-        let html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Laporan Absensi ${bulan}</title>
-                <style>
-                    body { font-family: sans-serif; padding: 20px; }
-                    h2, h4 { text-align: center; margin: 5px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
-                    th { background-color: #f2f2f2; }
-                    @media print { .no-print { display: none; } }
-                </style>
-            </head>
-            <body>
-                <div class="no-print" style="margin-bottom: 15px;">
-                    <button onclick="window.print()" style="padding: 8px 16px; cursor: pointer;">🖨️ Cetak / Simpan ke PDF</button>
-                </div>
-                <h2>${namaSekolah}</h2>
-                <h4>REKAPITULASI PRESENSI SISWA - PERIODE ${bulan}</h4>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Nama Siswa</th>
-                            <th>Kelas</th>
-                            <th>Waktu Presensi</th>
-                            <th>Status</th>
-                            <th>Tipe</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${dataRes.rows.map((r, i) => `
-                            <tr>
-                                <td>${i + 1}</td>
-                                <td>${r.nama_siswa}</td>
-                                <td>${r.kelas}</td>
-                                <td>${r.waktu}</td>
-                                <td>${r.status}</td>
-                                <td>${r.tipe}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
-
-        res.send(html);
-    } catch (err) {
-        res.status(500).send("Gagal memuat PDF: " + err.message);
-    }
-});
-
 // ----------------- ENDPOINT SETTINGS & CETAK KARTU ----------------- //
 app.post('/api/settings/pengirim-wa', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { pengirim_wa } = req.body;
@@ -1712,7 +1602,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
 
         if (isNaN(parsedSiswaId)) return res.status(400).json({ success: false, message: "Format Kode QR Siswa Tidak Valid." });
 
-        // 🛡️ PROTEKSI SISTEM: CEK DOUBLE SCAN PADA RENTANG 10 DETIK TERAKHIR
         const doubleCheck = await pool.query(`
             SELECT id, tipe, TO_CHAR(waktu, 'HH24:MI:SS') AS jam 
             FROM absensi 
@@ -1732,7 +1621,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         const scannerSekolahId = req.currentUser.sekolah_id;
         const scannerRole = req.currentUser.role;
 
-        // 1. Verifikasi Data Siswa
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -1760,7 +1648,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 2. LOGIKA PENETAPAN TIPE ABSENSI
         let tipeAbsen;
 
         if (tipe && (tipe.toString().toUpperCase() === 'MASUK' || tipe.toString().toUpperCase() === 'PULANG')) {
@@ -1782,7 +1669,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         const jamWib = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
         const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // 3. Simpan Ke Database
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
              VALUES ($1, 'HADIR', $2, $3, CURRENT_TIMESTAMP)`,
@@ -1803,7 +1689,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 4. Pengambilan WA Client Terpusat
         let waClient = await dapatkanWAClient(siswa, scannedByUserId);
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
@@ -1884,7 +1769,6 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
     try {
         const scannedByUserId = req.currentUser.id;
 
-        // 1. Cek Data Siswa
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
                    COALESCE(k.nama_kelas, '-') AS nama_kelas,
@@ -1905,7 +1789,6 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
 
         const siswa = siswaRes.rows[0];
 
-        // 2. Cek apakah sudah ada presensi hari ini (jika ada, update; jika belum, insert)
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
             WHERE siswa_id = $1 
@@ -1925,7 +1808,6 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
             `, [siswa.id, statusUpper, scannedByUserId]);
         }
 
-        // 3. Kirim Konfirmasi / Notifikasi WA ke Orang Tua (Jika WA Aktif)
         if (siswa.wa_mode !== 'TANPA_WA' && siswa.nomor_wa_ortu) {
             let waClient = await dapatkanWAClient(siswa, scannedByUserId);
 
@@ -1990,40 +1872,91 @@ app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PET
     }
 });
 
-// FIX ISOLASI PREVIEW ABSENSI
+// 📌 PREVIEW REKAPITULASI DENGAN FORMAT MATRIKS TANGGAL (1–31) & KETERANGAN (H, S, I, A)
 app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
 
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
+        const b = parseInt(bulan);
+        const t = parseInt(tahun);
+        const jumlahHari = new Date(t, b, 0).getDate();
 
-        let query = `
-            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
+        let querySiswa = `
+            SELECT s.id, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
             FROM siswa s
             INNER JOIN kelas k ON s.kelas_id = k.id
-            LEFT JOIN absensi a ON s.id = a.siswa_id 
-                AND EXTRACT(MONTH FROM a.waktu) = $1
-                AND EXTRACT(YEAR FROM a.waktu) = $2
-            WHERE k.sekolah_id = $3
+            WHERE k.sekolah_id = $1
         `;
-        const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
+        const paramsSiswa = [userSekolahId];
 
         if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
-            query += ` AND s.kelas_id = $4`;
-            queryParams.push(parseInt(kelas_id));
+            querySiswa += ` AND s.kelas_id = $2`;
+            paramsSiswa.push(parseInt(kelas_id));
         }
 
-        query += ` GROUP BY s.id, s.nama, k.nama_kelas ORDER BY s.nama ASC`;
+        querySiswa += ` ORDER BY s.nama ASC`;
+        const resSiswa = await pool.query(querySiswa, paramsSiswa);
 
-        const result = await pool.query(query, queryParams);
-        return res.json({ success: true, data: result.rows });
+        const resAbsensi = await pool.query(`
+            SELECT a.siswa_id, EXTRACT(DAY FROM a.waktu)::INT AS tgl, UPPER(a.status) AS status
+            FROM absensi a
+            INNER JOIN siswa s ON a.siswa_id = s.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1
+              AND EXTRACT(MONTH FROM a.waktu) = $2
+              AND EXTRACT(YEAR FROM a.waktu) = $3
+        `, [userSekolahId, b, t]);
+
+        const absensiMap = {};
+        resAbsensi.rows.forEach(r => {
+            if (!absensiMap[r.siswa_id]) absensiMap[r.siswa_id] = {};
+            absensiMap[r.siswa_id][r.tgl] = r.status;
+        });
+
+        const dataMatriks = resSiswa.rows.map(s => {
+            let logHari = [];
+            let h = 0, sCount = 0, i = 0, a = 0;
+
+            for (let d = 1; d <= jumlahHari; d++) {
+                const dt = new Date(t, b - 1, d);
+                const isHariMinggu = (dt.getDay() === 0);
+
+                let statusTgl = absensiMap[s.id]?.[d] || (isHariMinggu ? 'L' : '');
+
+                if (statusTgl === 'HADIR') { statusTgl = 'H'; h++; }
+                else if (statusTgl === 'SAKIT') { statusTgl = 'S'; sCount++; }
+                else if (statusTgl === 'IZIN') { statusTgl = 'I'; i++; }
+                else if (statusTgl === 'ALPA') { statusTgl = 'A'; a++; }
+
+                logHari.push(statusTgl);
+            }
+
+            return {
+                id: s.id,
+                nama_siswa: s.nama_siswa,
+                nama_kelas: s.nama_kelas,
+                log_hari: logHari,
+                rekap: { H: h, S: sCount, I: i, A: a },
+                total_hadir: h
+            };
+        });
+
+        return res.json({ 
+            success: true, 
+            jumlahHari, 
+            bulan: b, 
+            tahun: t, 
+            data: dataMatriks 
+        });
+
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
 
-// FIX ISOLASI EXPORT ABSENSI
+// 📌 EXPORT REKAPITULASI ABSENSI BULANAN UNTUK FORMAT MATRIKS LENGKAP (EXCEL / WORD / PDF)
 app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
 
@@ -2031,61 +1964,126 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
 
     try {
         const userSekolahId = req.currentUser.sekolah_id || 1;
+        const b = parseInt(bulan);
+        const t = parseInt(tahun);
+        const jumlahHari = new Date(t, b, 0).getDate();
 
-        let query = `
-            SELECT s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, COUNT(a.id) AS total_hadir
+        let querySiswa = `
+            SELECT s.id, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
             FROM siswa s
             INNER JOIN kelas k ON s.kelas_id = k.id
-            LEFT JOIN absensi a ON s.id = a.siswa_id 
-                AND EXTRACT(MONTH FROM a.waktu) = $1
-                AND EXTRACT(YEAR FROM a.waktu) = $2
-            WHERE k.sekolah_id = $3
+            WHERE k.sekolah_id = $1
         `;
-        const queryParams = [parseInt(bulan), parseInt(tahun), userSekolahId];
+        const paramsSiswa = [userSekolahId];
 
         if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
-            query += ` AND s.kelas_id = $4`;
-            queryParams.push(parseInt(kelas_id));
+            querySiswa += ` AND s.kelas_id = $2`;
+            paramsSiswa.push(parseInt(kelas_id));
         }
 
-        query += ` GROUP BY s.id, s.nama, k.nama_kelas ORDER BY s.nama ASC`;
+        querySiswa += ` ORDER BY s.nama ASC`;
+        const resSiswa = await pool.query(querySiswa, paramsSiswa);
 
-        const result = await pool.query(query, queryParams);
-        const dataRekap = result.rows;
-        const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][parseInt(bulan) - 1];
-        const judul = `REKAP PRESENSI SISWA - ${namaBulan.toUpperCase()} ${tahun}`;
+        const resAbsensi = await pool.query(`
+            SELECT a.siswa_id, EXTRACT(DAY FROM a.waktu)::INT AS tgl, UPPER(a.status) AS status
+            FROM absensi a
+            INNER JOIN siswa s ON a.siswa_id = s.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1
+              AND EXTRACT(MONTH FROM a.waktu) = $2
+              AND EXTRACT(YEAR FROM a.waktu) = $3
+        `, [userSekolahId, b, t]);
+
+        const absensiMap = {};
+        resAbsensi.rows.forEach(r => {
+            if (!absensiMap[r.siswa_id]) absensiMap[r.siswa_id] = {};
+            absensiMap[r.siswa_id][r.tgl] = r.status;
+        });
+
+        const daftarBulan = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+        const namaBulan = daftarBulan[b - 1];
         const namaSekolahHeader = await getNamaSekolah(userSekolahId);
 
         if (format === 'excel') {
             const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Rekap Absensi');
+            const worksheet = workbook.addWorksheet('Rekap Matriks Absensi');
 
-            worksheet.mergeCells('A1:D1');
-            worksheet.getCell('A1').value = namaSekolahHeader;
-            worksheet.getCell('A1').font = { bold: true, size: 14 };
-            worksheet.getCell('A1').alignment = { horizontal: 'center' };
+            // Baris 1: Header Atas
+            let row1 = ['NAMA SISWA'];
+            for (let i = 1; i <= jumlahHari; i++) row1.push('');
+            row1.push('', '', '', '');
 
-            worksheet.mergeCells('A2:D2');
-            worksheet.getCell('A2').value = judul;
-            worksheet.getCell('A2').font = { bold: true, size: 12 };
-            worksheet.getCell('A2').alignment = { horizontal: 'center' };
+            // Baris 2: Sub Header Tanggal & Keterangan
+            let row2 = [''];
+            for (let i = 1; i <= jumlahHari; i++) row2.push(i);
+            row2.push('H', 'S', 'I', 'A');
 
-            worksheet.addRow([]);
-            const headerRow = worksheet.addRow(['No', 'Nama Siswa', 'Kelas / Rombel', 'Total Kehadiran']);
-            headerRow.font = { bold: true };
-            headerRow.eachCell((cell) => {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9EAD3' } };
-                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            worksheet.addRow(row1);
+            worksheet.addRow(row2);
+
+            // Merge & Set Value Header
+            worksheet.mergeCells(1, 1, 2, 1);
+            worksheet.getCell(1, 1).value = 'NAMA SISWA';
+
+            worksheet.mergeCells(1, 2, 1, jumlahHari + 1);
+            worksheet.getCell(1, 2).value = `BULAN ${namaBulan} ${t}`;
+
+            worksheet.mergeCells(1, jumlahHari + 2, 1, jumlahHari + 5);
+            worksheet.getCell(1, jumlahHari + 2).value = 'KETERANGAN';
+
+            // Styling Header
+            [1, 2].forEach(rIdx => {
+                const row = worksheet.getRow(rIdx);
+                row.font = { bold: true, size: 9 };
+                row.eachCell(cell => {
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
+                    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                });
             });
 
-            dataRekap.forEach((row, idx) => {
-                const r = worksheet.addRow([idx + 1, row.nama_siswa, row.nama_kelas, `${row.total_hadir} Hari`]);
-                r.eachCell(c => c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } });
+            // Populate Data Siswa
+            resSiswa.rows.forEach(s => {
+                let barisSiswa = [s.nama_siswa];
+                let h = 0, sCount = 0, i = 0, a = 0;
+
+                for (let d = 1; d <= jumlahHari; d++) {
+                    const dt = new Date(t, b - 1, d);
+                    const isMinggu = (dt.getDay() === 0);
+
+                    let st = absensiMap[s.id]?.[d] || (isMinggu ? 'L' : '');
+
+                    if (st === 'HADIR') { st = 'H'; h++; }
+                    else if (st === 'SAKIT') { st = 'S'; sCount++; }
+                    else if (st === 'IZIN') { st = 'I'; i++; }
+                    else if (st === 'ALPA') { st = 'A'; a++; }
+
+                    barisSiswa.push(st);
+                }
+
+                barisSiswa.push(h || '', sCount || '', i || '', a || '');
+                const addedRow = worksheet.addRow(barisSiswa);
+
+                addedRow.eachCell((cell, colIdx) => {
+                    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                    if (colIdx === 1) {
+                        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+                        cell.font = { bold: true, size: 9 };
+                    } else {
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                        cell.font = { size: 9 };
+                    }
+                });
             });
 
-            worksheet.columns = [{ width: 6 }, { width: 30 }, { width: 20 }, { width: 18 }];
+            // Set Lebar Kolom Moduler Rapat
+            worksheet.getColumn(1).width = 25;
+            for (let c = 2; c <= jumlahHari + 5; c++) {
+                worksheet.getColumn(c).width = 3.5;
+            }
+
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.xlsx`);
+            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Matriks_${namaBulan}_${t}.xlsx`);
             return workbook.xlsx.write(res).then(() => res.end());
         }
 
@@ -2093,27 +2091,48 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
             const tableRows = [
                 new TableRow({
                     children: [
-                        new TableCell({ children: [new Paragraph({ text: "No", bold: true })], width: { size: 10, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Nama Siswa", bold: true })], width: { size: 45, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Kelas", bold: true })], width: { size: 25, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Total Hadir", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } }),
+                        new TableCell({ children: [new Paragraph({ text: "NAMA SISWA", bold: true })] }),
+                        ...Array.from({ length: jumlahHari }, (_, idx) => new TableCell({ children: [new Paragraph((idx + 1).toString())] })),
+                        new TableCell({ children: [new Paragraph("H")] }),
+                        new TableCell({ children: [new Paragraph("S")] }),
+                        new TableCell({ children: [new Paragraph("I")] }),
+                        new TableCell({ children: [new Paragraph("A")] }),
                     ]
                 }),
-                ...dataRekap.map((row, idx) => new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph((idx + 1).toString())] }),
-                        new TableCell({ children: [new Paragraph(row.nama_siswa)] }),
-                        new TableCell({ children: [new Paragraph(row.nama_kelas)] }),
-                        new TableCell({ children: [new Paragraph(`${row.total_hadir} Hari`)] }),
-                    ]
-                }))
+                ...resSiswa.rows.map(s => {
+                    let h = 0, sCount = 0, i = 0, a = 0;
+                    const logCells = Array.from({ length: jumlahHari }, (_, idx) => {
+                        const d = idx + 1;
+                        const isMinggu = (new Date(t, b - 1, d).getDay() === 0);
+                        let st = absensiMap[s.id]?.[d] || (isMinggu ? 'L' : '');
+
+                        if (st === 'HADIR') { st = 'H'; h++; }
+                        else if (st === 'SAKIT') { st = 'S'; sCount++; }
+                        else if (st === 'IZIN') { st = 'I'; i++; }
+                        else if (st === 'ALPA') { st = 'A'; a++; }
+
+                        return new TableCell({ children: [new Paragraph(st)] });
+                    });
+
+                    return new TableRow({
+                        children: [
+                            new TableCell({ children: [new Paragraph(s.nama_siswa)] }),
+                            ...logCells,
+                            new TableCell({ children: [new Paragraph(h.toString())] }),
+                            new TableCell({ children: [new Paragraph(sCount.toString())] }),
+                            new TableCell({ children: [new Paragraph(i.toString())] }),
+                            new TableCell({ children: [new Paragraph(a.toString())] }),
+                        ]
+                    });
+                })
             ];
 
             const doc = new Document({
                 sections: [{
+                    properties: { page: { size: { orientation: "landscape" } } },
                     children: [
                         new Paragraph({ text: namaSekolahHeader, heading: "Heading1", alignment: AlignmentType.CENTER }),
-                        new Paragraph({ text: judul, heading: "Heading2", alignment: AlignmentType.CENTER }),
+                        new Paragraph({ text: `BULAN ${namaBulan} ${t}`, heading: "Heading2", alignment: AlignmentType.CENTER }),
                         new Paragraph({ text: "" }),
                         new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } })
                     ]
@@ -2122,44 +2141,68 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
 
             const buffer = await Packer.toBuffer(doc);
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.docx`);
+            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Matriks_${namaBulan}_${t}.docx`);
             return res.send(buffer);
         }
 
         if (format === 'pdf') {
-            const doc = new PDFDocument({ margin: 40, size: 'A4' });
+            const doc = new PDFDocument({ margin: 20, size: 'A4', layout: 'landscape' });
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Presensi_${bulan}_${tahun}.pdf`);
+            res.setHeader('Content-Disposition', `attachment; filename=Rekap_Matriks_${namaBulan}_${t}.pdf`);
 
             doc.pipe(res);
-            doc.fontSize(14).font('Helvetica-Bold').text(namaSekolahHeader, { align: 'center' });
-            doc.fontSize(11).font('Helvetica').text(judul, { align: 'center' });
-            doc.moveDown(1.5);
+            doc.fontSize(12).font('Helvetica-Bold').text(namaSekolahHeader, { align: 'center' });
+            doc.fontSize(10).font('Helvetica').text(`BULAN ${namaBulan} ${t}`, { align: 'center' });
+            doc.moveDown(1);
 
             let y = doc.y;
-            const startX = 40;
-            const colWidths = [40, 230, 130, 100];
+            const startX = 20;
+            const colWidth = 18;
 
-            doc.font('Helvetica-Bold').fontSize(10);
-            doc.text('No', startX, y);
-            doc.text('Nama Siswa', startX + colWidths[0], y);
-            doc.text('Kelas', startX + colWidths[0] + colWidths[1], y);
-            doc.text('Total Hadir', startX + colWidths[0] + colWidths[1] + colWidths[2], y);
+            doc.font('Helvetica-Bold').fontSize(7);
+            doc.text('NAMA SISWA', startX, y, { width: 140 });
 
-            doc.moveTo(startX, y + 15).lineTo(startX + 500, y + 15).stroke();
-            y += 22;
+            for (let d = 1; d <= jumlahHari; d++) {
+                doc.text(d.toString(), startX + 140 + ((d - 1) * colWidth), y, { width: colWidth, align: 'center' });
+            }
 
-            doc.font('Helvetica').fontSize(9);
-            dataRekap.forEach((row, i) => {
-                if (y > 750) {
+            doc.text('H', startX + 140 + (jumlahHari * colWidth), y, { width: colWidth, align: 'center' });
+            doc.text('S', startX + 140 + ((jumlahHari + 1) * colWidth), y, { width: colWidth, align: 'center' });
+            doc.text('I', startX + 140 + ((jumlahHari + 2) * colWidth), y, { width: colWidth, align: 'center' });
+            doc.text('A', startX + 140 + ((jumlahHari + 3) * colWidth), y, { width: colWidth, align: 'center' });
+
+            y += 12;
+            doc.moveTo(startX, y).lineTo(startX + 140 + ((jumlahHari + 4) * colWidth), y).stroke();
+            y += 4;
+
+            doc.font('Helvetica').fontSize(6.5);
+            resSiswa.rows.forEach(s => {
+                if (y > 520) {
                     doc.addPage();
-                    y = 40;
+                    y = 30;
                 }
-                doc.text((i + 1).toString(), startX, y);
-                doc.text(row.nama_siswa, startX + colWidths[0], y);
-                doc.text(row.nama_kelas, startX + colWidths[0] + colWidths[1], y);
-                doc.text(`${row.total_hadir} Hari`, startX + colWidths[0] + colWidths[1] + colWidths[2], y);
-                y += 18;
+
+                doc.text(s.nama_siswa, startX, y, { width: 135 });
+                let h = 0, sCount = 0, i = 0, a = 0;
+
+                for (let d = 1; d <= jumlahHari; d++) {
+                    const isMinggu = (new Date(t, b - 1, d).getDay() === 0);
+                    let st = absensiMap[s.id]?.[d] || (isMinggu ? 'L' : '');
+
+                    if (st === 'HADIR') { st = 'H'; h++; }
+                    else if (st === 'SAKIT') { st = 'S'; sCount++; }
+                    else if (st === 'IZIN') { st = 'I'; i++; }
+                    else if (st === 'ALPA') { st = 'A'; a++; }
+
+                    doc.text(st, startX + 140 + ((d - 1) * colWidth), y, { width: colWidth, align: 'center' });
+                }
+
+                doc.text(h ? h.toString() : '', startX + 140 + (jumlahHari * colWidth), y, { width: colWidth, align: 'center' });
+                doc.text(sCount ? sCount.toString() : '', startX + 140 + ((jumlahHari + 1) * colWidth), y, { width: colWidth, align: 'center' });
+                doc.text(i ? i.toString() : '', startX + 140 + ((jumlahHari + 2) * colWidth), y, { width: colWidth, align: 'center' });
+                doc.text(a ? a.toString() : '', startX + 140 + ((jumlahHari + 3) * colWidth), y, { width: colWidth, align: 'center' });
+
+                y += 11;
             });
 
             doc.end();
