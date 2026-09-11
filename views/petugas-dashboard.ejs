@@ -553,9 +553,10 @@
             </div>
 
             <div class="overflow-x-auto relative z-10">
-                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
+                <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[650px]">
                     <thead class="bg-emerald-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-emerald-200">
                         <tr>
+                            <th class="p-3 text-center">Kode QR</th>
                             <th class="p-3">ID Siswa</th>
                             <th class="p-3">Nama Lengkap Siswa</th>
                             <th class="p-3">Rombel Kelas</th>
@@ -567,6 +568,13 @@
                         <% if (siswaList && siswaList.length > 0) { %>
                             <% siswaList.forEach(s => { %>
                                 <tr class="hover:bg-emerald-50/50 transition-colors">
+                                    <td class="p-2 text-center">
+                                        <% if (s.qrImage) { %>
+                                            <img src="<%= s.qrImage %>" alt="QR Code" class="w-10 h-10 mx-auto rounded border border-emerald-300 p-0.5 bg-white shadow-xs">
+                                        <% } else { %>
+                                            <span class="text-slate-400 font-mono text-[10px]">-</span>
+                                        <% } %>
+                                    </td>
                                     <td class="p-3 font-mono font-bold text-emerald-800">#<%= s.id %></td>
                                     <td class="p-3 font-semibold text-slate-900"><%= s.nama %></td>
                                     <td class="p-3">
@@ -602,7 +610,7 @@
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="5" class="p-8 text-center text-slate-400 italic">
+                                <td colspan="6" class="p-8 text-center text-slate-400 italic">
                                     <i class="fa-solid fa-folder-open text-2xl mb-1 block text-slate-300"></i>
                                     Belum ada siswa terdaftar. Silakan lakukan impor data Excel Dapodik atau tambah manual.
                                 </td>
