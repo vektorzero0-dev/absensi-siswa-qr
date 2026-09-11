@@ -1846,6 +1846,97 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
     }
 });
 
+// ----------------- ENDPOINT INPUT MASUK MANUAL (OFFLINE / ANTISIPASI KENDALA) ----------------- //
+app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    const { siswa_id, keterangan } = req.body;
+    
+    if (!siswa_id) {
+        return res.status(400).json({ success: false, message: "ID Siswa wajib diisi." });
+    }
+
+    try {
+        const scannedByUserId = req.currentUser.id;
+
+        // 1. Cek Data Siswa
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
+                   COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                   COALESCE(sch.nama_sekolah, 'SEKOLAH') AS nama_sekolah_siswa,
+                   sch.id AS sekolah_id,
+                   COALESCE(sch.wa_mode, 'WALI_KELAS') AS wa_mode
+            FROM siswa s 
+            INNER JOIN kelas k ON s.kelas_id = k.id 
+            INNER JOIN sekolah sch ON k.sekolah_id = sch.id
+            WHERE s.id = $1
+        `, [siswa_id]);
+
+        if (siswaRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Siswa tidak ditemukan." });
+        }
+
+        const siswa = siswaRes.rows[0];
+
+        // 2. Simpan / Perbarui data presensi ke status HADIR (Masuk)
+        const cekAbsen = await pool.query(`
+            SELECT id FROM absensi 
+            WHERE siswa_id = $1 
+              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+        `, [siswa.id]);
+
+        if (cekAbsen.rows.length > 0) {
+            await pool.query(`
+                UPDATE absensi 
+                SET status = 'HADIR', tipe = 'MASUK', scanned_by = $1 
+                WHERE id = $2
+            `, [scannedByUserId, cekAbsen.rows[0].id]);
+        } else {
+            await pool.query(`
+                INSERT INTO absensi (siswa_id, status, tipe, scanned_by, waktu) 
+                VALUES ($1, 'HADIR', 'MASUK', $2, CURRENT_TIMESTAMP)
+            `, [siswa.id, scannedByUserId]);
+        }
+
+        // 3. Kirim Notifikasi WA ke Orang Tua (Jika WA Aktif)
+        if (siswa.wa_mode !== 'TANPA_WA' && siswa.nomor_wa_ortu) {
+            let waClient = await dapatkanWAClient(siswa, scannedByUserId);
+
+            if (waClient) {
+                let phone = siswa.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+                if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+                const formattedJid = phone + '@s.whatsapp.net';
+
+                const now = new Date();
+                const jamWib = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') + ' WIB';
+                const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+                const pesan = `*${siswa.nama_sekolah_siswa.toUpperCase()}*\n` +
+                              `*PEMBERITAHUAN PRESENSI MASUK (MANUAL)*\n` +
+                              `_________________________________________\n\n` +
+                              `Yth. Bapak/Ibu Orang Tua / Wali Murid,\n\n` +
+                              `Diberitahukan bahwa putra/putri Anda telah dicatat presensi masuk secara manual oleh petugas:\n\n` +
+                              `• Nama Siswa : *${siswa.nama}*\n` +
+                              `• Kelas / Rombel : *${siswa.nama_kelas}*\n` +
+                              `• Waktu Masuk : *${jamWib}*\n` +
+                              `• Tanggal : *${tglWib}*\n` +
+                              `• Status : *HADIR (Input Manual) ✅*\n` +
+                              (keterangan ? `• Catatan : _${keterangan}_\n` : '') + `\n` +
+                              `Terima kasih atas perhatiannya.\n\n` +
+                              `_Pesan otomatis dikirim via Sistem Presensi SD._`;
+
+                waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error(e.message));
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: `Presensi masuk manual berhasil disimpan untuk ${siswa.nama}.`
+        });
+
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal mencatat masuk manual: " + err.message });
+    }
+});
+
 // FIX ISOLASI RESET RIWAYAT
 app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     try {
