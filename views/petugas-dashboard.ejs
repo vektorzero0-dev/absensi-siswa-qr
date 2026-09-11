@@ -357,21 +357,15 @@
             <div id="previewArea" class="hidden border border-purple-200 rounded-xl p-4 bg-white/80 relative z-10">
                 <div class="flex justify-between items-center mb-3">
                     <h4 id="previewTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                        Hasil Pratinjau Rekapitulasi
+                        Hasil Pratinjau Rekapitulasi Presensi (Matriks Bulanan)
                     </h4>
                     <span id="previewCount" class="text-[10px] bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded font-bold">
                         0 Siswa
                     </span>
                 </div>
                 <div class="overflow-x-auto bg-white rounded-lg border border-slate-200">
-                    <table class="w-full text-xs text-left text-slate-700 border-collapse">
-                        <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-semibold border-b border-slate-200">
-                            <tr>
-                                <th class="p-2.5">No</th>
-                                <th class="p-2.5">Nama Siswa</th>
-                                <th class="p-2.5">Rombel</th>
-                                <th class="p-2.5 text-center">Total Kehadiran</th>
-                            </tr>
+                    <table class="w-full text-[11px] text-left text-slate-700 border-collapse">
+                        <thead id="previewTableHead" class="bg-purple-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-purple-200">
                         </thead>
                         <tbody id="previewTableBody" class="divide-y divide-slate-100">
                         </tbody>
@@ -587,6 +581,15 @@
                                     </td>
                                     <td class="p-3 text-center">
                                         <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                            <!-- Tombol Akses Cepat Presensi Masuk Manual (Kendala Jaringan) -->
+                                            <button type="button" 
+                                                    data-id="<%= s.id %>" 
+                                                    data-nama="<%= encodeURIComponent(s.nama) %>" 
+                                                    onclick="bukaModalMasukManual(this)" 
+                                                    class="btn-interactive text-emerald-800 hover:text-emerald-950 text-xs font-bold bg-emerald-100 border border-emerald-300 px-2 py-1 rounded-lg transition flex items-center gap-1">
+                                                <i class="fa-solid fa-user-check text-emerald-600"></i> Hadir (Manual)
+                                            </button>
+
                                             <!-- Tombol Akses Cepat Izin / Sakit -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
@@ -752,6 +755,48 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL POP-UP MASUK MANUAL (PETUGAS) -->
+    <div id="modalMasukManual" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-user-check text-emerald-600"></i> Presensi Masuk Manual
+                </h3>
+                <button type="button" onclick="tutupModalMasukManual()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <input type="hidden" id="manualSiswaId">
+
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                    <p class="text-[11px] text-emerald-700 font-medium">Nama Siswa:</p>
+                    <p id="manualNamaSiswaText" class="text-xs font-bold text-emerald-950"></p>
+                    
+                    <p class="text-[11px] text-emerald-700 font-medium mt-2">Tipe Presensi:</p>
+                    <span class="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded mt-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300">
+                        ✅ HADIR (MASUK MANUAL)
+                    </span>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Catatan / Alasan Manual (Opsional)</label>
+                    <textarea id="manualKeteranganInput" rows="2" placeholder="Contoh: Kendala jaringan scanner / Kartu QR tertinggal" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="tutupModalMasukManual()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl border border-slate-300 transition">
+                        Batal
+                    </button>
+                    <button type="button" id="btnSimpanMasukManual" onclick="kirimMasukManual()" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs py-2.5 rounded-xl border border-emerald-800 transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i> Simpan Presensi
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -998,6 +1043,54 @@
             document.getElementById('modalEditSiswa').classList.add('hidden');
         }
 
+        /* FUNGSI MODAL PRESENSI MASUK MANUAL */
+        function bukaModalMasukManual(btn) {
+            const id = btn.getAttribute('data-id');
+            const nama = decodeURIComponent(btn.getAttribute('data-nama'));
+
+            document.getElementById('manualSiswaId').value = id;
+            document.getElementById('manualNamaSiswaText').innerText = nama;
+            document.getElementById('manualKeteranganInput').value = '';
+
+            document.getElementById('modalMasukManual').classList.remove('hidden');
+        }
+
+        function tutupModalMasukManual() {
+            document.getElementById('modalMasukManual').classList.add('hidden');
+        }
+
+        async function kirimMasukManual() {
+            const siswa_id = document.getElementById('manualSiswaId').value;
+            const keterangan = document.getElementById('manualKeteranganInput').value;
+
+            const btn = document.getElementById('btnSimpanMasukManual');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...`;
+
+            try {
+                const response = await fetch('/api/absensi/masuk-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ siswa_id, keterangan })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();
+                } else {
+                    alert('Gagal: ' + result.message);
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Simpan Presensi`;
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan jaringan: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Simpan Presensi`;
+            }
+        }
+
         /* FUNGSI MODAL IZIN / SAKIT PETUGAS */
         function bukaModalIzinSakit(btn) {
             const id = btn.getAttribute('data-id');
@@ -1079,15 +1172,17 @@
             document.getElementById('sidebarOverlay').classList.add('hidden');
         }
 
+        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & H, S, I, A) */
         function muatPreview() {
             const bulan = document.getElementById('selectBulan').value;
             const tahun = document.getElementById('selectTahun').value;
             const kelasId = document.getElementById('kelasId').value;
             const previewArea = document.getElementById('previewArea');
+            const thead = document.getElementById('previewTableHead');
             const tbody = document.getElementById('previewTableBody');
             const countTag = document.getElementById('previewCount');
 
-            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data rekapitulasi...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-slate-500 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data rekapitulasi matriks...</td></tr>`;
             previewArea.classList.remove('hidden');
 
             fetch(`/api/absensi/preview?bulan=${bulan}&tahun=${tahun}&kelas_id=${kelasId}`)
@@ -1095,22 +1190,61 @@
                 .then(data => {
                     if (data.success && data.data.length > 0) {
                         countTag.innerText = `${data.data.length} Siswa`;
-                        tbody.innerHTML = data.data.map((item, index) => `
-                            <tr class="hover:bg-slate-50 border-b border-slate-100">
-                                <td class="p-2.5 text-center font-mono">${index + 1}</td>
-                                <td class="p-2.5 font-semibold text-slate-900">${item.nama_siswa}</td>
-                                <td class="p-2.5 text-slate-600">${item.nama_kelas}</td>
-                                <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${item.total_hadir} Hari</td>
+                        const jmlHari = data.jumlahHari || 31;
+
+                        // Render Header Tanggal (1..N) & H, S, I, A
+                        let headerHtml = `
+                            <tr>
+                                <th class="p-2 border border-purple-200 min-w-[150px]">Nama Siswa</th>
+                                <th class="p-2 border border-purple-200 text-center min-w-[70px]">Rombel</th>
+                        `;
+                        for (let d = 1; d <= jmlHari; d++) {
+                            headerHtml += `<th class="p-1 border border-purple-200 text-center w-7">${d}</th>`;
+                        }
+                        headerHtml += `
+                                <th class="p-1 border border-purple-200 text-center bg-emerald-100 text-emerald-900 w-8">H</th>
+                                <th class="p-1 border border-purple-200 text-center bg-sky-100 text-sky-900 w-8">S</th>
+                                <th class="p-1 border border-purple-200 text-center bg-amber-200 text-amber-900 w-8">I</th>
+                                <th class="p-1 border border-purple-200 text-center bg-rose-100 text-rose-900 w-8">A</th>
                             </tr>
-                        `).join('');
+                        `;
+                        thead.innerHTML = headerHtml;
+
+                        // Render Baris Siswa (Log Tanggal)
+                        tbody.innerHTML = data.data.map((item) => {
+                            let logCells = item.log_hari.map(st => {
+                                let bgClass = 'text-slate-400';
+                                if (st === 'H') bgClass = 'bg-emerald-100 text-emerald-900 font-bold';
+                                else if (st === 'S') bgClass = 'bg-sky-100 text-sky-900 font-bold';
+                                else if (st === 'I') bgClass = 'bg-amber-100 text-amber-900 font-bold';
+                                else if (st === 'A') bgClass = 'bg-rose-100 text-rose-900 font-bold';
+                                else if (st === 'L') bgClass = 'bg-slate-100 text-slate-400 font-medium';
+
+                                return `<td class="p-1 border border-slate-200 text-center text-[10px] ${bgClass}">${st}</td>`;
+                            }).join('');
+
+                            return `
+                                <tr class="hover:bg-purple-50/50 border-b border-slate-100">
+                                    <td class="p-2 border border-slate-200 font-semibold text-slate-900 truncate">${item.nama_siswa}</td>
+                                    <td class="p-2 border border-slate-200 text-center text-slate-600 text-[10px]">${item.nama_kelas}</td>
+                                    ${logCells}
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]">${item.rekap.H || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]">${item.rekap.S || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]">${item.rekap.I || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]">${item.rekap.A || ''}</td>
+                                </tr>
+                            `;
+                        }).join('');
+
                     } else {
                         countTag.innerText = '0 Siswa';
-                        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Tidak ada data kehadiran pada bulan dan tahun yang dipilih.</td></tr>`;
+                        thead.innerHTML = '';
+                        tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-slate-400 italic">Tidak ada data kehadiran pada bulan dan tahun yang dipilih.</td></tr>`;
                     }
                 })
                 .catch(err => {
                     console.error("Preview error:", err);
-                    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
                 });
         }
 
