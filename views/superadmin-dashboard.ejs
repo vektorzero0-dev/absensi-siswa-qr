@@ -180,7 +180,6 @@
             border-radius: 6px;
         }
 
-        /* Sentuhan aksen Kuning Glow saat fokus input */
         .form-control:focus, .form-select-cyber:focus {
             box-shadow: 0 0 12px rgba(255, 183, 0, 0.6) !important;
             border-color: var(--neon-yellow) !important;
@@ -191,7 +190,7 @@
             color: rgba(0, 243, 255, 0.35);
         }
 
-        /* Buttons Cyber & Aksen Kuning Glow */
+        /* Buttons Cyber */
         .btn-cyber-primary {
             background: transparent;
             border: 1px solid var(--neon-cyan);
@@ -499,8 +498,9 @@
                                 <div class="mb-3">
                                     <label class="form-label">MODE NOTIFIKASI WA</label>
                                     <select name="wa_mode" class="form-select form-select-cyber">
-                                        <option value="WALI_KELAS">📱 Wali Kelas</option>
-                                        <option value="PETUGAS">🏢 Petugas Absen</option>
+                                        <option value="WALI_KELAS">🏫 Wali Kelas</option>
+                                        <option value="PETUGAS">🧑‍✈️ Petugas Absen</option>
+                                        <option value="ADMIN">🛡️ Admin Utama Sekolah</option>
                                         <option value="TANPA_WA">🚫 Tanpa WA (Nonaktif)</option>
                                     </select>
                                 </div>
@@ -650,8 +650,9 @@
                                             <td>
                                                 <form action="/api/sekolah/wa-mode/<%= s.id %>" method="POST">
                                                     <select name="wa_mode" onchange="this.form.submit()" class="form-select form-select-sm form-select-cyber py-1 px-2 text-xs">
-                                                        <option value="WALI_KELAS" <%= s.wa_mode === 'WALI_KELAS' ? 'selected' : '' %>>📱 Wali Kelas</option>
-                                                        <option value="PETUGAS" <%= s.wa_mode === 'PETUGAS' ? 'selected' : '' %>>🏢 Petugas Absen</option>
+                                                        <option value="WALI_KELAS" <%= s.wa_mode === 'WALI_KELAS' ? 'selected' : '' %>>🏫 Wali Kelas</option>
+                                                        <option value="PETUGAS" <%= s.wa_mode === 'PETUGAS' ? 'selected' : '' %>>🧑‍✈️ Petugas Absen</option>
+                                                        <option value="ADMIN" <%= s.wa_mode === 'ADMIN' ? 'selected' : '' %>>🛡️ Admin Utama</option>
                                                         <option value="TANPA_WA" <%= s.wa_mode === 'TANPA_WA' ? 'selected' : '' %>>🚫 Tanpa WA (Nonaktif)</option>
                                                     </select>
                                                 </form>
