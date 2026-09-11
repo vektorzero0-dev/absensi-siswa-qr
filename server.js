@@ -383,24 +383,21 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     }
 }
 
-// ---------------- FUNGSI MEMILIH PENGIRIM WA TERPERCAYA & PRESISI ---------------- //
+// ---------------- FUNGSI MEMILIH PENGIRIM WA (WALI_KELAS, PETUGAS, ADMIN) ---------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
     let waClient = null;
 
-    // A. Apabila ada Petugas/User yang sedang melakukan Scan aktif, utamakan Sesi Pengguna tersebut!
     if (scannedByUserId && waSessions[scannedByUserId] && waStatus[scannedByUserId] === 'TERHUBUNG') {
         return waSessions[scannedByUserId];
     }
 
-    // B. Mode Wali Kelas
     if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
         if (waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
             waClient = waSessions[siswa.wali_kelas_user_id];
         }
     } 
-    // C. Mode Petugas (Untuk Cron Job atau Pemicu Otomatis)
     else if (modePengirim === 'PETUGAS') {
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
@@ -413,7 +410,6 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
             }
         }
     }
-    // D. Mode Admin Utama Sekolah
     else if (modePengirim === 'ADMIN') {
         const adminRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
@@ -427,7 +423,6 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
         }
     }
 
-    // Fallback Terakhir: Jika sesi di atas belum aktif, alihkan ke Admin Sekolah
     if (!waClient) {
         const adminSekolahRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
@@ -512,7 +507,7 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// ----------------- DASBOR PETUGAS ABSEN (DENGAN QR CODE SISWA) ----------------- //
+// ----------------- DASBOR PETUGAS ABSEN ----------------- //
 app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const user = req.currentUser;
@@ -554,7 +549,6 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // GENERATE KODE QR UNTUK TIAP SISWA PADA DASHBOARD PETUGAS
         const siswaData = await Promise.all(siswaRes.rows.map(async (s) => {
             const qrImage = await generateQRDataURL(`SCH${s.sekolah_id || userSekolahId}-S${s.id}`);
             return { ...s, qrImage };
@@ -1630,7 +1624,7 @@ app.post('/api/siswa/import-excel', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
     }
 });
 
-// ----------------- ENDPOINT WA AKURAT DENGAN PARAMETER USER ID ----------------- //
+// ----------------- ENDPOINT WA ----------------- //
 
 app.get('/api/start-wa', requireAuth(), async (req, res) => {
     const userId = req.query.userId || req.session.userId;
@@ -1693,6 +1687,22 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         }
 
         if (isNaN(parsedSiswaId)) return res.status(400).json({ success: false, message: "Format Kode QR Siswa Tidak Valid." });
+
+        // 🛡️ PROTEKSI SISTEM: CEK DOUBLE SCAN PADA RENTANG 10 DETIK TERAKHIR
+        const doubleCheck = await pool.query(`
+            SELECT id, tipe, TO_CHAR(waktu, 'HH24:MI:SS') AS jam 
+            FROM absensi 
+            WHERE siswa_id = $1 
+              AND waktu >= NOW() - INTERVAL '10 seconds'
+            ORDER BY waktu DESC LIMIT 1
+        `, [parsedSiswaId]);
+
+        if (doubleCheck.rows.length > 0) {
+            return res.status(429).json({ 
+                success: false, 
+                message: `Presensi sudah terrekam beberapa detik lalu (${doubleCheck.rows[0].jam} WIB). Mohon tunggu sejenak.` 
+            });
+        }
 
         const scannedByUserId = req.currentUser.id;
         const scannerSekolahId = req.currentUser.sekolah_id;
@@ -1769,7 +1779,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 4. Pengambilan WA Client Terpusat (Mendukung Sesi Petugas Langsung)
+        // 4. Pengambilan WA Client Terpusat
         let waClient = await dapatkanWAClient(siswa, scannedByUserId);
 
         let statusWA = "Notifikasi WhatsApp Tidak Terkirim (Layanan WA Belum Terkoneksi)";
