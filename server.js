@@ -383,36 +383,36 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     }
 }
 
-// ---------------- FUNGSI MEMILIH PENGIRIM WA (WALI_KELAS, PETUGAS, ADMIN) ---------------- //
+// ---------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT KETAT ---------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
-    let waClient = null;
 
-    if (scannedByUserId && waSessions[scannedByUserId] && waStatus[scannedByUserId] === 'TERHUBUNG') {
-        return waSessions[scannedByUserId];
-    }
-
-    // 1. Mode Wali Kelas
-    if (modePengirim === 'WALI_KELAS' && siswa.wali_kelas_user_id) {
-        if (waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
-            waClient = waSessions[siswa.wali_kelas_user_id];
-        }
-    } 
-    // 2. Mode Petugas (PERBAIKAN: mengambil id petugas dengan tepat)
-    else if (modePengirim === 'PETUGAS') {
+    // 1. MODE TERPUSAT: PETUGAS
+    if (modePengirim === 'PETUGAS') {
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
             [sekolahId]
         );
         for (const p of petugasRes.rows) {
             if (waSessions[p.id] && waStatus[p.id] === 'TERHUBUNG') {
-                waClient = waSessions[p.id];
-                break;
+                return waSessions[p.id];
             }
         }
+        // Fallback jika WA Petugas tidak terhubung: Alihkan ke WA Admin Sekolah
+        const adminRes = await pool.query(
+            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
+            [sekolahId]
+        );
+        for (const adm of adminRes.rows) {
+            if (waSessions[adm.id] && waStatus[adm.id] === 'TERHUBUNG') {
+                return waSessions[adm.id];
+            }
+        }
+        return null; // Pengaturan terpusat PETUGAS aktif -> Dilarang menggunakan WA Wali Kelas
     }
-    // 3. Mode Admin Sekolah
+
+    // 2. MODE TERPUSAT: ADMIN
     else if (modePengirim === 'ADMIN') {
         const adminRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
@@ -420,40 +420,47 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
         );
         for (const adm of adminRes.rows) {
             if (waSessions[adm.id] && waStatus[adm.id] === 'TERHUBUNG') {
-                waClient = waSessions[adm.id];
-                break;
+                return waSessions[adm.id];
             }
         }
-    }
-
-    // Fallback/Cadangan: Cari sesi mana pun yang aktif (PETUGAS / ADMIN)
-    if (!waClient) {
+        // Fallback jika WA Admin tidak terhubung: Alihkan ke WA Petugas
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
             [sekolahId]
         );
         for (const p of petugasRes.rows) {
             if (waSessions[p.id] && waStatus[p.id] === 'TERHUBUNG') {
-                waClient = waSessions[p.id];
-                break;
+                return waSessions[p.id];
             }
         }
+        return null; // Pengaturan terpusat ADMIN aktif -> Dilarang menggunakan WA Wali Kelas
     }
 
-    if (!waClient) {
-        const adminSekolahRes = await pool.query(
-            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
+    // 3. MODE DESENTRALISASI: WALI_KELAS
+    else if (modePengirim === 'WALI_KELAS') {
+        // Jika yang melakukan scan adalah Wali Kelas siswa tersebut & WA-nya terhubung
+        if (scannedByUserId && waSessions[scannedByUserId] && waStatus[scannedByUserId] === 'TERHUBUNG') {
+            return waSessions[scannedByUserId];
+        }
+
+        // Jika discan oleh orang lain (Admin/Petugas), cari WA Wali Kelas siswa tersebut
+        if (siswa.wali_kelas_user_id && waSessions[siswa.wali_kelas_user_id] && waStatus[siswa.wali_kelas_user_id] === 'TERHUBUNG') {
+            return waSessions[siswa.wali_kelas_user_id];
+        }
+
+        // Fallback jika WA Wali Kelas mati: Alihkan ke Admin/Petugas agar ortu tetap terima pesan
+        const fallbackRes = await pool.query(
+            "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role IN ('ADMIN', 'PETUGAS') ORDER BY role ASC, id ASC",
             [sekolahId]
         );
-        for (const adm of adminSekolahRes.rows) {
-            if (waSessions[adm.id] && waStatus[adm.id] === 'TERHUBUNG') {
-                waClient = waSessions[adm.id];
-                break;
+        for (const fb of fallbackRes.rows) {
+            if (waSessions[fb.id] && waStatus[fb.id] === 'TERHUBUNG') {
+                return waSessions[fb.id];
             }
         }
     }
 
-    return waClient;
+    return null;
 }
 
 // ---------------- ROUTES AUTH & HALAMAN ---------------- //
