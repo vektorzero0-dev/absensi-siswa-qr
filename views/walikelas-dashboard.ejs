@@ -14,7 +14,7 @@
 
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            overflow-x: hidden; /* Mencegah layar meluber ke samping di HP Android */
+            overflow-x: hidden; 
         }
 
         .bg-light-animated {
@@ -81,6 +81,10 @@
             background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
             border: 1px solid #e9d5ff;
         }
+        .card-rose-theme {
+            background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
+            border: 1px solid #fecdd3;
+        }
 
         @keyframes fadeInSoft {
             from { opacity: 0; transform: translateY(10px); }
@@ -91,7 +95,6 @@
         button, .btn-interactive { transition: all 0.2s ease-in-out; }
         button:active, .btn-interactive:active { transform: scale(0.96); }
 
-        /* --- FITUR FIX RESPONSIVE MOBILE ANDROID --- */
         @media (max-width: 640px) {
             main {
                 padding: 0.75rem !important;
@@ -113,7 +116,7 @@
                 gap: 4px;
                 min-width: 160px;
             }
-            input[type="text"], select, button {
+            input[type="text"], select, button, textarea {
                 font-size: 14px !important;
             }
         }
@@ -159,6 +162,9 @@
       </a>
       <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-address-card text-purple-600"></i> Cetak Kartu Siswa
+      </a>
+      <a href="#section-broadcast" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-brands fa-whatsapp text-emerald-600"></i> Kirim Broadcast Kelas
       </a>
       <a href="#section-wa-gateway" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-brands fa-whatsapp text-emerald-600"></i> Status Bot WA
@@ -226,6 +232,43 @@
                     <h2 class="text-sm sm:text-base font-bold text-slate-900 mt-0.5">Selamat Datang, <%= user.nama %></h2>
                 </div>
             </div>
+        </div>
+
+        <!-- ======================================================= -->
+        <!-- 📢 KOTAK BROADCAST PESAN WHATSAPP KHUSUS KELAS WALI KELAS -->
+        <!-- ======================================================= -->
+        <div id="section-broadcast" class="card-pro card-rose-theme p-4 sm:p-5 mb-6">
+            <div class="flex items-center gap-3 mb-4 border-b border-rose-200/60 pb-2 relative z-10">
+                <div class="bg-rose-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Kirim Broadcast Pesan WhatsApp Rombel (<%= user.nama_kelas %>)</h3>
+                    <p class="text-[11px] text-slate-600">Kirim pengumuman atau pesan massal khusus ke nomor WhatsApp orang tua/wali murid di kelas Anda saja.</p>
+                </div>
+            </div>
+
+            <form id="formBroadcastWali" onsubmit="kirimBroadcastWali(event)" class="space-y-3 relative z-10">
+                <!-- Dikunci otomatis hanya untuk kelas wali kelas yang bersangkutan -->
+                <input type="hidden" id="broadcastKelasId" value="<%= user.kelas_id %>">
+                <input type="hidden" id="broadcastUserId" value="<%= userId %>">
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-700 mb-1">Target Penerima Broadcast</label>
+                    <input type="text" disabled value="Semua Orang Tua / Wali Murid di Kelas <%= user.nama_kelas %>" class="w-full text-xs p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-semibold cursor-not-allowed">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-700 mb-1">Isi Pesan Pengumuman</label>
+                    <textarea id="broadcastPesanText" rows="4" required placeholder="Tulis pesan pengumuman untuk orang tua kelas di sini..." class="w-full bg-white border border-rose-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-600"></textarea>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" id="btnKirimBroadcast" class="btn-interactive bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim Broadcast WhatsApp Kelas
+                    </button>
+                </div>
+            </form>
         </div>
 
         <!-- KOTAK WA GATEWAY (TEMA EMERALD) -->
@@ -349,7 +392,6 @@
                 </div>
             </form>
 
-            <!-- TABEL PRATINJAU MATRIKS DENGAN FORMAT BULAN 1-31 & H, S, I, A -->
             <div id="previewArea" class="hidden border border-purple-200 rounded-xl p-3 sm:p-4 bg-white/80 relative z-10">
                 <div class="flex justify-between items-center mb-3">
                     <h4 id="previewTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wide">
@@ -447,7 +489,6 @@
                                     </td>
                                     <td class="p-3 text-center">
                                         <div class="action-btn-group">
-                                            <!-- Tombol Akses Cepat Presensi Masuk Manual (Kendala Jaringan) -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
@@ -456,7 +497,6 @@
                                                 <i class="fa-solid fa-user-check text-emerald-600"></i> Hadir
                                             </button>
 
-                                            <!-- Tombol Akses Cepat Izin / Sakit -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
@@ -606,7 +646,7 @@
         </div>
     </div>
 
-    <!-- MODAL POP-UP PRESENSI MASUK MANUAL (WALI KELAS) -->
+    <!-- MODAL POP-UP PRESENSI MASUK MANUAL -->
     <div id="modalMasukManual" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
@@ -818,6 +858,48 @@
                 });
         }
 
+        /* FUNGSI KIRIM BROADCAST KHUSUS KELAS WALI KELAS */
+        async function kirimBroadcastWali(event) {
+            event.preventDefault();
+            const kelas_id = document.getElementById('broadcastKelasId').value;
+            const userId = document.getElementById('broadcastUserId').value;
+            const pesan = document.getElementById('broadcastPesanText').value;
+
+            if (!pesan.trim()) {
+                alert("Isi pesan pengumuman tidak boleh kosong!");
+                return;
+            }
+
+            if (!confirm("Apakah Anda yakin ingin mengirim pesan broadcast WhatsApp ini ke seluruh orang tua/wali murid di kelas Anda?")) {
+                return;
+            }
+
+            const btn = document.getElementById('btnKirimBroadcast');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Broadcast...`;
+
+            try {
+                const response = await fetch('/api/whatsapp/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kelas_id, pesan, userId })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    document.getElementById('broadcastPesanText').value = '';
+                } else {
+                    alert("Gagal: " + result.message);
+                }
+            } catch (err) {
+                alert("Terjadi kendala jaringan: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Kirim Broadcast WhatsApp Kelas`;
+            }
+        }
+
         setInterval(cekStatusWA, 4000);
         document.addEventListener("DOMContentLoaded", cekStatusWA);
 
@@ -836,7 +918,6 @@
             document.getElementById('modalEditSiswa').classList.add('hidden');
         }
 
-        /* FUNGSI MODAL PRESENSI MASUK MANUAL */
         function bukaModalMasukManual(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -884,7 +965,6 @@
             }
         }
 
-        /* FUNGSI MODAL IZIN / SAKIT */
         function bukaModalIzinSakit(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -955,7 +1035,6 @@
             }
         }
 
-        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & H, S, I, A) */
         function muatPreview() {
             const bulan = document.getElementById('selectBulan').value;
             const tahun = document.getElementById('selectTahun').value;
@@ -975,7 +1054,6 @@
                         countTag.innerText = `${data.data.length} Siswa`;
                         const jmlHari = data.jumlahHari || 31;
 
-                        // Render Header Tanggal (1..N) & H, S, I, A
                         let headerHtml = `
                             <tr>
                                 <th class="p-2 border border-purple-200 min-w-[150px]">Nama Siswa</th>
@@ -993,7 +1071,6 @@
                         `;
                         thead.innerHTML = headerHtml;
 
-                        // Render Baris Siswa (Log Tanggal)
                         tbody.innerHTML = data.data.map((item) => {
                             let logCells = item.log_hari.map(st => {
                                 let bgClass = 'text-slate-400';
