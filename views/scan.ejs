@@ -142,7 +142,96 @@
         let lastScanTime = 0;
         const SCAN_COOLDOWN_MS = 4000; // Jeda 4 detik untuk kode QR/Siswa yang sama
 
-        function onScanSuccess(decodedText, decodedResult) {
+        // ==========================================
+        // MODUL MODUS OFFLINE & INDEXEDDB SYNCING
+        // ==========================================
+        const DB_NAME = "AbsensiOfflineDB";
+        const STORE_NAME = "antrean_absen";
+
+        function bukaDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        async function simpanKeLokal(dataAbsen) {
+            const db = await bukaDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, "readwrite");
+                const store = transaction.objectStore(STORE_NAME);
+                store.add(dataAbsen);
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => reject(transaction.error);
+            });
+        }
+
+        async function ambilAntreanLokal() {
+            const db = await bukaDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, "readonly");
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function hapusDariLokal(id) {
+            const db = await bukaDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, "readwrite");
+                const store = transaction.objectStore(STORE_NAME);
+                store.delete(id);
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => reject(transaction.error);
+            });
+        }
+
+        // Sinkronisasi otomatis saat internet kembali tersambung
+        window.addEventListener('online', async () => {
+            console.log("🌐 Internet tersambung kembali. Memulai sinkronisasi data offline...");
+            await sinkronkanDataOffline();
+        });
+
+        async function sinkronkanDataOffline() {
+            const antrean = await ambilAntreanLokal();
+            if (antrean.length === 0) return;
+
+            let berhasilSync = 0;
+            for (const item of antrean) {
+                try {
+                    const response = await fetch('/api/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item.payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        await hapusDariLokal(item.id);
+                        berhasilSync++;
+                    } else {
+                        break; 
+                    }
+                } catch (e) {
+                    break; 
+                }
+            }
+
+            if (berhasilSync > 0) {
+                alert(`🔄 Berhasil menyinkronkan ${berhasilSync} data presensi offline ke server pusat!`);
+            }
+        }
+
+        async function onScanSuccess(decodedText, decodedResult) {
             const currentTime = Date.now();
 
             // 1. Apabila proses API sedang berjalan, baikan pembacaan berikutnya
@@ -163,21 +252,38 @@
             audio.play().catch(e => console.log('Audio error:', e));
 
             const tipeSelected = document.getElementById('tipeAbsen').value;
+            const payloadData = { 
+                siswa_id: decodedText, 
+                scanned_by: userId,
+                tipe: tipeSelected
+            };
 
+            const resCard = document.getElementById('resultCard');
+            const errCard = document.getElementById('errorCard');
+
+            // 3. JIKA PERANGKAT SEDANG OFFLINE
+            if (!navigator.onLine) {
+                await simpanKeLokal({ payload: payloadData, waktu: new Date().toISOString() });
+                errCard.classList.add('hidden');
+                document.getElementById('resNama').innerText = "DATA TERSIMPAN OFFLINE";
+                document.getElementById('resKelas').innerText = "Menunggu Sinkronisasi";
+                document.getElementById('resID').innerText = 'ID: #' + decodedText;
+                document.getElementById('resWaktu').innerText = new Date().toLocaleTimeString();
+                document.getElementById('resWAMsg').innerText = "⚠️ [MODE OFFLINE] Internet terputus. Data presensi diamankan di memori HP dan akan dikirim otomatis saat online[cite: 3].";
+                resCard.classList.remove('hidden');
+                
+                setTimeout(() => { isProcessing = false; }, 2000);
+                return;
+            }
+
+            // 4. JIKA ONLINE, KIRIM KE SERVER
             fetch('/api/scan', {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify({ 
-                   siswa_id: decodedText, 
-                   scanned_by: userId,
-                   tipe: tipeSelected
-               })
+               body: JSON.stringify(payloadData)
            })
             .then(res => res.json())
             .then(data => {
-                const resCard = document.getElementById('resultCard');
-                const errCard = document.getElementById('errorCard');
-
                 if (data.success) {
                     errCard.classList.add('hidden');
                     document.getElementById('resNama').innerText = data.siswa.nama;
@@ -192,8 +298,13 @@
                     errCard.classList.remove('hidden');
                 }
             })
-            .catch(err => {
-                console.error("Kesalahan Pemindaian:", err);
+            .catch(async err => {
+                console.error("Kesalahan Pemindaian / Jaringan Putus:", err);
+                // Jika server down mendadak saat proses fetch
+                await simpanKeLokal({ payload: payloadData, waktu: new Date().toISOString() });
+                resCard.classList.add('hidden');
+                document.getElementById('errorMsg').innerText = "⚠️ Gagal terhubung ke server. Data presensi diamankan secara lokal di perangkat[cite: 3].";
+                errCard.classList.remove('hidden');
             })
             .finally(() => {
                 // Beri jeda 2 detik sebelum kamera siap memindai siswa berikutnya
