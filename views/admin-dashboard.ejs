@@ -161,6 +161,9 @@
       <a href="/admin?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
         <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
       </a>
+      <a href="#section-broadcast" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-bullhorn text-emerald-600"></i> Broadcast WA Massal
+      </a>
       <a href="#section-backup" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-database text-blue-600"></i> Backup & Restore Data
       </a>
@@ -240,6 +243,50 @@
                     <h2 class="text-sm sm:text-base font-bold text-slate-900 mt-0.5">Dashboard Pengelolaan Data Terpadu</h2>
                 </div>
             </div>
+        </div>
+
+        <!-- 📢 MODUL BROADCAST PESAN WHATSAPP MASSAL -->
+        <div id="section-broadcast" class="card-pro card-emerald-theme p-4 sm:p-5 mb-6">
+            <div class="flex items-center gap-3 mb-4 border-b border-emerald-200/60 pb-2 relative z-10">
+                <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-bullhorn text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Kirim Pengumuman / Broadcast WA Massal</h3>
+                    <p class="text-[11px] text-slate-600">Kirim pesan informasi atau pengumuman sekolah langsung ke seluruh nomor WhatsApp orang tua murid.</p>
+                </div>
+            </div>
+
+            <form id="formBroadcast" onsubmit="kirimBroadcastMassal(event)" class="space-y-3 relative z-10">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-700 mb-1">Target Penerima Rombel Kelas</label>
+                        <select id="broadcastKelasId" name="kelas_id" class="w-full text-xs p-2.5 bg-white border border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                            <option value="all">🌟 Seluruh Rombel Kelas (Semua Orang Tua)</option>
+                            <% if (typeof kelas !== 'undefined' && kelas.length > 0) { %>
+                                <% kelas.forEach(k => { %>
+                                    <option value="<%= k.id %>"><%= k.nama_kelas %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-700 mb-1">Pengirim Sesi WhatsApp</label>
+                        <input type="text" disabled value="Menggunakan Sesi Aktif Admin / Petugas" class="w-full text-xs p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-slate-600 cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-700 mb-1">Isi Pesan Pengumuman / Broadcast</label>
+                    <textarea id="broadcastPesan" name="pesan" rows="4" required placeholder="Tulis isi pengumuman sekolah di sini... Contoh: Diberitahukan kepada Bapak/Ibu wali murid bahwa besok hari Senin sekolah diliburkan dalam rangka..." class="w-full text-xs p-3 bg-white border border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600"></textarea>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" id="btnKirimBroadcast" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim Broadcast WA Sekarang
+                    </button>
+                </div>
+            </form>
         </div>
 
         <!-- 💾 MODUL BACKUP & RESTORE DATA SEKOLAH -->
@@ -1039,6 +1086,45 @@
 
     <script>
         const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
+
+        /* 📢 SCRIPT KIRIM BROADCAST WHATSAPP MASSAL */
+        async function kirimBroadcastMassal(e) {
+            e.preventDefault();
+            const kelas_id = document.getElementById('broadcastKelasId').value;
+            const pesan = document.getElementById('broadcastPesan').value;
+            const btn = document.getElementById('btnKirimBroadcast');
+
+            if (!pesan || pesan.trim() === '') {
+                return alert('Isi pesan pengumuman tidak boleh kosong!');
+            }
+
+            if (!confirm('Apakah Anda yakin ingin mengirim pengumuman/broadcast WhatsApp ini ke target orang tua murid?')) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Broadcast...`;
+
+            try {
+                const response = await fetch('/api/whatsapp/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kelas_id, pesan, userId: currentUserId })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+
+                if (result.success) {
+                    document.getElementById('broadcastPesan').value = '';
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan jaringan saat mengirim broadcast: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Kirim Broadcast WA Sekarang`;
+            }
+        }
 
         function prosesRestoreAdmin(e) {
             e.preventDefault();
