@@ -2562,7 +2562,7 @@ app.get('/api/cron/auto-alpa', requireAuth(['ADMIN', 'SUPER_ADMIN', 'SUPER_ADMIN
             targetSekolahId = currentUser.sekolah_id;
             const schCheck = await pool.query("SELECT COALESCE(cron_alpa_active, TRUE) AS cron_alpa_active FROM sekolah WHERE id = $1", [targetSekolahId]);
             if (schCheck.rows.length > 0 && schCheck.rows[0].cron_alpa_active === false) {
-                return.status(400).json({ success: false, message: "Fitur pengecekan alpa otomatis sedang DINONAKTIFKAN untuk sekolah ini." });
+                return res.status(400).json({ success: false, message: "Fitur pengecekan alpa otomatis sedang DINONAKTIFKAN untuk sekolah ini." });
             }
         } else if (currentUser.role === 'SUPER_ADMIN' && req.query.sekolah_id) {
             targetSekolahId = parseInt(req.query.sekolah_id);
