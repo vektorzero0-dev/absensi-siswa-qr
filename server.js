@@ -1586,17 +1586,27 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
 });
 
 // =========================================================================
-// 📢 ENDPOINT BROADCAST PESAN WHATSAPP MASSAL
+// 📢 ENDPOINT BROADCAST PESAN WHATSAPP MASSAL (ADMIN, PETUGAS & WALI KELAS)
 // =========================================================================
-app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
+app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     try {
-        const { kelas_id, pesan, userId } = req.body;
+        let { kelas_id, pesan, userId } = req.body;
         const currentUser = req.currentUser;
         const userSekolahId = currentUser.sekolah_id || 1;
 
         if (!pesan || pesan.trim() === '') {
             return res.status(400).json({ success: false, message: "Isi pesan pengumuman tidak boleh kosong!" });
         }
+
+        // Aturan Hak Akses Rombel Berdasarkan Peran:
+        // 1. WALI_KELAS: Dikunci secara otomatis hanya ke kelas mereka sendiri.
+        if (currentUser.role === 'WALI_KELAS') {
+            if (!currentUser.kelas_id) {
+                return res.status(403).json({ success: false, message: "Akun Wali Kelas Anda belum ditugaskan ke rombel kelas manapun." });
+            }
+            kelas_id = currentUser.kelas_id;
+        }
+        // 2. ADMIN & PETUGAS: Bebas memilih semua kelas ('all') atau spesifik per kelas.
 
         let query = `
             SELECT DISTINCT s.nomor_wa_ortu, s.nama, sch.nama_sekolah, sch.wa_mode
@@ -1630,9 +1640,15 @@ app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
 
         let activeClient = waSessions[userId] && waStatus[userId] === 'TERHUBUNG' ? waSessions[userId] : null;
 
+        if (!activeClient && currentUser.role === 'WALI_KELAS') {
+            if (waSessions[currentUser.id] && waStatus[currentUser.id] === 'TERHUBUNG') {
+                activeClient = waSessions[currentUser.id];
+            }
+        }
+
         if (!activeClient) {
             const fallbackRes = await pool.query(`
-                SELECT id FROM users WHERE sekolah_id = $1 AND role IN ('ADMIN', 'PETUGAS') ORDER BY id ASC
+                SELECT id FROM users WHERE sekolah_id = $1 AND role IN ('ADMIN', 'PETUGAS', 'WALI_KELAS') ORDER BY id ASC
             `, [userSekolahId]);
             
             for (const fb of fallbackRes.rows) {
@@ -1657,7 +1673,7 @@ app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
                 const targetJid = phone + '@s.whatsapp.net';
 
                 const formatPesan = `*${item.nama_sekolah ? item.nama_sekolah.toUpperCase() : 'SEKOLAH'}*\n` +
-                                    `*PENGUMUMAN RESMI SEKOLAH*\n` +
+                                    `*PENGUMUMAN RESMI SEKOLAH / KELAS*\n` +
                                     `_________________________________________\n\n` +
                                     `Yth. Bapak/Ibu Orang Tua / Wali Murid dari *${item.nama}*,\n\n` +
                                     `${pesan}\n\n` +
