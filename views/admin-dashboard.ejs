@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Panel Administrator - SISTEM ABSENSI DIGITAL</title>
     
     <!-- CSS Bootstrap 5 & Icons -->
@@ -16,7 +16,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            overflow-x: hidden; /* Mencegah halaman meluber ke samping di HP */
+        }
 
         .offcanvas { z-index: 1055 !important; }
         .offcanvas-backdrop { z-index: 1050 !important; }
@@ -94,6 +97,33 @@
 
         button, .btn-interactive { transition: all 0.2s ease-in-out; }
         button:active, .btn-interactive:active { transform: scale(0.96); }
+
+        /* --- FITUR FIX RESPONSIVE MOBILE ANDROID --- */
+        @media (max-width: 640px) {
+            main {
+                padding: 0.75rem !important;
+            }
+            .card-pro {
+                padding: 1rem !important;
+                border-radius: 1rem !important;
+            }
+            .table-responsive-mobile {
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                display: block;
+            }
+            .action-btn-group {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 4px;
+                min-width: 160px;
+            }
+            input[type="text"], input[type="password"], select, button {
+                font-size: 14px !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-light-animated text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
@@ -127,7 +157,7 @@
       </button>
     </div>
     
-    <div class="p-2 space-y-1 text-xs">
+    <div class="p-2 space-y-1 text-xs overflow-y-auto max-h-[calc(100vh-140px)]">
       <a href="/admin?userId=<%= userId %>" class="flex items-center gap-3 p-3 font-semibold bg-blue-50 text-blue-900 rounded-xl">
         <i class="fa-solid fa-house text-blue-700"></i> Dashboard Utama
       </a>
@@ -198,7 +228,7 @@
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto w-full p-4 md:p-6 flex-1 animate-fade-in">
+    <main class="max-w-6xl mx-auto w-full p-3 sm:p-4 md:p-6 flex-1 animate-fade-in">
 
         <div class="card-pro card-amber-theme p-4 mb-6 flex items-center justify-between">
             <div class="flex items-center gap-3 relative z-10">
@@ -207,13 +237,13 @@
                 </div>
                 <div>
                     <span class="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded uppercase tracking-wider">Hak Akses: Administrator</span>
-                    <h2 class="text-base font-bold text-slate-900 mt-0.5">Dashboard Pengelolaan Data Terpadu</h2>
+                    <h2 class="text-sm sm:text-base font-bold text-slate-900 mt-0.5">Dashboard Pengelolaan Data Terpadu</h2>
                 </div>
             </div>
         </div>
 
         <!-- 💾 MODUL BACKUP & RESTORE DATA SEKOLAH -->
-        <div id="section-backup" class="card-pro card-blue-theme p-5 mb-6">
+        <div id="section-backup" class="card-pro card-blue-theme p-4 sm:p-5 mb-6">
             <div class="flex items-center gap-3 mb-4 border-b border-blue-200/60 pb-2 relative z-10">
                 <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md">
                     <i class="fa-solid fa-database text-lg"></i>
@@ -248,9 +278,9 @@
                             Unggah berkas JSON cadangan untuk memulihkan data siswa, kelas, dan riwayat absensi.
                         </p>
                     </div>
-                    <form id="formRestoreAdmin" onsubmit="prosesRestoreAdmin(event)" class="flex gap-2">
-                        <input type="file" id="inputBackupJsonAdmin" accept=".json" required class="flex-1 text-xs text-slate-700 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 border border-slate-300 rounded-xl p-1 bg-white">
-                        <button type="submit" id="btnSubmitRestoreAdmin" class="btn-interactive bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-amber-700 whitespace-nowrap shadow-md">
+                    <form id="formRestoreAdmin" onsubmit="prosesRestoreAdmin(event)" class="flex flex-col sm:flex-row gap-2">
+                        <input type="file" id="inputBackupJsonAdmin" accept=".json" required class="flex-1 text-xs text-slate-700 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 border border-slate-300 rounded-xl p-1 bg-white w-full">
+                        <button type="submit" id="btnSubmitRestoreAdmin" class="btn-interactive w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-amber-700 whitespace-nowrap shadow-md">
                             <i class="fa-solid fa-rotate-left"></i> Restore
                         </button>
                     </form>
@@ -291,7 +321,7 @@
         </div>
 
         <!-- PANEL REKAP BULANAN ADMIN -->
-        <div id="section-rekap-bulanan" class="card-pro card-amber-theme p-5 mb-6">
+        <div id="section-rekap-bulanan" class="card-pro card-amber-theme p-4 sm:p-5 mb-6">
             <div class="flex items-center gap-3 mb-4 border-b border-amber-200/60 pb-2 relative z-10">
                 <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
                     <i class="fa-solid fa-file-invoice text-lg"></i>
@@ -305,7 +335,7 @@
             <form id="filterFormAdmin" action="/api/absensi/export" method="GET" target="_blank" class="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-4 relative z-10">
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Bulan</label>
-                    <select name="bulan" id="selectBulanAdmin" required class="w-full text-xs p-2 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600">
+                    <select name="bulan" id="selectBulanAdmin" required class="w-full text-xs p-2.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600">
                         <option value="1">Januari</option>
                         <option value="2">Februari</option>
                         <option value="3">Maret</option>
@@ -323,7 +353,7 @@
 
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Tahun</label>
-                    <select name="tahun" id="selectTahunAdmin" required class="w-full text-xs p-2 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600">
+                    <select name="tahun" id="selectTahunAdmin" required class="w-full text-xs p-2.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600">
                         <option value="2026" selected>2026</option>
                         <option value="2025">2025</option>
                     </select>
@@ -331,7 +361,7 @@
 
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Format Berkas</label>
-                    <select name="format" required class="w-full text-xs p-2 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600">
+                    <select name="format" required class="w-full text-xs p-2.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-600">
                         <option value="excel">📊 Excel (.xlsx)</option>
                         <option value="word">📝 Word (.docx)</option>
                         <option value="pdf">📄 PDF (.pdf)</option>
@@ -339,20 +369,20 @@
                 </div>
 
                 <div class="flex items-end">
-                    <button type="button" onclick="muatPreviewAdmin()" class="btn-interactive w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
+                    <button type="button" onclick="muatPreviewAdmin()" class="btn-interactive w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-eye"></i> Lihat Rekapan
                     </button>
                 </div>
 
                 <div class="flex items-end">
-                    <button type="submit" class="btn-interactive w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
+                    <button type="submit" class="btn-interactive w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-download"></i> Unduh Berkas
                     </button>
                 </div>
             </form>
 
             <!-- TABEL PRATINJAU MATRIKS DENGAN FORMAT BULAN 1-31 & H, S, I, A -->
-            <div id="previewAreaAdmin" class="hidden border border-amber-200 rounded-xl p-4 bg-white/80 relative z-10">
+            <div id="previewAreaAdmin" class="hidden border border-amber-200 rounded-xl p-3 sm:p-4 bg-white/80 relative z-10">
                 <div class="flex justify-between items-center mb-3">
                     <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide">
                         Hasil Pratinjau Rekapitulasi Presensi (Matriks Bulanan)
@@ -361,7 +391,7 @@
                         0 Siswa
                     </span>
                 </div>
-                <div class="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                <div class="overflow-x-auto table-responsive-mobile bg-white rounded-lg border border-slate-200">
                     <table class="w-full text-[11px] text-left text-slate-700 border-collapse">
                         <thead id="previewTableHeadAdmin" class="bg-amber-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-amber-200">
                         </thead>
@@ -372,7 +402,7 @@
             </div>
         </div>
 
-        <div id="section-settings" class="card-pro card-amber-theme p-5 mb-6">
+        <div id="section-settings" class="card-pro card-amber-theme p-4 sm:p-5 mb-6">
             <div class="flex items-center gap-3 mb-3 border-b border-amber-200/60 pb-2 relative z-10">
                 <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
                     <i class="fa-solid fa-school text-lg"></i>
@@ -392,9 +422,9 @@
             </form>
         </div>
 
-        <div id="section-wa-gateway" class="card-pro card-emerald-theme p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3 relative z-10">
-                <div class="p-3 rounded-xl bg-emerald-600 text-white shadow-md">
+        <div id="section-wa-gateway" class="card-pro card-emerald-theme p-4 sm:p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 relative z-10 w-full md:w-auto">
+                <div class="p-3 rounded-xl bg-emerald-600 text-white shadow-md flex-shrink-0">
                     <i class="fa-brands fa-whatsapp text-2xl"></i>
                 </div>
                 <div>
@@ -427,15 +457,15 @@
                     </div>
 
                     <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
-                        <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center gap-1.5 shadow-md">
+                        <button type="button" onclick="mintaQRWA()" id="btnGenerateWA" class="btn-interactive flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 font-semibold transition flex items-center justify-center gap-1.5 shadow-md">
                             <i class="fa-solid fa-qrcode"></i> Scan QR
                         </button>
 
-                        <button type="button" onclick="mintaPairingWA()" id="btnPairingWA" class="btn-interactive bg-blue-800 hover:bg-blue-900 text-white text-xs px-3.5 py-2.5 rounded-xl border border-blue-900 font-semibold transition flex items-center gap-1.5 shadow-md">
+                        <button type="button" onclick="mintaPairingWA()" id="btnPairingWA" class="btn-interactive flex-1 sm:flex-none bg-blue-800 hover:bg-blue-900 text-white text-xs px-3.5 py-2.5 rounded-xl border border-blue-900 font-semibold transition flex items-center justify-center gap-1.5 shadow-md">
                             <i class="fa-solid fa-mobile-screen-button"></i> Pakai Nomor WA
                         </button>
 
-                        <button type="button" onclick="resetWA()" id="btnResetWA" class="btn-interactive bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
+                        <button type="button" onclick="resetWA()" id="btnResetWA" class="btn-interactive flex-1 sm:flex-none bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2.5 rounded-xl border border-rose-200 font-semibold transition flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-trash"></i> Reset
                         </button>
                     </div>
@@ -443,10 +473,10 @@
             <% } %>
         </div>
 
-        <div class="card-pro card-emerald-theme p-4 mb-6">
+        <div class="card-pro card-emerald-theme p-4 sm:p-5 mb-6">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10">
-                <div class="flex items-center gap-3">
-                    <div class="p-2.5 rounded-xl bg-emerald-700 text-white shadow-md">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <div class="p-2.5 rounded-xl bg-emerald-700 text-white shadow-md flex-shrink-0">
                         <i class="fa-solid fa-paper-plane text-lg"></i>
                     </div>
                     <div>
@@ -455,8 +485,8 @@
                     </div>
                 </div>
 
-                <form action="/api/settings/pengirim-wa" method="POST" class="flex items-center gap-2 w-full sm:w-auto">
-                    <select name="pengirim_wa" class="bg-white border border-emerald-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                <form action="/api/settings/pengirim-wa" method="POST" class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                    <select name="pengirim_wa" class="bg-white border border-emerald-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2.5 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-emerald-600">
                         <option value="ADMIN" <%= (typeof pengirimWA !== 'undefined' && pengirimWA === 'ADMIN') ? 'selected' : '' %>>
                             Nomor WhatsApp Admin Utama
                         </option>
@@ -467,14 +497,14 @@
                             Nomor Wali Kelas Masing-Masing
                         </option>
                     </select>
-                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap">
+                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm whitespace-nowrap w-full sm:w-auto">
                         <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan
                     </button>
                 </form>
             </div>
         </div>
 
-        <div id="section-dapodik" class="card-pro card-emerald-theme p-5 mb-6">
+        <div id="section-dapodik" class="card-pro card-emerald-theme p-4 sm:p-5 mb-6">
             <div class="flex items-center gap-3 mb-3 border-b border-emerald-200/60 pb-2 relative z-10">
                 <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
                     <i class="fa-solid fa-file-excel text-lg"></i>
@@ -496,7 +526,7 @@
 
         <div id="section-rombel" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
-            <div class="card-pro card-purple-theme p-5">
+            <div class="card-pro card-purple-theme p-4 sm:p-5">
                 <div class="flex justify-between items-center border-b border-purple-200/60 pb-2 mb-4 relative z-10">
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-plus-circle text-purple-700"></i> Rombongan Belajar
@@ -535,7 +565,7 @@
             </div>
 
             <!-- REGISTRASI GURU -->
-            <div class="card-pro card-blue-theme p-5">
+            <div class="card-pro card-blue-theme p-4 sm:p-5">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-blue-200/60 pb-2 relative z-10">
                     <i class="fa-solid fa-user-plus text-blue-700"></i> Registrasi Akun Wali Kelas / Guru
                 </h3>
@@ -543,11 +573,11 @@
                     <input type="text" style="display:none;" aria-hidden="true">
                     <input type="password" style="display:none;" aria-hidden="true">
 
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input type="text" name="nama" required placeholder="Nama Lengkap Tenaga Pendidik" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                         <input type="text" name="username" required placeholder="Nama Pengguna (Username)" autocomplete="username-off" readonly onfocus="this.removeAttribute('readonly');" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input type="password" name="password" required placeholder="Kata Sandi" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
                         <select name="kelas_id" class="bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
                             <option value="">-- Tanpa Penugasan / Guru Mapel (Semua Kelas) --</option>
@@ -563,7 +593,7 @@
             </div>
         </div>
 
-        <div class="card-pro card-amber-theme p-5 mb-6">
+        <div class="card-pro card-amber-theme p-4 sm:p-5 mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-amber-200/60 pb-2 relative z-10">
                 <i class="fa-solid fa-address-card text-amber-700"></i> Registrasi Peserta Didik Baru (Manual)
             </h3>
@@ -577,16 +607,16 @@
                             <option value="<%= k.id %>"><%= k.nama_kelas %></option>
                         <% }); %>
                     </select>
-                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow-md">Simpan Siswa</button>
+                    <button type="submit" class="btn-interactive bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow-md whitespace-nowrap">Simpan Siswa</button>
                 </div>
             </form>
         </div>
 
-        <div class="card-pro card-blue-theme p-5 mb-6">
+        <div class="card-pro card-blue-theme p-4 sm:p-5 mb-6">
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-blue-200/60 pb-2 relative z-10">
                 <i class="fa-solid fa-users-gear text-blue-700"></i> Direktori Akun Tenaga Pendidik
             </h3>
-            <div class="overflow-x-auto relative z-10">
+            <div class="overflow-x-auto table-responsive-mobile relative z-10">
                 <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
                     <thead class="bg-blue-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-blue-200">
                         <tr>
@@ -638,7 +668,7 @@
             </div>
         </div>
 
-        <div id="section-siswa" class="card-pro card-emerald-theme p-5 mb-6">
+        <div id="section-siswa" class="card-pro card-emerald-theme p-4 sm:p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-emerald-200/60 pb-3 relative z-10">
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -648,19 +678,19 @@
                 </div>
                 
                 <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <form action="/api/siswa/hapus-semua" method="POST" onsubmit="return confirm('RESET TOTAL DATABASE?\n\nSeluruh data siswa, riwayat absensi, dan rombel akan DIHAPUS PERMANEN.');" class="inline">
-                        <button type="submit" class="btn-interactive bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2 rounded-xl border border-rose-200 font-semibold transition flex items-center gap-1.5">
+                    <form action="/api/siswa/hapus-semua" method="POST" onsubmit="return confirm('RESET TOTAL DATABASE?\n\nSeluruh data siswa, riwayat absensi, dan rombel akan DIHAPUS PERMANEN.');" class="inline flex-1 sm:flex-none">
+                        <button type="submit" class="btn-interactive w-full sm:w-auto bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2 rounded-xl border border-rose-200 font-semibold transition flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-rotate-left text-rose-600"></i> Reset Total Database
                         </button>
                     </form>
 
-                    <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" class="btn-interactive bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
+                    <a href="/admin/cetak-kartu?userId=<%= userId %>" target="_blank" class="btn-interactive flex-1 sm:flex-none justify-center bg-purple-700 hover:bg-purple-800 text-white text-xs px-3.5 py-2 rounded-xl border border-purple-800 font-semibold transition flex items-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-address-card"></i> Cetak Kartu Siswa
                     </a>
                 </div>
             </div>
 
-            <div class="overflow-x-auto relative z-10">
+            <div class="overflow-x-auto table-responsive-mobile relative z-10">
                 <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[600px]">
                     <thead class="bg-emerald-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-emerald-200">
                         <tr>
@@ -692,14 +722,14 @@
                                         <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i><%= s.nomor_wa_ortu || '-' %>
                                     </td>
                                     <td class="p-3 text-center">
-                                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                        <div class="action-btn-group">
                                             <!-- Tombol Akses Cepat Presensi Masuk Manual (Kendala Jaringan) -->
                                             <button type="button" 
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     onclick="bukaModalMasukManual(this)" 
-                                                    class="btn-interactive text-emerald-800 hover:text-emerald-950 text-xs font-bold bg-emerald-100 border border-emerald-300 px-2 py-1 rounded-lg transition flex items-center gap-1">
-                                                <i class="fa-solid fa-user-check text-emerald-600"></i> Hadir (Manual)
+                                                    class="btn-interactive text-emerald-800 hover:text-emerald-950 text-xs font-bold bg-emerald-100 border border-emerald-300 px-2 py-1 rounded-lg transition flex items-center justify-center gap-1">
+                                                <i class="fa-solid fa-user-check text-emerald-600"></i> Hadir
                                             </button>
 
                                             <!-- Tombol Akses Cepat Izin / Sakit -->
@@ -708,7 +738,7 @@
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     data-status="IZIN"
                                                     onclick="bukaModalIzinSakit(this)" 
-                                                    class="btn-interactive text-amber-800 hover:text-amber-950 text-xs font-bold bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg transition flex items-center gap-1">
+                                                    class="btn-interactive text-amber-800 hover:text-amber-950 text-xs font-bold bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg transition flex items-center justify-center gap-1">
                                                 <i class="fa-solid fa-file-pen text-amber-600"></i> Izin
                                             </button>
 
@@ -717,7 +747,7 @@
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     data-status="SAKIT"
                                                     onclick="bukaModalIzinSakit(this)" 
-                                                    class="btn-interactive text-sky-800 hover:text-sky-950 text-xs font-bold bg-sky-100 border border-sky-300 px-2 py-1 rounded-lg transition flex items-center gap-1">
+                                                    class="btn-interactive text-sky-800 hover:text-sky-950 text-xs font-bold bg-sky-100 border border-sky-300 px-2 py-1 rounded-lg transition flex items-center justify-center gap-1">
                                                 <i class="fa-solid fa-notes-medical text-sky-600"></i> Sakit
                                             </button>
 
@@ -727,7 +757,7 @@
                                                     data-wa="<%= encodeURIComponent(s.nomor_wa_ortu || '') %>" 
                                                     data-kelas="<%= s.kelas_id || '' %>" 
                                                     onclick="bukaModalEditSiswa(this)" 
-                                                    class="btn-interactive text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                    class="btn-interactive text-emerald-700 hover:text-emerald-900 text-xs font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center justify-center gap-1">
                                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                                             </button>
 
@@ -735,7 +765,7 @@
                                                     data-id="<%= s.id %>" 
                                                     data-nama="<%= encodeURIComponent(s.nama) %>" 
                                                     onclick="hapusSiswa(this)" 
-                                                    class="btn-interactive text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                                                    class="btn-interactive text-rose-600 hover:text-rose-800 text-xs font-medium bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition flex items-center justify-center gap-1">
                                                 <i class="fa-solid fa-trash"></i> Hapus
                                             </button>
                                         </div>
@@ -756,7 +786,7 @@
         </div>
 
         <!-- 📌 TABEL PRESENSI HARIAN DENGAN STATUS DINAMIS -->
-        <div id="section-presensi" class="card-pro card-purple-theme p-5 mb-6">
+        <div id="section-presensi" class="card-pro card-purple-theme p-4 sm:p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-purple-200/60 pb-3 relative z-10">
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -765,14 +795,14 @@
                     <p class="text-[11px] text-slate-600 mt-0.5">Daftar log aktivitas scan kartu siswa yang tercatat hari ini.</p>
                 </div>
 
-                <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa, guru, dan rombel kelas TIDAK akan terhapus.');">
-                    <button type="submit" class="btn-interactive bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold px-3.5 py-2 rounded-xl border border-amber-300 transition flex items-center gap-1.5 shadow-xs">
+                <form action="/api/absensi/reset-riwayat" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat absensi uji coba?\n\nCatatan: Data siswa, guru, dan rombel kelas TIDAK akan terhapus.');" class="w-full sm:w-auto">
+                    <button type="submit" class="btn-interactive w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold px-3.5 py-2 rounded-xl border border-amber-300 transition flex items-center justify-center gap-1.5 shadow-xs">
                         <i class="fa-solid fa-broom text-amber-600"></i> Bersihkan Riwayat Uji Coba
                     </button>
                 </form>
             </div>
 
-            <div class="overflow-x-auto relative z-10">
+            <div class="overflow-x-auto table-responsive-mobile relative z-10">
                 <table class="w-full text-xs text-left text-slate-700 border-collapse min-w-[500px]">
                     <thead class="bg-purple-100/70 text-slate-800 uppercase text-[10px] font-bold border-b border-purple-200">
                         <tr>
@@ -826,7 +856,7 @@
 
     <!-- MODAL EDIT GURU -->
     <div id="modalEditGuru" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-user-pen text-blue-600"></i> Edit Profil / Ubah Password Guru
@@ -878,7 +908,7 @@
 
     <!-- MODAL EDIT SISWA -->
     <div id="modalEditSiswa" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-user-pen text-emerald-600"></i> Edit Data Siswa / WhatsApp
@@ -923,7 +953,7 @@
 
     <!-- MODAL POP-UP MASUK MANUAL (ADMIN / PETUGAS) -->
     <div id="modalMasukManual" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-user-check text-emerald-600"></i> Presensi Masuk Manual
@@ -965,7 +995,7 @@
 
     <!-- MODAL POP-UP INPUT IZIN / SAKIT (ADMIN) -->
     <div id="modalIzinSakit" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-notes-medical text-amber-600"></i> Catat Keterangan Kehadiran
