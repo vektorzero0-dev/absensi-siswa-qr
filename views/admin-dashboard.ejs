@@ -176,6 +176,9 @@
       <a href="#section-rekap-bulanan" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition bg-amber-50 text-amber-900">
         <i class="fa-solid fa-file-invoice text-amber-600"></i> Rekapitulasi Absensi
       </a>
+      <a href="#section-cron" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
+        <i class="fa-solid fa-clock text-amber-600"></i> Pengaturan Cron Alpa
+      </a>
       <a href="#section-settings" onclick="tutupSidebar()" class="flex items-center gap-3 p-3 font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition">
         <i class="fa-solid fa-school text-amber-600"></i> Pengaturan Sekolah
       </a>
@@ -445,6 +448,40 @@
                         <tbody id="previewTableBodyAdmin" class="divide-y divide-slate-100">
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ⏰ MODUL PENGATURAN & UJI CRON JOB ALPA OTOMATIS -->
+        <div id="section-cron" class="card-pro card-amber-theme p-4 sm:p-5 mb-6">
+            <div class="flex items-center gap-3 mb-3 border-b border-amber-200/60 pb-2 relative z-10">
+                <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-clock text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Pengaturan Cron Job Alpa Otomatis</h3>
+                    <p class="text-[11px] text-slate-600">Matikan fitur ini jika sekolah sedang libur nasional/cuti bersama, atau jalankan uji cron manual.</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10">
+                <div class="text-xs text-slate-700">
+                    Status Saat Ini: 
+                    <span class="font-bold <%= typeof cronAlpaActive !== 'undefined' && cronAlpaActive ? 'text-emerald-700' : 'text-rose-600' %>">
+                        <%= typeof cronAlpaActive !== 'undefined' && cronAlpaActive ? 'AKTIF (Jalan Senin-Sabtu Pukul 09:00 WIB)' : 'DINONAKTIFKAN (Libur)' %>
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+                    <!-- Tombol Toggle Status Cron -->
+                    <button type="button" onclick="toggleCronAdmin()" class="btn-interactive bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm">
+                        <i class="fa-solid fa-power-off mr-1"></i> <%= typeof cronAlpaActive !== 'undefined' && cronAlpaActive ? 'Matikan Cron Alpa' : 'Nyalakan Cron Alpa' %>
+                    </button>
+
+                    <!-- Tombol Uji Cron Manual -->
+                    <button type="button" onclick="testCronAdmin()" class="btn-interactive bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm">
+                        <i class="fa-solid fa-bolt mr-1"></i> Uji Cron Job Sekarang
+                    </button>
                 </div>
             </div>
         </div>
@@ -1553,6 +1590,31 @@
                     console.error("Preview error:", err);
                     tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
                 });
+        }
+
+        // Fungsi Pendukung untuk Tombol Cron di Admin Dashboard
+        async function toggleCronAdmin() {
+            if (!confirm("Apakah Anda yakin ingin mengubah status aktif/nonaktif pengecekan alpa otomatis sekolah ini?")) return;
+            try {
+                const res = await fetch('/api/settings/toggle-cron', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+                if (data.success) location.reload();
+            } catch (err) {
+                alert("Gagal mengubah status cron: " + err.message);
+            }
+        }
+
+        async function testCronAdmin() {
+            if (!confirm("Jalankan uji cron job alpa sekarang untuk memindai siswa yang belum presensi?")) return;
+            try {
+                const res = await fetch('/api/cron/auto-alpa');
+                const data = await res.json();
+                alert(data.message);
+                if (data.success) location.reload();
+            } catch (err) {
+                alert("Gagal menjalankan uji cron: " + err.message);
+            }
         }
 
         document.getElementById('formSettings')?.addEventListener('submit', async (e) => {
