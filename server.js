@@ -263,10 +263,10 @@ async function getNamaSekolah(sekolahId = null) {
 
 async function generateQRDataURL(text) {
     try {
-        if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
+        if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
         return await QRCode.toDataURL(text.toString());
     } catch (err) {
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     }
 }
 
@@ -1583,6 +1583,105 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     if (fs.existsSync(authFolder)) fs.rmSync(authFolder, { recursive: true, force: true });
     
     res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
+});
+
+// =========================================================================
+// 📢 ENDPOINT BROADCAST PESAN WHATSAPP MASSAL
+// =========================================================================
+app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
+    try {
+        const { kelas_id, pesan, userId } = req.body;
+        const currentUser = req.currentUser;
+        const userSekolahId = currentUser.sekolah_id || 1;
+
+        if (!pesan || pesan.trim() === '') {
+            return res.status(400).json({ success: false, message: "Isi pesan pengumuman tidak boleh kosong!" });
+        }
+
+        let query = `
+            SELECT DISTINCT s.nomor_wa_ortu, s.nama, sch.nama_sekolah, sch.wa_mode
+            FROM siswa s 
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            INNER JOIN sekolah sch ON k.sekolah_id = sch.id
+            WHERE s.nomor_wa_ortu IS NOT NULL 
+              AND s.nomor_wa_ortu != ''
+              AND k.sekolah_id = $1
+        `;
+        let params = [userSekolahId];
+
+        if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null') {
+            query += ` AND s.kelas_id = $2`;
+            params.push(parseInt(kelas_id));
+        }
+
+        const siswaRes = await pool.query(query, params);
+        const targetList = siswaRes.rows;
+
+        if (targetList.length === 0) {
+            return res.status(404).json({ success: false, message: "Tidak ditemukan nomor WhatsApp valid pada target rombel kelas ini." });
+        }
+
+        const modeRes = await pool.query("SELECT COALESCE(wa_mode, 'WALI_KELAS') AS wa_mode FROM sekolah WHERE id = $1", [userSekolahId]);
+        const waMode = modeRes.rows.length > 0 ? modeRes.rows[0].wa_mode : 'WALI_KELAS';
+
+        if (waMode === 'TANPA_WA') {
+            return res.status(400).json({ success: false, message: "Layanan WhatsApp dinonaktifkan (Mode: TANPA_WA) pada sekolah ini." });
+        }
+
+        let activeClient = waSessions[userId] && waStatus[userId] === 'TERHUBUNG' ? waSessions[userId] : null;
+
+        if (!activeClient) {
+            const fallbackRes = await pool.query(`
+                SELECT id FROM users WHERE sekolah_id = $1 AND role IN ('ADMIN', 'PETUGAS') ORDER BY id ASC
+            `, [userSekolahId]);
+            
+            for (const fb of fallbackRes.rows) {
+                if (waSessions[fb.id] && waStatus[fb.id] === 'TERHUBUNG') {
+                    activeClient = waSessions[fb.id];
+                    break;
+                }
+            }
+        }
+
+        if (!activeClient) {
+            return res.status(400).json({ success: false, message: "Sesi WhatsApp belum terhubung/tersambung. Silakan hubungkan WhatsApp terlebih dahulu di panel." });
+        }
+
+        let suksesCount = 0;
+        let gagalCount = 0;
+
+        for (const item of targetList) {
+            try {
+                let phone = item.nomor_wa_ortu.toString().trim().replace(/[^0-9]/g, '');
+                if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+                const targetJid = phone + '@s.whatsapp.net';
+
+                const formatPesan = `*${item.nama_sekolah ? item.nama_sekolah.toUpperCase() : 'SEKOLAH'}*\n` +
+                                    `*PENGUMUMAN RESMI SEKOLAH*\n` +
+                                    `_________________________________________\n\n` +
+                                    `Yth. Bapak/Ibu Orang Tua / Wali Murid dari *${item.nama}*,\n\n` +
+                                    `${pesan}\n\n` +
+                                    `_________________________________________\n` +
+                                    `_Pesan broadcast otomatis dikirim via Sistem Presensi SD._`;
+
+                await activeClient.sendMessage(targetJid, { text: formatPesan });
+                suksesCount++;
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            } catch (err) {
+                console.error(`Gagal kirim broadcast ke ${item.nomor_wa_ortu}:`, err.message);
+                gagalCount++;
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: `Broadcast Selesai! Berhasil terkirim ke ${suksesCount} nomor orang tua, gagal: ${gagalCount} nomor.`
+        });
+
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal memproses broadcast: " + err.message });
+    }
 });
 
 // ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR ----------------- //
