@@ -674,6 +674,11 @@
                                                     <i class="bi bi-eye"></i>
                                                 </button>
 
+                                                <!-- TOMBOL UJI CRON ALPA SPESIFIK SEKOLAH -->
+                                                <button class="btn btn-cyber-blue btn-sm me-1" onclick="ujiCronSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Uji Cron Alpa Sekolah Ini">
+                                                    <i class="bi bi-lightning-charge-fill"></i> UJI CRON
+                                                </button>
+
                                                 <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
                                                     <% if (s.is_active) { %>
                                                         <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
@@ -956,6 +961,24 @@
                 console.error('Error Restore:', err);
                 alert('Gagal memproses berkas backup! Pastikan format file sesuai.');
             });
+        }
+
+        // Fungsi Uji Cron Alpa Per Sekolah
+        async function ujiCronSekolah(sekolahId, namaSekolah) {
+            if (!confirm(`Jalankan uji cron alpa untuk sekolah "${namaSekolah}"?`)) return;
+
+            try {
+                const res = await fetch(`/api/cron/auto-alpa?sekolah_id=${sekolahId}`);
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert(data.message);
+                } else {
+                    alert('Gagal: ' + (data.message || 'Terjadi kesalahan'));
+                }
+            } catch (err) {
+                console.error('Error Uji Cron:', err);
+                alert('Gagal terhubung ke server!');
+            }
         }
 
         async function lihatSekolah(id) {
