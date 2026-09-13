@@ -26,7 +26,7 @@
             Masa aktif penggunaan sistem untuk <strong class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih paket langganan dan lakukan konfirmasi pembayaran melalui WhatsApp.
         </p>
 
-        <!-- PILIHAN LAYANAN / PAKET (DIBUAT BISA DIKLIK / INTERAKTIF) -->
+        <!-- PILIHAN LAYANAN / PAKET (INTERAKTIF) -->
         <div class="mb-5 text-left">
             <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">1. Pilih Paket Layanan:</label>
             <div class="grid grid-cols-2 gap-2">
@@ -74,9 +74,8 @@
             </div>
         </div>
 
-        <!-- TOMBOL KONFIRMASI WHATSAPP DINAMIS -->
-        <a id="waLink" href="https://wa.me/6282371729760?text=Halo%2520Admin,%2520saya%2520ingin%2520konfirmasi%2520pembayaran%2520langganan%2520untuk%2520sekolah%2520<%= encodeURIComponent(typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah') %>%2520(Paket%2520Bulanan%2520-%2520Rp%2520150.000).%2520Berikut%2520lampiran%2520bukti%2520transfernya." 
-           target="_blank" 
+        <!-- TOMBOL KONFIRMASI WHATSAPP -->
+        <a id="waLink" href="#" target="_blank" 
            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3.5 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 mb-3">
             <i class="fa-brands fa-whatsapp text-base"></i> Konfirmasi Pembayaran via WhatsApp
         </a>
@@ -87,7 +86,8 @@
     </div>
 
     <script>
-        let namaSekolahGlobal = "<%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah' %>";
+        // Mengambil nama sekolah secara dinamis dari elemen teks di atas agar akurat
+        let namaSekolahGlobal = document.querySelector('strong.text-white').innerText.trim();
 
         function pilihPaket(namaPaket, nominal) {
             // Ubah tampilan tombol aktif
@@ -103,10 +103,20 @@
             // Update badge info paket
             document.getElementById('labelPaketPilihan').innerText = namaPaket.includes('Bulanan') ? 'Bulanan' : 'Tahunan';
 
-            // Perbarui link otomatis WhatsApp beserta paket yang dipilih
+            // Format pesan WhatsApp yang bersih dari kode mentah
             const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal} (${namaPaket} - ${nominal}). Berikut terlampir bukti transfernya.`;
-            document.getElementById('waLink').href = `https://wa.me/6282371729760?text=${encodeURIComponent(pesanWa)}`;
+            
+            const encodedMessage = pesanWa
+                .replace(/ /g, '%20')
+                .replace(/\n/g, '%0A')
+                .replace(/\(/g, '%28')
+                .replace(/\)/g, '%29');
+
+            document.getElementById('waLink').href = `https://wa.me/6282371729760?text=${encodedMessage}`;
         }
+
+        // Set default saat halaman pertama kali dimuat (Paket Bulanan terpilih otomatis)
+        pilihPaket('Paket Bulanan (1 Bulan)', 'Rp 150.000');
     </script>
 </body>
 </html>
