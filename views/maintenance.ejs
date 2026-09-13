@@ -12,6 +12,8 @@
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            padding: 0;
         }
 
         /* Animasi Latar Belakang Gokil Berubah Warna */
@@ -34,7 +36,7 @@
         }
         .animate-glow { animation: pulseGlow 3s infinite ease-in-out; }
 
-        /* Animasi Khusus Ikon (Kotaknya Anteng, Isinya Doang yang Goyang Panik) */
+        /* Animasi Khusus Ikon Doang (Kotak Luar Diam Total) */
         @keyframes shakeIcon {
             0%, 100% { transform: rotate(0deg); }
             20% { transform: rotate(-8deg) scale(1.05); }
@@ -45,14 +47,14 @@
         .animate-panik { animation: shakeIcon 0.8s ease-in-out infinite; }
     </style>
 </head>
-<body class="bg-light-animated text-white min-h-screen flex items-center justify-center p-4 relative overflow-hidden select-none">
+<body class="bg-light-animated text-white min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden select-none">
     
     <!-- Ornamen Lingkaran Glow Warnanya Asyik -->
     <div class="absolute -top-32 -left-32 w-[25rem] h-[25rem] bg-pink-500/30 rounded-full blur-[100px] pointer-events-none animate-glow"></div>
     <div class="absolute -bottom-32 -right-32 w-[25rem] h-[25rem] bg-yellow-400/30 rounded-full blur-[100px] pointer-events-none animate-glow" style="animation-delay: 1.5s;"></div>
 
-    <!-- Kartu Konten Utama (Mantap di Tengah, Gak Geser-geser) -->
-    <div class="max-w-md w-full text-center bg-slate-900/90 p-8 sm:p-10 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl relative z-10">
+    <!-- Kartu Konten Utama (Dikunci Posisinya Supaya Anti-Geser) -->
+    <div class="max-w-md w-full text-center bg-slate-900/90 p-8 sm:p-10 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl relative z-10 mx-auto my-auto" style="transform: translate3d(0,0,0);">
         
         <!-- Badge Status Kocak -->
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs font-extrabold tracking-wider uppercase mb-6 shadow-inner">
@@ -89,12 +91,12 @@
             <span class="text-[10px] text-slate-400 mt-2 block italic">👆 (Klik kotak ini buat ganti alasan halu admin)</span>
         </div>
 
-        <!-- Tombol Aksi Interaktif -->
+        <!-- Tombol Aksi Interaktif (Tanpa Efek Geser/Scale yang Merusak Layout) -->
         <div class="pt-2 flex flex-col gap-3">
-            <button onclick="location.reload()" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3 rounded-2xl transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30">
+            <button onclick="location.reload()" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3 rounded-2xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 cursor-pointer">
                 <i class="fa-solid fa-arrows-rotate"></i> Coba Bangunin Server-nya Lagi!
             </button>
-            <a href="/login" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-5 py-2.5 rounded-xl transition-all duration-200 border border-slate-700 flex items-center justify-center gap-2">
+            <a href="/login" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-5 py-2.5 rounded-xl transition duration-200 border border-slate-700 flex items-center justify-center gap-2">
                 <i class="fa-solid fa-key text-pink-400"></i> Nyelonong Masuk Login Admin
             </a>
         </div>
