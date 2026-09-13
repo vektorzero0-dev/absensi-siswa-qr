@@ -3,138 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lagi Modifikasi Mesin Waktu - Sistem Presensi</title>
+    <title>Sistem Sedang Rehat Sejenak ☕</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome & Font Google -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            margin: 0;
-            padding: 0;
         }
 
-        /* Animasi Latar Belakang Gokil Berubah Warna */
-        .bg-light-animated {
-            background: linear-gradient(-45deg, #ff007f, #7928ca, #4f46e5, #06b6d4);
-            background-size: 400% 400%;
-            animation: gradientBG 8s ease infinite;
-        }
-
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        /* Efek Denyut Lebay di Background */
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 0.4; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.25); }
-        }
-        .animate-glow { animation: pulseGlow 3s infinite ease-in-out; }
-
-        /* Animasi Khusus Ikon Doang (Kotak Luar Diam Total) */
-        @keyframes shakeIcon {
+        /* Animasi Ikon Goyang Kocak (Anti-Geser untuk Layout Utama) */
+        @keyframes goyangKocak {
             0%, 100% { transform: rotate(0deg); }
-            20% { transform: rotate(-8deg) scale(1.05); }
-            40% { transform: rotate(8deg) scale(1.05); }
-            60% { transform: rotate(-5deg); }
-            80% { transform: rotate(5deg); }
+            20% { transform: rotate(-12deg) scale(1.05); }
+            40% { transform: rotate(12deg) scale(1.05); }
+            60% { transform: rotate(-8deg); }
+            80% { transform: rotate(8deg); }
         }
-        .animate-panik { animation: shakeIcon 0.8s ease-in-out infinite; }
+        .animate-goyang { animation: goyangKocak 1s ease-in-out infinite; }
     </style>
 </head>
-<body class="bg-light-animated text-white min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden select-none">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-hidden select-none">
     
-    <!-- Ornamen Lingkaran Glow Warnanya Asyik -->
-    <div class="absolute -top-32 -left-32 w-[25rem] h-[25rem] bg-pink-500/30 rounded-full blur-[100px] pointer-events-none animate-glow"></div>
-    <div class="absolute -bottom-32 -right-32 w-[25rem] h-[25rem] bg-yellow-400/30 rounded-full blur-[100px] pointer-events-none animate-glow" style="animation-delay: 1.5s;"></div>
+    <!-- Ornamen Lingkaran Glow di Latar Belakang -->
+    <div class="absolute -top-24 -left-24 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-    <!-- Kartu Konten Utama (Dikunci Posisinya Supaya Anti-Geser) -->
-    <div class="max-w-md w-full text-center bg-slate-900/90 p-8 sm:p-10 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl relative z-10 mx-auto my-auto" style="transform: translate3d(0,0,0);">
+    <!-- Kartu Utamanya (Anteng di Tengah, Anti-Geser) -->
+    <div class="max-w-md w-full text-center bg-slate-900/80 p-8 rounded-3xl border border-slate-800 shadow-2xl backdrop-blur-xl relative z-10">
         
-        <!-- Badge Status Kocak -->
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs font-extrabold tracking-wider uppercase mb-6 shadow-inner">
-            <i class="fa-solid fa-mug-hot animate-bounce"></i> Admin Lagi Ngopi & Ngoding
-        </div>
-
-        <!-- Ikon Panik Goyang (Kotak Luar Diam, Ikon Dalam yang Panik) -->
+        <!-- Ikon Animasi Lucu & Menarik -->
         <div class="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-            <div class="w-full h-full bg-gradient-to-tr from-yellow-500 to-pink-500 text-slate-950 rounded-3xl flex items-center justify-center border-2 border-white/40 shadow-2xl">
-                <i class="fa-solid fa-laptop-code text-4xl animate-panik"></i>
+            <div class="w-full h-full bg-amber-500/15 text-amber-400 rounded-2xl flex items-center justify-center border border-amber-500/30 shadow-lg shadow-amber-500/10">
+                <i class="fa-solid fa-mug-hot text-4xl animate-goyang"></i>
             </div>
-            <!-- Bintang Kejut Berdenyut -->
-            <span class="absolute -top-2 -right-2 flex h-6 w-6">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-6 w-6 bg-yellow-500 items-center justify-center text-[10px] font-bold text-slate-950">⚠️</span>
+            <span class="absolute -top-1 -right-1 flex h-4 w-4">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-4 w-4 bg-amber-500"></span>
             </span>
         </div>
         
-        <!-- Judul Gokil -->
-        <h1 id="maintenance-title" class="text-xl sm:text-2xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-400 mb-3 uppercase">
-            Sistem Lagi 'Masuk Angin'!
+        <!-- Judul Dinamis -->
+        <h1 id="maintenance-title" class="text-xl font-extrabold tracking-wide text-amber-400 mb-2 uppercase">
+            Sistem Lagi Minum Kopi ☕
         </h1>
         
-        <!-- Pesan Penjelasan Lucu -->
-        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 px-1">
-            Tenang cuy, data siswa aman sentosa kok! Server-nya lagi diajak kompromi sama tim pengembang biar gak ngadat pas, silakan tarik napas sebentar ya.
+        <!-- Pesan Penjelasan -->
+        <p class="text-xs text-slate-300 leading-relaxed mb-4 px-2">
+            Tenang, tidak ada yang rusak kok! Aplikasi presensi cuma sedang rehat sejenak untuk pemeliharaan rutin dan servis mesin supaya makin ngebut saat dipakai nanti.
         </p>
 
-        <!-- Kotak Alasan Absurd (Bisa diganti-ganti lewat tombol) -->
-        <div class="bg-slate-800/80 rounded-2xl p-4 border border-white/10 mb-6 shadow-inner cursor-pointer hover:bg-slate-800 transition" onclick="randomizeMaintenanceText()" title="Klik buat ganti alasan!">
-            <p id="quote-text" class="text-xs sm:text-sm text-yellow-300 font-semibold leading-relaxed">
-                <i class="fa-solid fa-face-laugh-wink mr-1"></i> Memuat alasan ngeles...
+        <!-- Kotak Kata-Kata Otomatis Berubah (Bisa Diklik Buat Ganti Manual) -->
+        <div onclick="randomizeMaintenanceText()" class="bg-slate-800/60 rounded-2xl p-3 border border-slate-700/50 mb-6 transition-all duration-300 cursor-pointer hover:bg-slate-800 group" title="Klik buat ganti kata-kata!">
+            <p id="quote-text" class="text-[11px] text-amber-300/90 italic font-medium">
+                💡 Memuat kata-kata hari ini...
             </p>
-            <span class="text-[10px] text-slate-400 mt-2 block italic">👆 (Klik kotak ini buat ganti alasan halu admin)</span>
+            <span class="text-[9px] text-slate-400 mt-1 block group-hover:text-amber-400 transition">👆 (Klik kotak ini buat ganti quotes kocak)</span>
         </div>
 
-        <!-- Tombol Aksi Interaktif (Tanpa Efek Geser/Scale yang Merusak Layout) -->
-        <div class="pt-2 flex flex-col gap-3">
-            <button onclick="location.reload()" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3 rounded-2xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 cursor-pointer">
-                <i class="fa-solid fa-arrows-rotate"></i> Coba Bangunin Server-nya Lagi!
+        <!-- Tombol Aksi -->
+        <div class="pt-2 border-t border-slate-800 flex flex-col sm:flex-row justify-center gap-3">
+            <button onclick="location.reload()" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-5 py-3 rounded-xl transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer">
+                <i class="fa-solid fa-rotate-right"></i> Coba Cek Lagi
             </button>
-            <a href="/login" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-5 py-2.5 rounded-xl transition duration-200 border border-slate-700 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-key text-pink-400"></i> Nyelonong Masuk Login Admin
+            <a href="/login" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-5 py-3 rounded-xl transition-all duration-200 border border-slate-700 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-shield text-slate-400"></i> Login Admin
             </a>
         </div>
 
-        <!-- Footer Santai -->
-        <div class="mt-6 pt-4 border-t border-white/10 flex flex-col items-center gap-1 text-[10px] text-slate-400">
-            <p class="font-medium">Sistem Presensi Digital Paling Santuy Se-Indonesia</p>
-            <p>© <%= new Date().getFullYear() %> • Dibikin pake ❤️ dan kopi saset</p>
-        </div>
+        <!-- Catatan Kaki Kecil -->
+        <p class="text-[10px] text-slate-500 mt-6">
+            Sistem Presensi Multi-Tenant • Terima kasih sudah bersabar ya! 😊
+        </p>
     </div>
 
-    <!-- SKRIP KATA-KATA KOCAK DINAMIS -->
+    <!-- SKRIP OTOMATISASI KATA-KATA RANDOM -->
     <script>
         const quotes = [
-            '☕ "Admin lagi nyari kabel LAN yang dimakan kucing tetangga. Mohon bersabar."',
-            '🤖 "Kecerdasan buatan sistem lagi cuti, diganti sama kecerdasan buatan warung kopi."',
-            '🚀 "Lagi nambahin fitur jet pribadi buat siswa yang sering kesiangan kesekolah."',
-            '💾 "Database-nya lagi masuk angin, dikerok dulu pake koin 500-an."',
-            '🎯 "Sabar ya ges ya, nge-fix bug itu mirip nyari jarum di tumpukan jerami tapi jeraminya dibakar."',
-            '🍕 "Tukang kodingnya lagi disogok pakai pizza dulu biar servernya mau nyala lagi."'
+            '💡 "Sama seperti kita yang butuh teh hangat di pagi hari, sistem juga butuh perawatan sejenak."',
+            '💡 "Sedang mengencangkan baut-baut kodenya biar makin cepat pas dipake presensi!"',
+            '💡 "Sabar ya! Hal-hal hebat butuh sedikit waktu untuk dipersiapkan."',
+            '💡 "Sistemnya lagi stretching dulu nih, biar pas kamu pakai gak kena kram!"',
+            '💡 "Aplikasi lagi cuci muka dulu biar tampil lebih fresh dan makin ganteng."',
+            '💡 "Jangan lupa minum air putih dan tersenyum hari ini ya! Pemeliharaan takkan lama kok."',
+            '💡 "Sedang membersihkan debu-debu server supaya presensi kamu makin lancar jaya!"'
         ];
 
         const titles = [
-            "Sistem Lagi 'Masuk Angin'!",
-            "Server-nya Lagi Ngopi Dulu Bro!",
-            "Lagi Renovasi Warung Kopi Digital!",
-            "Sistem Istirahat Sejenak, Jangan Panik!"
+            "Sistem Lagi Minum Kopi ☕",
+            "Mesin Lagi Di-Servis 🛠️",
+            "Sistem Sedang Rehat Sejenak 🧘",
+            "Lagi Ganti Oli Server 🏎️",
+            "Sedang Bersolek Sejenak ✨"
         ];
 
         function randomizeMaintenanceText() {
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
             const randomTitle = titles[Math.floor(Math.random() * titles.length)];
 
-            document.getElementById('quote-text').innerHTML = `<i class="fa-solid fa-face-laugh-wink mr-1 text-yellow-400"></i> ${randomQuote}`;
+            document.getElementById('quote-text').innerText = randomQuote;
             document.getElementById('maintenance-title').innerText = randomTitle;
         }
 
-        // Jalankan saat pertama kali buka
+        // Jalankan saat halaman dimuat
         window.addEventListener('DOMContentLoaded', randomizeMaintenanceText);
     </script>
 </body>
