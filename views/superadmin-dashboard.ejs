@@ -661,11 +661,13 @@
                                                 <div class="mb-1 text-xs text-amber-300"><%= s.paket || 'Uji Coba' %></div>
                                                 <% if (s.status_langganan === 'aktif') { %>
                                                     <span class="badge badge-cyber-success">AKTIF</span>
+                                                <% } else if (s.status_langganan === 'spesial') { %>
+                                                    <span class="badge badge-cyber-yellow">SPESIAL (SELAMANYA)</span>
                                                 <% } else { %>
                                                     <span class="badge badge-cyber-danger">EXPIRED</span>
                                                 <% } %>
                                             </td>
-                                            <td class="font-mono text-info text-xs"><%= s.expired_date || '-' %></td>
+                                            <td class="font-mono text-info text-xs"><%= s.status_langganan === 'spesial' ? 'SELAMANYA (TANPA BATAS)' : (s.expired_date || '-') %></td>
                                             
                                             <td>
                                                 <form action="/api/sekolah/wa-mode/<%= s.id %>" method="POST">
@@ -698,7 +700,7 @@
                                                         Selesai Trial
                                                     </button>
                                                 </div>
-                                                <div class="d-flex justify-content-center gap-1">
+                                                <div class="d-flex justify-content-center gap-1 mb-1">
                                                     <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 30, 'bulan')" class="btn btn-cyber-success btn-sm" title="Perpanjang 1 Bulan">
                                                         <i class="fa-solid fa-check"></i> +1 Bln
                                                     </button>
@@ -709,6 +711,12 @@
                                                     <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-warning btn-sm" title="Kelola Sekolah Ini">
                                                         <i class="bi bi-door-open-fill"></i>
                                                     </a>
+                                                </div>
+                                                <!-- TOMBOL BASIC SPESIAL (SELAMANYA) -->
+                                                <div class="d-flex justify-content-center gap-1 mb-1">
+                                                    <button type="button" onclick="setTanpaLangganan('<%= s.id %>')" class="btn btn-outline-info btn-sm w-150 text-xs" style="font-size: 0.7rem;" title="Beri Akses Selamanya Tanpa Kedaluwarsa">
+                                                        <i class="fa-solid fa-infinity"></i> Basic Spesial (Selamanya)
+                                                    </button>
                                                 </div>
 
                                                 <div class="mt-1">
@@ -954,6 +962,30 @@
             })
             .catch(err => {
                 console.error('Error Langganan:', err);
+                alert('Gagal terhubung ke server!');
+            });
+        }
+
+        // FUNGSI ATUR STATUS BASIC SPESIAL (SELAMANYA)
+        function setTanpaLangganan(sekolahId) {
+            if (!confirm("Ubah status sekolah ini menjadi Basic Spesial (Tanpa Batas Waktu / Selamanya)?")) return;
+
+            fetch('/api/admin/set-spesial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sekolahId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Gagal: ' + (data.message || 'Terjadi kesalahan sistem'));
+                }
+            })
+            .catch(err => {
+                console.error('Error Spesial:', err);
                 alert('Gagal terhubung ke server!');
             });
         }
