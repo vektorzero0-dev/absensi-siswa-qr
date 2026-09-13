@@ -71,8 +71,8 @@ function requireAuth(allowedRoles = []) {
                     const now = new Date();
                     const expiredDate = schData.expired_date ? new Date(schData.expired_date) : null;
 
-                    // Jika status expired atau melewati batas waktu dan bukan sedang membuka halaman tagihan
-                    if (schData.status_langganan === 'expired' || (expiredDate && now > expiredDate)) {
+                    // Jika status bukan 'spesial' dan expired atau melewati batas waktu dan bukan sedang membuka halaman tagihan
+                    if (schData.status_langganan !== 'spesial' && (schData.status_langganan === 'expired' || (expiredDate && now > expiredDate))) {
                         if (req.path !== '/tagihan-habis' && !req.path.startsWith('/api/')) {
                             return res.redirect('/tagihan-habis');
                         }
@@ -788,6 +788,31 @@ app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async 
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Gagal memperpanjang langganan: " + err.message });
+    }
+});
+
+// ENDPOINT SUPER ADMIN: SET BASIC SPESIAL (SELAMANYA / TANPA LANGGANAN)
+app.post('/api/admin/set-spesial', requireAuth(['SUPER_ADMIN']), async (req, res) => {
+    try {
+        const { sekolahId } = req.body;
+        if (!sekolahId) {
+            return res.status(400).json({ success: false, message: "ID Sekolah tidak lengkap." });
+        }
+
+        await pool.query(`
+            UPDATE sekolah 
+            SET status_langganan = 'spesial', 
+                paket = 'Basic Spesial (Selamanya)',
+                expired_date = NULL
+            WHERE id = $1
+        `, [parseInt(sekolahId)]);
+
+        return res.json({
+            success: true,
+            message: `Status sekolah berhasil diubah menjadi Basic Spesial (Selamanya)!`
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal mengubah status spesial: " + err.message });
     }
 });
 
