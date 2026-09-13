@@ -486,17 +486,25 @@
                 <!-- KOLOM KIRI (FORMULIR KONTROL) -->
                 <div class="col-lg-4 mb-4">
                     
-                    <!-- 1. Form Pendaftaran Sekolah Baru -->
+                    <!-- 1. Form Pendaftaran Sekolah Baru & Opsi Trial -->
                     <div class="cyber-card mb-4" id="sec-form-sekolah">
                         <div class="cyber-header cyber-header-green d-flex align-items-center">
                             <i class="bi bi-building-add me-2 fs-5"></i>
-                            <h5 class="mb-0 fs-6">PENDAFTARAN SEKOLAH</h5>
+                            <h5 class="mb-0 fs-6">PENDAFTARAN SEKOLAH & TRIAL</h5>
                         </div>
                         <div class="card-body p-3">
                             <form action="/api/sekolah/tambah" method="POST" autocomplete="off">
                                 <div class="mb-3">
                                     <label class="form-label">NAMA SEKOLAH RESMI</label>
                                     <input type="text" name="nama_sekolah" class="form-control" placeholder="Ex: SDN 03 Pagardewa" autocomplete="off" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">DURASI UJI COBA (TRIAL)</label>
+                                    <select name="trial_days" class="form-select form-select-cyber">
+                                        <option value="14">⏳ Uji Coba 14 Hari (Standar)</option>
+                                        <option value="30">⏳ Uji Coba 30 Hari (1 Bulan)</option>
+                                        <option value="7">⏳ Uji Coba 7 Hari (Singkat)</option>
+                                    </select>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">MODE NOTIFIKASI WA</label>
@@ -632,7 +640,7 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>NAMA SEKOLAH</th>
-                                        <th>STATUS LANGGANAN</th>
+                                        <th>PAKET / STATUS</th>
                                         <th>BERAKHIR PADA</th>
                                         <th>PENGIRIM WA</th>
                                         <th>STATUS</th>
@@ -650,6 +658,7 @@
                                                 <% } %>
                                             </td>
                                             <td>
+                                                <div class="mb-1 text-xs text-amber-300"><%= s.paket || 'Uji Coba' %></div>
                                                 <% if (s.status_langganan === 'aktif') { %>
                                                     <span class="badge badge-cyber-success">AKTIF</span>
                                                 <% } else { %>
@@ -677,48 +686,48 @@
                                                 <% } %>
                                             </td>
                                             <td class="text-center">
-                                                <!-- TOMBOL PERPANJANG LANGGANAN DI SINI -->
-                                                <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 30)" class="btn btn-cyber-success btn-sm me-1" title="Perpanjang Langganan 1 Bulan">
-                                                    <i class="fa-solid fa-check"></i> +1 Bln
-                                                </button>
-                                                <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 365)" class="btn btn-cyber-blue btn-sm me-1" title="Perpanjang Langganan 1 Tahun">
-                                                    <i class="fa-solid fa-calendar-days"></i> +1 Thn
-                                                </button>
-
-                                                <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-warning btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
-                                                    <i class="bi bi-door-open-fill"></i>
-                                                </a>
-
-                                                <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail Ringkas">
-                                                    <i class="bi bi-eye"></i>
-                                                </button>
-
-                                                <!-- TOMBOL UJI CRON ALPA SPESIFIK SEKOLAH -->
-                                                <button class="btn btn-cyber-blue btn-sm me-1" onclick="ujiCronSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Uji Cron Alpa Sekolah Ini">
-                                                    <i class="bi bi-lightning-charge-fill"></i>
-                                                </button>
-
-                                                <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
-                                                    <% if (s.is_active) { %>
-                                                        <button type="submit" class="btn btn-cyber-danger btn-sm me-1" onclick="return confirm('Nonaktifkan akses sekolah ini?')" title="Nonaktifkan">
-                                                            <i class="bi bi-slash-circle"></i>
-                                                        </button>
-                                                    <% } else { %>
-                                                        <button type="submit" class="btn btn-cyber-success btn-sm me-1" title="Aktifkan">
-                                                            <i class="bi bi-check-circle"></i>
-                                                        </button>
-                                                    <% } %>
-                                                </form>
-
-                                                <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit Nama Sekolah">
-                                                    <i class="bi bi-pencil-square"></i>
-                                                </button>
-                                                
-                                                <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini?')">
-                                                    <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus Sekolah">
-                                                        <i class="bi bi-trash"></i>
+                                                <!-- TOMBOL KENDALI UJI COBA & LANGGANAN -->
+                                                <div class="d-flex justify-content-center gap-1 mb-1">
+                                                    <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 14, 'trial_14')" class="btn btn-cyber-warning btn-sm" title="Beri Trial 14 Hari">
+                                                        +14 Hari
                                                     </button>
-                                                </form>
+                                                    <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 30, 'trial_30')" class="btn btn-cyber-warning btn-sm" title="Beri Trial 30 Hari">
+                                                        +30 Hari
+                                                    </button>
+                                                    <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 0, 'selesai_trial')" class="btn btn-cyber-danger btn-sm" title="Jadikan Expired (Uji Coba Selesai)">
+                                                        Selesai Trial
+                                                    </button>
+                                                </div>
+                                                <div class="d-flex justify-content-center gap-1">
+                                                    <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 30, 'bulan')" class="btn btn-cyber-success btn-sm" title="Perpanjang 1 Bulan">
+                                                        <i class="fa-solid fa-check"></i> +1 Bln
+                                                    </button>
+                                                    <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 365, 'tahun')" class="btn btn-cyber-blue btn-sm" title="Perpanjang 1 Tahun">
+                                                        <i class="fa-solid fa-calendar-days"></i> +1 Thn
+                                                    </button>
+
+                                                    <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-warning btn-sm" title="Kelola Sekolah Ini">
+                                                        <i class="bi bi-door-open-fill"></i>
+                                                    </a>
+                                                </div>
+
+                                                <div class="mt-1">
+                                                    <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-cyber-blue btn-sm me-1" onclick="ujiCronSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Uji Cron Alpa">
+                                                        <i class="bi bi-lightning-charge-fill"></i>
+                                                    </button>
+                                                    <button class="btn btn-cyber-warning btn-sm me-1" onclick="editSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Edit Nama">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </button>
+                                                    
+                                                    <form action="/api/sekolah/hapus/<%= s.id %>" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen sekolah ini?')">
+                                                        <button type="submit" class="btn btn-cyber-danger btn-sm" title="Hapus">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     <% }); %>
@@ -920,15 +929,19 @@
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
         const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
 
-        // FUNGSI AKTIFKAN / PERPANJANG LANGGANAN KLIEN
-        function aktifkanLangganan(sekolahId, jumlahHari) {
-            const labelWaktu = jumlahHari >= 365 ? '1 Tahun' : '1 Bulan';
-            if (!confirm(`Konfirmasi pembayaran diterima via WhatsApp?\n\nPerpanjang masa aktif sekolah ini selama ${labelWaktu} (${jumlahHari} hari)?`)) return;
+        // FUNGSI AKTIFKAN / ATUR TRIAL & LANGGANAN KLIEN
+        function aktifkanLangganan(sekolahId, jumlahHari, actionType) {
+            let pesanKonfirmasi = `Atur masa aktif sekolah ini selama ${jumlahHari} hari?`;
+            if (actionType === 'selesai_trial') {
+                pesanKonfirmasi = `Uji Coba Selesai?\n\nTindakan ini akan langsung menghentikan trial sekolah dan menguncinya ke halaman tagihan pembayaran.`;
+            }
+
+            if (!confirm(pesanKonfirmasi)) return;
 
             fetch('/api/admin/perpanjang-langganan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sekolahId, jumlahHari })
+                body: JSON.stringify({ sekolahId, jumlahHari, actionType })
             })
             .then(res => res.json())
             .then(data => {
