@@ -71,7 +71,6 @@ function requireAuth(allowedRoles = []) {
                     const now = new Date();
                     const expiredDate = schData.expired_date ? new Date(schData.expired_date) : null;
 
-                    // Jika status bukan 'spesial' dan expired atau melewati batas waktu dan bukan sedang membuka halaman tagihan
                     if (schData.status_langganan !== 'spesial' && (schData.status_langganan === 'expired' || (expiredDate && now > expiredDate))) {
                         if (req.path !== '/tagihan-habis' && !req.path.startsWith('/api/')) {
                             return res.redirect('/tagihan-habis');
@@ -1209,7 +1208,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
         `, [userSekolahId, bulanPilihan]);
 
         let namaSekolah = await getNamaSekolah(userSekolahId);
-        let pengirimWA = waMode; // Mengambil langsung dari mode sekolah yang diatur Super Admin
+        let pengirimWA = waMode; 
 
         const absensiFormatted = absensiHariIniRes.rows.map(row => {
             const dateObj = new Date(row.waktu);
@@ -1416,7 +1415,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             cronAlpaActive: cronAlpaActive,
             statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[userRaw.id] || 'BELUM_TERHUBUNG'),
             qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[userRaw.id] || null),
-            pengirimWA: waMode,
+            pengirimWA: waMode, // Disinkronkan dengan variabel pengirimWA di EJS Wali Kelas
             namaSekolah
         });
     } catch (err) {
@@ -2680,7 +2679,7 @@ cron.schedule('0 9 * * 1-6', async () => {
 });
 
 // ROUTE MANUAL / UJI COBA CRON AUTO-ALPA (UNTUK ADMIN & SUPER ADMIN)
-app.get('/api/cron/auto-alpa', requireAuth(['ADMIN', 'SUPER_ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.get('/api/cron/auto-alpa', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const currentUser = req.currentUser;
         let targetSekolahId = null;
