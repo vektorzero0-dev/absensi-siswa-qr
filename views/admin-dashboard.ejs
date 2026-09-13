@@ -511,6 +511,14 @@
                 </div>
                 <div>
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Status WhatsApp Gateway Admin Utama</h3>
+                    
+                    <!-- KETERANGAN OPSI PENGIRIM WA DARI SUPER ADMIN -->
+                    <div class="my-1">
+                        <span class="text-[10px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300 px-2 py-0.5 rounded uppercase tracking-wide">
+                            Mode Pengirim: <%= typeof pengirimWA !== 'undefined' ? pengirimWA : 'WALI_KELAS' %>
+                        </span>
+                    </div>
+
                     <p class="text-xs text-slate-600 mt-0.5" id="waStatusText">
                         <% if (typeof waMode !== 'undefined' && waMode === 'TANPA_WA') { %>
                             Koneksi Layanan: <span class="text-slate-500 font-bold">Fitur Notifikasi WA Nonaktif (TANPA_WA) 🚫</span>
