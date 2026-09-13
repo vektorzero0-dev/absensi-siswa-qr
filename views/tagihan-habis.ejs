@@ -21,22 +21,23 @@
             <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
 
-        <h1 class="text-base font-extrabold uppercase tracking-wider text-white mb-2">Masa Langganan Sekolah Berakhir</h1>
+        <h1 class="text-base font-extrabold uppercase tracking-wider text-white mb-2">Masa Uji Coba / Langganan Berakhir</h1>
         <p class="text-xs text-slate-400 mb-5 leading-relaxed">
-            Masa aktif sistem presensi untuk <strong id="namaSekolahText" class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih paket langganan sekolah di bawah ini untuk mengaktifkan kembali akses seluruh akun.
+            Masa aktif penggunaan sistem untuk <strong id="namaSekolahText" class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. 
+            Paket di bawah ini otomatis disesuaikan dengan jenis akun Anda (<strong class="text-amber-400" id="badgeRoleText"></strong>).
         </p>
 
-        <!-- PILIHAN PAKET SEKOLAH -->
+        <!-- PILIHAN DURASI / PAKET (OTOMATIS SESUAI LEVEL AKUN) -->
         <div class="mb-5 text-left">
-            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Pilih Paket Langganan Sekolah:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Pilih Durasi Langganan:</label>
             <div class="grid grid-cols-2 gap-2">
-                <button type="button" onclick="pilihPaket('Paket Bulanan Sekolah', 'Rp 150.000')" id="btnPaketBulan" class="paket-btn border border-amber-500/50 bg-amber-500/10 text-white p-3 rounded-xl text-xs font-semibold text-center transition">
-                    <div class="font-bold text-amber-400">Paket Bulanan</div>
-                    <div class="text-[11px] text-slate-300 mt-0.5">Rp 150.000 / bln</div>
+                <button type="button" onclick="pilihDurasi('Bulanan (1 Bulan)')" id="btnDurasiBulan" class="durasi-btn border border-amber-500/50 bg-amber-500/10 text-white p-3 rounded-xl text-xs font-semibold text-center transition">
+                    <div class="font-bold text-amber-400">Bulanan</div>
+                    <div id="hargaBulanText" class="text-[11px] text-slate-300 mt-0.5">Rp 0 / bln</div>
                 </button>
-                <button type="button" onclick="pilihPaket('Paket Tahunan Sekolah', 'Rp 1.500.000')" id="btnPaketTahun" class="paket-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-xl text-xs font-semibold text-center transition">
-                    <div class="font-bold text-white">Paket Tahunan</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">Rp 1.500.000 / thn</div>
+                <button type="button" onclick="pilihDurasi('Tahunan (1 Tahun)')" id="btnDurasiTahun" class="durasi-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-xl text-xs font-semibold text-center transition">
+                    <div class="font-bold text-white">Tahunan</div>
+                    <div id="hargaTahunText" class="text-[11px] text-slate-400 mt-0.5">Rp 0 / thn</div>
                 </button>
             </div>
         </div>
@@ -86,29 +87,64 @@
     </div>
 
     <script>
+        // Menerima data role dari backend EJS secara dinamis
+        let userRole = "<%= typeof userRole !== 'undefined' ? userRole : 'WALI_KELAS' %>";
         let namaSekolahGlobal = document.getElementById('namaSekolahText').innerText.trim();
-        let paketAktif = 'Paket Bulanan Sekolah';
-        let nominalAktif = 'Rp 150.000';
 
-        function pilihPaket(namaPaket, nominal) {
-            paketAktif = namaPaket;
-            nominalAktif = nominal;
+        let kategoriLabel = 'Wali Kelas';
+        let hargaBulan = 30000;
+        let hargaTahun = 300000;
+        let durasiAktif = 'Bulanan (1 Bulan)';
+        let nominalAktif = 'Rp 30.000';
 
-            // Update tombol aktif
-            document.querySelectorAll('.paket-btn').forEach(btn => {
+        // Atur nominal otomatis berdasarkan role akun yang login
+        if (userRole === 'ADMIN') {
+            kategoriLabel = 'Admin Sekolah';
+            hargaBulan = 150000;
+            hargaTahun = 1500000;
+        } else if (userRole === 'PETUGAS') {
+            kategoriLabel = 'Petugas Absen';
+            hargaBulan = 80000;
+            hargaTahun = 800000;
+        } else {
+            kategoriLabel = 'Wali Kelas';
+            hargaBulan = 30000;
+            hargaTahun = 300000;
+        }
+
+        document.getElementById('badgeRoleText').innerText = kategoriLabel;
+        document.getElementById('hargaBulanText').innerText = 'Rp ' + hargaBulan.toLocaleString('id-ID') + ' / bln';
+        document.getElementById('hargaTahunText').innerText = 'Rp ' + hargaTahun.toLocaleString('id-ID') + ' / thn';
+
+        function formatRupiah(angka) {
+            return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function pilihDurasi(namaDurasi) {
+            durasiAktif = namaDurasi;
+
+            // Update tombol durasi aktif
+            document.querySelectorAll('.durasi-btn').forEach(btn => {
                 btn.classList.remove('border-amber-500/50', 'bg-amber-500/10', 'text-white');
                 btn.classList.add('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
             });
 
-            const activeBtn = namaPaket.includes('Bulanan') ? document.getElementById('btnPaketBulan') : document.getElementById('btnPaketTahun');
+            const activeBtn = namaDurasi.includes('Bulanan') ? document.getElementById('btnDurasiBulan') : document.getElementById('btnDurasiTahun');
             activeBtn.classList.remove('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
             activeBtn.classList.add('border-amber-500/50', 'bg-amber-500/10', 'text-white');
 
-            // Update badge ringkasan
-            document.getElementById('labelRingkasanPaket').innerText = namaPaket.includes('Bulanan') ? 'Bulanan' : 'Tahunan';
+            updateKalkulasi();
+        }
 
-            // Format pesan WhatsApp
-            const pesanWa = `Halo Admin, saya ingin konfirmasi perpanjangan langganan untuk sekolah ${namaSekolahGlobal}.\n\n• Paket: ${paketAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
+        function updateKalkulasi() {
+            let nominalAngka = durasiAktif.includes('Bulanan') ? hargaBulan : hargaTahun;
+            nominalAktif = formatRupiah(nominalAngka);
+
+            // Update ringkasan badge
+            document.getElementById('labelRingkasanPaket').innerText = `${kategoriLabel} - ${durasiAktif.split(' ')[0]}`;
+
+            // Format pesan WhatsApp yang bersih dari kode mentah
+            const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal}.\n\n• Jenis Akun: ${kategoriLabel}\n• Paket: ${durasiAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
             
             const encodedMessage = pesanWa
                 .replace(/ /g, '%20')
@@ -119,8 +155,8 @@
             document.getElementById('waLink').href = `https://wa.me/6282371729760?text=${encodedMessage}`;
         }
 
-        // Inisialisasi awal
-        pilihPaket('Paket Bulanan Sekolah', 'Rp 150.000');
+        // Inisialisasi awal saat halaman dibuka
+        pilihDurasi('Bulanan (1 Bulan)');
     </script>
 </body>
 </html>
