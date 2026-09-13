@@ -12,7 +12,7 @@
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
         
         <!-- Efek Cahaya Latar -->
         <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -23,28 +23,59 @@
 
         <h1 class="text-base font-extrabold uppercase tracking-wider text-white mb-2">Masa Uji Coba Berakhir</h1>
         <p class="text-xs text-slate-400 mb-6 leading-relaxed">
-            Masa aktif penggunaan sistem untuk <strong class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan lakukan perpanjangan langganan untuk melanjutkan akses penuh aplikasi.
+            Masa aktif penggunaan sistem untuk <strong class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih paket langganan dan lakukan konfirmasi pembayaran melalui WhatsApp.
         </p>
 
-        <!-- Informasi Rekening Pembayaran -->
-        <div class="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 text-left text-xs mb-6 space-y-2 font-mono">
-            <div class="text-slate-400 font-sans font-bold mb-1 tracking-wide">METODE PEMBAYARAN MANUAL:</div>
-            <div class="flex justify-between">
-                <span class="text-slate-500">Bank Tujuan:</span> 
-                <strong class="text-slate-200">BCA / 1234567890</strong>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-slate-500">Atas Nama:</span> 
-                <strong class="text-slate-200">Zeeo Digital</strong>
-            </div>
-            <div class="flex justify-between border-t border-slate-800/80 pt-2 text-emerald-400 font-bold">
-                <span>Pilihan Layanan:</span> 
-                <span>Bulanan / Tahunan</span>
+        <!-- PILIHAN LAYANAN / PAKET (DIBUAT BISA DIKLIK / INTERAKTIF) -->
+        <div class="mb-5 text-left">
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">1. Pilih Paket Layanan:</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="pilihPaket('Paket Bulanan (1 Bulan)', 'Rp 150.000')" id="btnPaket1" class="paket-btn border border-amber-500/50 bg-amber-500/10 text-white p-3 rounded-xl text-xs font-semibold text-center transition hover:border-amber-400">
+                    <div class="font-bold text-amber-400">Bulanan</div>
+                    <div class="text-[11px] text-slate-300 mt-0.5">Rp 150.000 / bln</div>
+                </button>
+                <button type="button" onclick="pilihPaket('Paket Tahunan (1 Tahun)', 'Rp 1.500.000')" id="btnPaket2" class="paket-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-xl text-xs font-semibold text-center transition hover:border-slate-700">
+                    <div class="font-bold text-white">Tahunan</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Rp 1.500.000 / thn</div>
+                </button>
             </div>
         </div>
 
-        <!-- Tombol Konfirmasi WhatsApp -->
-        <a href="https://wa.me/6282371729760?text=Halo%20Admin,%20saya%20ingin%20konfirmasi%20pembayaran%20langganan%20aplikasi%20presensi%20untuk%20sekolah%20kami.%20Berikut%20bukti%20transfernya." 
+        <!-- INFORMASI REKENING & E-WALLET MANUAL -->
+        <div class="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 text-left text-xs mb-6 space-y-3 font-mono">
+            <div class="text-amber-400 font-sans font-bold tracking-wide border-b border-slate-800 pb-1.5 flex justify-between items-center">
+                <span>TUJUAN TRANSFER MANUAL:</span>
+                <span id="labelPaketPilihan" class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">Bulanan</span>
+            </div>
+            
+            <div class="space-y-1.5 pt-1">
+                <div class="text-[10px] text-slate-500 font-sans font-bold uppercase">TRANSFER BANK:</div>
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/40">
+                    <span>BRI: <strong class="text-white">1234-01-005678-50-8</strong></span>
+                </div>
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/40">
+                    <span>BNI: <strong class="text-white">0987654321</strong></span>
+                </div>
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/40">
+                    <span>MANDIRI: <strong class="text-white">112-00-9876543-2</strong></span>
+                </div>
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/40">
+                    <span>BSI: <strong class="text-white">7123456789</strong></span>
+                </div>
+            </div>
+
+            <div class="space-y-1.5 pt-2 border-t border-slate-800/80">
+                <div class="text-[10px] text-slate-500 font-sans font-bold uppercase">E-WALLET:</div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 pl-2 text-slate-300">
+                    <div>OVO / DANA: <strong class="text-white">0823-7172-9760</strong></div>
+                    <div>GOPAY / SHOPEEPAY: <strong class="text-white">0823-7172-9760</strong></div>
+                </div>
+                <div class="text-[11px] text-slate-400 pt-1">Atas Nama: <strong class="text-slate-200">Zeeo Digital</strong></div>
+            </div>
+        </div>
+
+        <!-- TOMBOL KONFIRMASI WHATSAPP DINAMIS -->
+        <a id="waLink" href="https://wa.me/6282371729760?text=Halo%2520Admin,%2520saya%2520ingin%2520konfirmasi%2520pembayaran%2520langganan%2520untuk%2520sekolah%2520<%= encodeURIComponent(typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah') %>%2520(Paket%2520Bulanan%2520-%2520Rp%2520150.000).%2520Berikut%2520lampiran%2520bukti%2520transfernya." 
            target="_blank" 
            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3.5 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 mb-3">
             <i class="fa-brands fa-whatsapp text-base"></i> Konfirmasi Pembayaran via WhatsApp
@@ -54,5 +85,28 @@
             Keluar dari Akun (Logout)
         </a>
     </div>
+
+    <script>
+        let namaSekolahGlobal = "<%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah' %>";
+
+        function pilihPaket(namaPaket, nominal) {
+            // Ubah tampilan tombol aktif
+            document.querySelectorAll('.paket-btn').forEach(btn => {
+                btn.classList.remove('border-amber-500/50', 'bg-amber-500/10', 'text-white');
+                btn.classList.add('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
+            });
+
+            const activeBtn = namaPaket.includes('Bulanan') ? document.getElementById('btnPaket1') : document.getElementById('btnPaket2');
+            activeBtn.classList.remove('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
+            activeBtn.classList.add('border-amber-500/50', 'bg-amber-500/10', 'text-white');
+
+            // Update badge info paket
+            document.getElementById('labelPaketPilihan').innerText = namaPaket.includes('Bulanan') ? 'Bulanan' : 'Tahunan';
+
+            // Perbarui link otomatis WhatsApp beserta paket yang dipilih
+            const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal} (${namaPaket} - ${nominal}). Berikut terlampir bukti transfernya.`;
+            document.getElementById('waLink').href = `https://wa.me/6282371729760?text=${encodeURIComponent(pesanWa)}`;
+        }
+    </script>
 </body>
 </html>
