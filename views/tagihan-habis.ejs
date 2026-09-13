@@ -9,40 +9,60 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* Animasi Gerakan Background Halus */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
+            50% { transform: translateY(-30px) translateX(20px) scale(1.1); }
+        }
+        @keyframes floatReverse {
+            0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
+            50% { transform: translateY(25px) translateX(-25px) scale(1.15); }
+        }
+        .animate-float-1 {
+            animation: floatSlow 8s ease-in-out infinite;
+        }
+        .animate-float-2 {
+            animation: floatReverse 10s ease-in-out infinite;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6">
-    <div class="bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-3xl p-6 sm:p-10 max-w-xl w-full shadow-2xl relative overflow-hidden">
-        
-        <!-- Efek Cahaya Latar Estetik -->
-        <div class="absolute -top-32 -right-32 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-x-hidden selection:bg-amber-500 selection:text-slate-950">
+    
+    <!-- BACKGROUND ANIMATION LAYER -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-[100px] animate-float-1"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] animate-float-2"></div>
+    </div>
 
+    <!-- MAIN CONTAINER -->
+    <div class="bg-slate-900/90 border border-slate-800/80 backdrop-blur-2xl rounded-3xl p-6 sm:p-10 max-w-xl w-full shadow-[0_0_60px_rgba(0,0,0,0.9)] relative z-10">
+        
         <!-- Header Peringatan -->
         <div class="text-center relative z-10 mb-6">
-            <div class="w-16 h-16 bg-gradient-to-tr from-amber-500/20 to-amber-400/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl border border-amber-500/30 shadow-inner">
+            <div class="w-16 h-16 bg-gradient-to-tr from-amber-500/20 to-amber-400/5 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl border border-amber-500/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
                 <i class="fa-solid fa-clock-rotate-left"></i>
             </div>
             <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white mb-2">Masa Langganan Berakhir</h1>
             <p class="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
-                Akses sistem presensi untuk <strong id="namaSekolahText" class="text-amber-400 font-semibold"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih jenis akun dan paket langganan untuk mengaktifkan kembali[cite: 3].
+                Akses sistem presensi untuk <strong id="namaSekolahText" class="text-amber-400 font-semibold"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih jenis akun dan paket langganan untuk mengaktifkan kembali.
             </p>
         </div>
 
         <!-- KETERANGAN HAK AKSES PER LEVEL AKUN -->
-        <div class="mb-6 bg-slate-950/80 p-4 rounded-2xl border border-slate-800/80 text-left text-xs text-slate-300 space-y-2 relative z-10">
+        <div class="mb-6 bg-slate-950/90 p-4 rounded-2xl border border-slate-800/80 text-left text-xs text-slate-300 space-y-2 relative z-10 shadow-inner">
             <div class="text-amber-400 font-bold tracking-wide uppercase border-b border-slate-800/80 pb-2 mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-shield-halved text-sm"></i> Panduan Hak Akses & Fitur Akun:
+                <i class="fa-solid fa-shield-halved text-sm text-amber-400"></i> Panduan Hak Akses & Fitur Akun:
             </div>
-            <div class="flex items-start gap-2">
+            <div class="flex items-start gap-2.5">
                 <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
                 <div><strong class="text-white">Wali Kelas:</strong> Akses mandiri dan terbatas khusus untuk mengelola 1 Kelas tertentu.</div>
             </div>
-            <div class="flex items-start gap-2">
+            <div class="flex items-start gap-2.5">
                 <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
                 <div><strong class="text-white">Petugas:</strong> Akses operasional pemindaian (scan) presensi seluruh siswa dalam 1 Sekolah.</div>
             </div>
-            <div class="flex items-start gap-2">
+            <div class="flex items-start gap-2.5">
                 <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
                 <div><strong class="text-white">Admin:</strong> Full akses penuh, bebas membuat & mengelola akun wali kelas instansi.</div>
             </div>
@@ -50,17 +70,17 @@
 
         <!-- PILIHAN KATEGORI AKUN -->
         <div class="mb-5 text-left relative z-10">
-            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">1. Pilih Kategori / Jenis Akun[cite: 3]:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">1. Pilih Kategori / Jenis Akun:</label>
             <div class="grid grid-cols-3 gap-2.5">
-                <button type="button" onclick="pilihKategori('Wali Kelas', 30000, 300000)" id="btnKatWali" class="kat-btn border border-amber-500/50 bg-amber-500/10 text-white p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-amber-400">
+                <button type="button" onclick="pilihKategori('Wali Kelas', 30000, 300000)" id="btnKatWali" class="kat-btn border border-amber-500/50 bg-amber-500/10 text-white p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-amber-400 shadow-sm">
                     <div class="font-bold text-amber-400 text-sm mb-0.5">Wali Kelas</div>
                     <div class="text-[10px] text-slate-400">1 Kelas</div>
                 </button>
-                <button type="button" onclick="pilihKategori('Petugas', 80000, 800000)" id="btnKatPetugas" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-slate-700">
+                <button type="button" onclick="pilihKategori('Petugas', 80000, 800000)" id="btnKatPetugas" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-slate-700 shadow-sm">
                     <div class="font-bold text-white text-sm mb-0.5">Petugas</div>
                     <div class="text-[10px] text-slate-400">1 Sekolah</div>
                 </button>
-                <button type="button" onclick="pilihKategori('Admin', 150000, 1500000)" id="btnKatAdmin" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-slate-700">
+                <button type="button" onclick="pilihKategori('Admin', 150000, 1500000)" id="btnKatAdmin" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-slate-700 shadow-sm">
                     <div class="font-bold text-white text-sm mb-0.5">Admin</div>
                     <div class="text-[10px] text-slate-400">Full Akses</div>
                 </button>
@@ -69,23 +89,23 @@
 
         <!-- PILIHAN DURASI / PAKET -->
         <div class="mb-6 text-left relative z-10">
-            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">2. Pilih Durasi Langganan[cite: 3]:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">2. Pilih Durasi Langganan:</label>
             <div class="grid grid-cols-2 gap-2.5">
-                <button type="button" onclick="pilihDurasi('Bulanan (1 Bulan)')" id="btnDurasiBulan" class="durasi-btn border border-amber-500/50 bg-amber-500/10 text-white p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200">
+                <button type="button" onclick="pilihDurasi('Bulanan (1 Bulan)')" id="btnDurasiBulan" class="durasi-btn border border-amber-500/50 bg-amber-500/10 text-white p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200 shadow-sm">
                     <div class="font-bold text-amber-400 text-sm">Bulanan</div>
                     <div id="hargaBulanText" class="text-[11px] text-slate-300 mt-1">Rp 30.000 / bln</div>
                 </button>
-                <button type="button" onclick="pilihDurasi('Tahunan (1 Tahun)')" id="btnDurasiTahun" class="durasi-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200">
+                <button type="button" onclick="pilihDurasi('Tahunan (1 Tahun)')" id="btnDurasiTahun" class="durasi-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200 shadow-sm">
                     <div class="font-bold text-white text-sm">Tahunan <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded ml-1 font-normal">Hemat</span></div>
                     <div id="hargaTahunText" class="text-[11px] text-slate-400 mt-1">Rp 300.000 / thn</div>
                 </button>
             </div>
         </div>
 
-        <!-- INFORMASI REKENING & E-WALLET MANUAL -->
+        <!-- INFORMASI REKENING & E-WALLET MANUAL (NOMOR REKENING ASLI TETAP AMAN) -->
         <div class="bg-slate-950/90 p-4 sm:p-5 rounded-2xl border border-slate-800/80 text-left text-xs mb-6 space-y-3 relative z-10 font-mono shadow-inner">
             <div class="text-amber-400 font-sans font-bold tracking-wide border-b border-slate-800 pb-2 flex justify-between items-center">
-                <span class="flex items-center gap-1.5"><i class="fa-solid fa-wallet"></i> TUJUAN TRANSFER MANUAL:</span>
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-wallet text-amber-400"></i> TUJUAN TRANSFER MANUAL:</span>
                 <span id="labelRingkasanPaket" class="text-[10px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full font-sans font-semibold">Wali Kelas - Bulanan</span>
             </div>
             
@@ -190,7 +210,7 @@
             // Update ringkasan badge
             document.getElementById('labelRingkasanPaket').innerText = `${kategoriAktif} - ${durasiAktif.split(' ')[0]}`;
 
-            // Format pesan WhatsApp yang bersih dari kode mentah
+            // Format pesan WhatsApp
             const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal}.\n\n• Kategori Akun: ${kategoriAktif}\n• Paket: ${durasiAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
             
             const encodedMessage = pesanWa
