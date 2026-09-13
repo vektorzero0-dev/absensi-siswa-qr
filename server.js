@@ -63,6 +63,23 @@ function requireAuth(allowedRoles = []) {
                 return res.status(403).send("Akses Ditolak: Peran akun Anda (" + currentUser.role + ") tidak memiliki izin untuk halaman ini.");
             }
 
+            // Pengecekan Masa Langganan / Trial untuk non-Super Admin
+            if (currentUser.role !== 'SUPER_ADMIN' && currentUser.sekolah_id) {
+                const schCheck = await pool.query('SELECT status_langganan, expired_date FROM sekolah WHERE id = $1', [currentUser.sekolah_id]);
+                if (schCheck.rows.length > 0) {
+                    const schData = schCheck.rows[0];
+                    const now = new Date();
+                    const expiredDate = schData.expired_date ? new Date(schData.expired_date) : null;
+
+                    // Jika status expired atau melewati batas waktu dan bukan sedang membuka halaman tagihan
+                    if (schData.status_langganan === 'expired' || (expiredDate && now > expiredDate)) {
+                        if (req.path !== '/tagihan-habis' && !req.path.startsWith('/api/')) {
+                            return res.redirect('/tagihan-habis');
+                        }
+                    }
+                }
+            }
+
             next();
         } catch (err) {
             return res.status(500).send("Gagal Memverifikasi Sesi: " + err.message);
@@ -123,12 +140,18 @@ async function initDB() {
                 nama_sekolah VARCHAR(100) NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
                 wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS',
-                cron_alpa_active BOOLEAN DEFAULT TRUE
+                cron_alpa_active BOOLEAN DEFAULT TRUE,
+                status_langganan VARCHAR(20) DEFAULT 'aktif',
+                expired_date TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days'),
+                paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)'
             );
         `);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS';`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS cron_alpa_active BOOLEAN DEFAULT TRUE;`);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS status_langganan VARCHAR(20) DEFAULT 'aktif';`);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS expired_date TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days');`);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)';`);
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS kelas (
@@ -471,6 +494,22 @@ app.get(['/', '/login'], async (req, res) => {
     }
 });
 
+// ROUTE HALAMAN TAGIHAN / HABIS MASA AKTIF
+app.get('/tagihan-habis', async (req, res) => {
+    try {
+        let namaSekolah = 'Sekolah Anda';
+        if (req.session && req.session.userId) {
+            const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [req.session.userId]);
+            if (userRes.rows.length > 0 && userRes.rows[0].sekolah_id) {
+                namaSekolah = await getNamaSekolah(userRes.rows[0].sekolah_id);
+            }
+        }
+        res.render('tagihan-habis', { namaSekolah });
+    } catch (err) {
+        res.render('tagihan-habis', { namaSekolah: 'Sekolah Anda' });
+    }
+});
+
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -602,6 +641,9 @@ app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
             SELECT s.id, s.nama_sekolah, COALESCE(s.is_active, TRUE) AS is_active,
                    COALESCE(s.wa_mode, 'WALI_KELAS') AS wa_mode,
                    COALESCE(s.cron_alpa_active, TRUE) AS cron_alpa_active,
+                   COALESCE(s.status_langganan, 'aktif') AS status_langganan,
+                   COALESCE(s.expired_date, CURRENT_TIMESTAMP + INTERVAL '14 days') AS expired_date,
+                   COALESCE(s.paket, 'Paket Uji Coba (14 Hari)') AS paket,
                    COUNT(DISTINCT k.id) AS total_kelas,
                    COUNT(DISTINCT sis.id) AS total_siswa,
                    COUNT(DISTINCT CASE WHEN u.role != 'SUPER_ADMIN' THEN u.id END) AS total_pengguna
@@ -609,7 +651,7 @@ app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
              LEFT JOIN kelas k ON k.sekolah_id = s.id
              LEFT JOIN siswa sis ON sis.kelas_id = k.id
              LEFT JOIN users u ON u.sekolah_id = s.id
-             GROUP BY s.id, s.nama_sekolah, s.is_active, s.wa_mode, s.cron_alpa_active
+             GROUP BY s.id, s.nama_sekolah, s.is_active, s.wa_mode, s.cron_alpa_active, s.status_langganan, s.expired_date, s.paket
              ORDER BY s.id ASC
         `);
         
@@ -656,7 +698,7 @@ app.post('/api/settings/maintenance', requireAuth(['SUPER_ADMIN']), async (req, 
 });
 
 app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) => {
-    const { nama_sekolah, admin_nama, admin_username, admin_password, wa_mode } = req.body;
+    const { nama_sekolah, admin_nama, admin_username, admin_password, wa_mode, trial_days } = req.body;
     const client = await pool.connect();
     try {
         if (!nama_sekolah || !admin_username || !admin_password) {
@@ -664,9 +706,16 @@ app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) =
         }
 
         const validMode = ['WALI_KELAS', 'PETUGAS', 'ADMIN', 'TANPA_WA'].includes(wa_mode) ? wa_mode : 'WALI_KELAS';
+        const jumlahHariTrial = trial_days ? parseInt(trial_days) : 14;
+        const namaPaketTrial = `Paket Uji Coba (${jumlahHariTrial} Hari)`;
 
         await client.query('BEGIN');
-        const schRes = await client.query('INSERT INTO sekolah (nama_sekolah, is_active, wa_mode, cron_alpa_active) VALUES ($1, TRUE, $2, TRUE) RETURNING id', [nama_sekolah.trim(), validMode]);
+        const schRes = await client.query(`
+            INSERT INTO sekolah (nama_sekolah, is_active, wa_mode, cron_alpa_active, status_langganan, expired_date, paket) 
+            VALUES ($1, TRUE, $2, TRUE, 'aktif', CURRENT_TIMESTAMP + ($3 || ' days')::INTERVAL, $4) 
+            RETURNING id
+        `, [nama_sekolah.trim(), validMode, jumlahHariTrial, namaPaketTrial]);
+        
         const newSekolahId = schRes.rows[0].id;
 
         await client.query(`
@@ -681,6 +730,64 @@ app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) =
         return res.status(500).send("Gagal menambah sekolah baru: " + err.message);
     } finally {
         client.release();
+    }
+});
+
+// ENDPOINT SUPER ADMIN: PERPANJANG / ATUR LANGGANAN & TRIAL SEKOLAH
+app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async (req, res) => {
+    try {
+        const { sekolahId, jumlahHari, actionType } = req.body;
+
+        if (!sekolahId || !jumlahHari) {
+            return res.status(400).json({ success: false, message: "ID Sekolah atau durasi hari tidak lengkap." });
+        }
+
+        const hari = parseInt(jumlahHari);
+        let namaPaket = '';
+        let statusLanggananBaru = 'aktif';
+
+        if (actionType === 'selesai_trial' || hari === 0) {
+            statusLanggananBaru = 'expired';
+            namaPaket = 'Uji Coba Selesai (Expired)';
+            await pool.query(`
+                UPDATE sekolah 
+                SET status_langganan = 'expired', 
+                    paket = $1,
+                    expired_date = CURRENT_TIMESTAMP
+                WHERE id = $2
+            `, [namaPaket, parseInt(sekolahId)]);
+
+            return res.json({
+                success: true,
+                message: `Masa uji coba sekolah berhasil dihentikan/diselesaikan sekarang!`
+            });
+        }
+
+        if (hari >= 365) {
+            namaPaket = 'Paket Tahunan (1 Tahun)';
+        } else if (hari === 30 || hari === 31) {
+            namaPaket = 'Paket Bulanan (1 Bulan)';
+        } else {
+            namaPaket = `Paket Uji Coba (${hari} Hari)`;
+        }
+
+        await pool.query(`
+            UPDATE sekolah 
+            SET status_langganan = 'aktif', 
+                paket = $1,
+                expired_date = CASE 
+                    WHEN expired_date > CURRENT_TIMESTAMP THEN expired_date + ($2 || ' days')::INTERVAL 
+                    ELSE CURRENT_TIMESTAMP + ($2 || ' days')::INTERVAL 
+                END
+            WHERE id = $3
+        `, [namaPaket, hari, parseInt(sekolahId)]);
+
+        return res.json({
+            success: true,
+            message: `Masa langganan/uji coba berhasil diatur selama ${hari} hari!`
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal memperpanjang langganan: " + err.message });
     }
 });
 
@@ -1716,7 +1823,7 @@ app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
                                     `Yth. Bapak/Ibu Orang Tua / Wali Murid dari *${item.nama}*,\n\n` +
                                     `${pesan}\n\n` +
                                     `_________________________________________\n` +
-                                    `_Pesan broadcast otomatis dikirim via Sistem Presensi SD._`;
+                                    `_Pesan otomatis dikirim via Sistem Presensi SD._`;
 
                 await activeClient.sendMessage(targetJid, { text: formatPesan });
                 suksesCount++;
