@@ -27,22 +27,22 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Efek Denyut Lebay */
+        /* Efek Denyut Lebay di Background */
         @keyframes pulseGlow {
             0%, 100% { opacity: 0.4; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(1.25); }
         }
         .animate-glow { animation: pulseGlow 3s infinite ease-in-out; }
 
-        /* Animasi Ikon Panik Berputar & Bergeser */
-        @keyframes panikMode {
-            0% { transform: rotate(0deg) translateY(0); }
-            25% { transform: rotate(-15deg) translateY(-10px); }
-            50% { transform: rotate(15deg) translateY(0); }
-            75% { transform: rotate(-10deg) translateY(-5px); }
-            100% { transform: rotate(0deg) translateY(0); }
+        /* Animasi Khusus Ikon (Kotaknya Anteng, Isinya Doang yang Goyang Panik) */
+        @keyframes shakeIcon {
+            0%, 100% { transform: rotate(0deg); }
+            20% { transform: rotate(-8deg) scale(1.05); }
+            40% { transform: rotate(8deg) scale(1.05); }
+            60% { transform: rotate(-5deg); }
+            80% { transform: rotate(5deg); }
         }
-        .animate-panik { animation: panikMode 1.5s ease-in-out infinite; }
+        .animate-panik { animation: shakeIcon 0.8s ease-in-out infinite; }
     </style>
 </head>
 <body class="bg-light-animated text-white min-h-screen flex items-center justify-center p-4 relative overflow-hidden select-none">
@@ -51,18 +51,18 @@
     <div class="absolute -top-32 -left-32 w-[25rem] h-[25rem] bg-pink-500/30 rounded-full blur-[100px] pointer-events-none animate-glow"></div>
     <div class="absolute -bottom-32 -right-32 w-[25rem] h-[25rem] bg-yellow-400/30 rounded-full blur-[100px] pointer-events-none animate-glow" style="animation-delay: 1.5s;"></div>
 
-    <!-- Kartu Konten Utama (Glassmorphism Gokil) -->
-    <div class="max-w-md w-full text-center bg-slate-900/90 p-8 sm:p-10 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl relative z-10 transition-all duration-300">
+    <!-- Kartu Konten Utama (Mantap di Tengah, Gak Geser-geser) -->
+    <div class="max-w-md w-full text-center bg-slate-900/90 p-8 sm:p-10 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl relative z-10">
         
         <!-- Badge Status Kocak -->
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs font-extrabold tracking-wider uppercase mb-6 shadow-inner">
             <i class="fa-solid fa-mug-hot animate-bounce"></i> Admin Lagi Ngopi & Ngoding
         </div>
 
-        <!-- Ikon Panik Bergerak -->
-        <div class="relative w-24 h-24 mx-auto mb-6">
-            <div class="w-full h-full bg-gradient-to-tr from-yellow-500 to-pink-500 text-slate-950 rounded-3xl flex items-center justify-center border-2 border-white/40 shadow-2xl animate-panik">
-                <i class="fa-solid fa-laptop-code text-4xl"></i>
+        <!-- Ikon Panik Goyang (Kotak Luar Diam, Ikon Dalam yang Panik) -->
+        <div class="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+            <div class="w-full h-full bg-gradient-to-tr from-yellow-500 to-pink-500 text-slate-950 rounded-3xl flex items-center justify-center border-2 border-white/40 shadow-2xl">
+                <i class="fa-solid fa-laptop-code text-4xl animate-panik"></i>
             </div>
             <!-- Bintang Kejut Berdenyut -->
             <span class="absolute -top-2 -right-2 flex h-6 w-6">
@@ -82,7 +82,7 @@
         </p>
 
         <!-- Kotak Alasan Absurd (Bisa diganti-ganti lewat tombol) -->
-        <div class="bg-slate-800/80 rounded-2xl p-4 border border-white/10 mb-6 shadow-inner relative group cursor-pointer" onclick="randomizeMaintenanceText()" title="Klik buat ganti alasan!">
+        <div class="bg-slate-800/80 rounded-2xl p-4 border border-white/10 mb-6 shadow-inner cursor-pointer hover:bg-slate-800 transition" onclick="randomizeMaintenanceText()" title="Klik buat ganti alasan!">
             <p id="quote-text" class="text-xs sm:text-sm text-yellow-300 font-semibold leading-relaxed">
                 <i class="fa-solid fa-face-laugh-wink mr-1"></i> Memuat alasan ngeles...
             </p>
