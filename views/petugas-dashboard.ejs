@@ -405,8 +405,7 @@
                 <div>
                     <label class="block text-[11px] font-medium text-slate-600 mb-1">Pilih Tahun</label>
                     <select name="tahun" id="selectTahun" required class="w-full text-xs p-2.5 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600">
-                        <option value="2026" selected>2026</option>
-                        <option value="2025">2025</option>
+                        <!-- Tahun akan otomatis di-generate oleh skrip JavaScript tanpa batas -->
                     </select>
                 </div>
 
@@ -922,6 +921,32 @@
     <script>
         const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
 
+        /* GENERATE TAHUN OTOMATIS TANPA BATAS KEDEPAN */
+        document.addEventListener("DOMContentLoaded", function() {
+            const selectTahun = document.getElementById('selectTahun');
+            if (selectTahun) {
+                const tahunMulai = 2025; // Tahun awal sistem
+                const tahunSekarang = new Date().getFullYear();
+                const tahunBatas = Math.max(tahunSekarang + 20, 2045); // Otomatis bertambah tanpa batas kaku
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const tahunTerpilih = urlParams.get('tahun') || tahunSekarang;
+
+                selectTahun.innerHTML = '';
+
+                for (let t = tahunMulai; t <= tahunBatas; t++) {
+                    const option = document.createElement('option');
+                    option.value = t;
+                    option.textContent = t;
+                    if (t == tahunTerpilih) {
+                        option.selected = true;
+                    }
+                    selectTahun.appendChild(option);
+                }
+            }
+            cekStatusWA();
+        });
+
         function prosesRestorePetugas(e) {
             e.preventDefault();
             const fileInput = document.getElementById('inputBackupJsonPetugas');
@@ -1383,7 +1408,6 @@
         });
 
         setInterval(cekStatusWA, 3000);
-        document.addEventListener("DOMContentLoaded", cekStatusWA);
     </script>
 
     <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
