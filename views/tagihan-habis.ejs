@@ -3,88 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masa Aktif Berakhir - Perpanjangan Langganan</title>
+    <title>Verifikasi Langganan Instansi - Sistem Presensi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* Animasi Gerakan Dinamis di Background */
-        @keyframes blobMotion1 {
+        /* Animasi Gerakan Background Elegan Khas Akademik */
+        @keyframes floatOrb1 {
             0%, 100% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(50px, -70px) scale(1.2); }
-            66% { transform: translate(-30px, 40px) scale(0.9); }
+            50% { transform: translate(60px, -80px) scale(1.25); }
         }
-        @keyframes blobMotion2 {
+        @keyframes floatOrb2 {
             0%, 100% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(-60px, 50px) scale(1.15); }
-            66% { transform: translate(40px, -50px) scale(0.95); }
+            50% { transform: translate(-70px, 60px) scale(1.2); }
         }
         @keyframes pulseGlow {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.08); }
         }
 
-        .animate-blob-1 {
-            animation: blobMotion1 12s ease-in-out infinite;
+        .animate-orb-1 {
+            animation: floatOrb1 10s ease-in-out infinite;
         }
-        .animate-blob-2 {
-            animation: blobMotion2 15s ease-in-out infinite;
+        .animate-orb-2 {
+            animation: floatOrb2 14s ease-in-out infinite;
         }
         .animate-pulse-glow {
-            animation: pulseGlow 4s ease-in-out infinite;
+            animation: pulseGlow 6s ease-in-out infinite;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-x-hidden selection:bg-amber-500 selection:text-slate-950">
+<body class="bg-[#030712] text-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-x-hidden selection:bg-blue-500 selection:text-white">
     
-    <!-- BACKGROUND ANIMATION LAYER DENGAN WARNA DINAMIS -->
+    <!-- BACKGROUND ANIMATION LAYER (GERAKAN DINAMIS) -->
     <div class="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div class="absolute top-10 left-10 sm:top-20 sm:left-20 w-80 h-80 sm:w-[450px] sm:h-[450px] bg-amber-500/15 rounded-full blur-[120px] animate-blob-1"></div>
-        <div class="absolute bottom-10 right-10 sm:bottom-20 sm:right-20 w-80 h-80 sm:w-[450px] sm:h-[450px] bg-emerald-500/15 rounded-full blur-[120px] animate-blob-2"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-[140px] animate-pulse-glow"></div>
+        <div class="absolute top-10 left-10 sm:top-20 sm:left-20 w-96 h-96 bg-blue-600/20 rounded-full blur-[130px] animate-orb-1"></div>
+        <div class="absolute bottom-10 right-10 sm:bottom-20 sm:right-20 w-96 h-96 bg-amber-500/15 rounded-full blur-[130px] animate-orb-2"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[150px] animate-pulse-glow"></div>
     </div>
 
-    <!-- MAIN CONTAINER DENGAN EFEK KARTU GLASSMORPHISM PREMIUM -->
-    <div class="bg-slate-900/85 border border-slate-700/60 backdrop-blur-2xl rounded-3xl p-6 sm:p-10 max-w-xl w-full shadow-[0_0_80px_rgba(0,0,0,0.95)] relative z-10 transition-all duration-300">
+    <!-- KARTU UTAMA DENGAN EFEK GLASSMORPHISM AKADEMIK -->
+    <div class="bg-slate-900/90 border border-blue-500/30 backdrop-blur-2xl rounded-3xl p-6 sm:p-10 max-w-xl w-full shadow-[0_0_90px_rgba(15,23,42,0.95)] relative z-10">
         
-        <!-- Header Peringatan -->
+        <!-- Header Akademik -->
         <div class="text-center relative z-10 mb-6">
-            <div class="w-18 h-18 sm:w-20 sm:h-20 bg-gradient-to-tr from-amber-500/25 to-amber-400/5 text-amber-400 rounded-3xl flex items-center justify-center mx-auto mb-4 text-2xl sm:text-3xl border border-amber-500/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15)] transform hover:scale-105 transition duration-300">
-                <i class="fa-solid fa-clock-rotate-left"></i>
+            <div class="w-20 h-20 bg-gradient-to-tr from-blue-600/30 to-amber-500/20 text-blue-400 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl border border-blue-400/40 shadow-[inset_0_2px_6px_rgba(255,255,255,0.2)]">
+                <i class="fa-solid fa-graduation-cap"></i>
             </div>
-            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white mb-2">Masa Langganan Berakhir</h1>
-            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
-                Akses sistem presensi untuk <strong id="namaSekolahText" class="text-amber-400 font-semibold"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih jenis akun dan paket langganan untuk mengaktifkan kembali[cite: 3].
+            <div class="inline-block bg-blue-500/10 text-blue-400 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-blue-500/20 mb-2">
+                Pusat Kontrol Instansi
+            </div>
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white mb-2">Masa Aktif Sistem Berakhir</h1>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+                Layanan presensi digital untuk <strong id="namaSekolahText" class="text-amber-400 font-semibold"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan perbarui langganan institusi Anda.
             </p>
         </div>
 
-        <!-- KETERANGAN HAK AKSES PER LEVEL AKUN -->
-        <div class="mb-6 bg-slate-950/90 p-4 sm:p-5 rounded-2xl border border-slate-800 text-left text-xs text-slate-300 space-y-2.5 relative z-10 shadow-inner">
-            <div class="text-amber-400 font-bold tracking-wide uppercase border-b border-slate-800 pb-2 mb-2 flex items-center gap-2 text-[11px]">
-                <i class="fa-solid fa-shield-halved text-sm text-amber-400"></i> Panduan Hak Akses & Fitur Akun:
+        <!-- PANDUAN HAK AKSES INSTITUSI -->
+        <div class="mb-6 bg-slate-950/95 p-4 sm:p-5 rounded-2xl border border-blue-900/50 text-left text-xs text-slate-300 space-y-2.5 relative z-10 shadow-inner">
+            <div class="text-blue-400 font-bold tracking-wide uppercase border-b border-slate-800 pb-2 mb-2 flex items-center gap-2 text-[11px]">
+                <i class="fa-solid fa-id-badge text-sm text-amber-400"></i> Ketentuan Akses Level Akun:
             </div>
-            <div class="flex items-start gap-2.5 transition hover:text-white">
-                <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
-                <div><strong class="text-white">Wali Kelas:</strong> Akses mandiri dan terbatas khusus untuk mengelola 1 Kelas tertentu.</div>
+            <div class="flex items-start gap-2.5">
+                <i class="fa-solid fa-circle-check text-blue-400 mt-0.5"></i>
+                <div><strong class="text-white">Wali Kelas:</strong> Hak akses operasional khusus dan terbatas untuk mengelola 1 Kelas akademik.</div>
             </div>
-            <div class="flex items-start gap-2.5 transition hover:text-white">
-                <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
-                <div><strong class="text-white">Petugas:</strong> Akses operasional pemindaian (scan) presensi seluruh siswa dalam 1 Sekolah.</div>
+            <div class="flex items-start gap-2.5">
+                <i class="fa-solid fa-circle-check text-blue-400 mt-0.5"></i>
+                <div><strong class="text-white">Petugas:</strong> Hak akses pemindaian presensi harian seluruh peserta didik dalam instansi.</div>
             </div>
-            <div class="flex items-start gap-2.5 transition hover:text-white">
-                <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
-                <div><strong class="text-white">Admin:</strong> Full akses penuh, bebas membuat & mengelola akun wali kelas instansi.</div>
+            <div class="flex items-start gap-2.5">
+                <i class="fa-solid fa-circle-check text-blue-400 mt-0.5"></i>
+                <div><strong class="text-white">Admin:</strong> Hak akses kontrol penuh (Full Control), bebas membuat & mengelola akun wali kelas.</div>
             </div>
         </div>
 
         <!-- PILIHAN KATEGORI AKUN -->
         <div class="mb-5 text-left relative z-10">
-            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">1. Pilih Kategori / Jenis Akun[cite: 3]:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">1. Pilih Kategori / Jenis Akun:</label>
             <div class="grid grid-cols-3 gap-2.5">
-                <button type="button" onclick="pilihKategori('Wali Kelas', 30000, 300000)" id="btnKatWali" class="kat-btn border border-amber-500/60 bg-amber-500/15 text-white p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:scale-[1.02] shadow-sm">
-                    <div class="font-bold text-amber-400 text-sm mb-0.5">Wali Kelas</div>
+                <button type="button" onclick="pilihKategori('Wali Kelas', 30000, 300000)" id="btnKatWali" class="kat-btn border border-blue-500/60 bg-blue-500/15 text-white p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:scale-[1.02] shadow-sm">
+                    <div class="font-bold text-blue-400 text-sm mb-0.5">Wali Kelas</div>
                     <div class="text-[10px] text-slate-300">1 Kelas</div>
                 </button>
                 <button type="button" onclick="pilihKategori('Petugas', 80000, 800000)" id="btnKatPetugas" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-slate-700 hover:scale-[1.02] shadow-sm">
@@ -100,10 +101,10 @@
 
         <!-- PILIHAN DURASI / PAKET -->
         <div class="mb-6 text-left relative z-10">
-            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">2. Pilih Durasi Langganan[cite: 3]:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">2. Pilih Skema Durasi:</label>
             <div class="grid grid-cols-2 gap-2.5">
-                <button type="button" onclick="pilihDurasi('Bulanan (1 Bulan)')" id="btnDurasiBulan" class="durasi-btn border border-amber-500/60 bg-amber-500/15 text-white p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:scale-[1.02] shadow-sm">
-                    <div class="font-bold text-amber-400 text-sm">Bulanan</div>
+                <button type="button" onclick="pilihDurasi('Bulanan (1 Bulan)')" id="btnDurasiBulan" class="durasi-btn border border-blue-500/60 bg-blue-500/15 text-white p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:scale-[1.02] shadow-sm">
+                    <div class="font-bold text-blue-400 text-sm">Bulanan</div>
                     <div id="hargaBulanText" class="text-[11px] text-slate-300 mt-1">Rp 30.000 / bln</div>
                 </button>
                 <button type="button" onclick="pilihDurasi('Tahunan (1 Tahun)')" id="btnDurasiTahun" class="durasi-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3.5 rounded-2xl text-xs font-semibold text-center transition-all duration-200 hover:border-slate-700 hover:scale-[1.02] shadow-sm">
@@ -113,25 +114,25 @@
             </div>
         </div>
 
-        <!-- INFORMASI REKENING & E-WALLET MANUAL (NOMOR REKENING ASLI DIPERTAHANKAN) -->
+        <!-- INFORMASI REKENING & E-WALLET MANUAL (NOMOR REKENING ASLI ANDA AMAN) -->
         <div class="bg-slate-950/95 p-4 sm:p-5 rounded-2xl border border-slate-800 text-left text-xs mb-6 space-y-3 relative z-10 font-mono shadow-inner">
             <div class="text-amber-400 font-sans font-bold tracking-wide border-b border-slate-800 pb-2 flex justify-between items-center">
-                <span class="flex items-center gap-1.5"><i class="fa-solid fa-wallet text-amber-400"></i> TUJUAN TRANSFER MANUAL:</span>
-                <span id="labelRingkasanPaket" class="text-[10px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full font-sans font-semibold border border-amber-500/30">Wali Kelas - Bulanan</span>
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-university text-amber-400"></i> REKENING RESMI PEMBAYARAN:</span>
+                <span id="labelRingkasanPaket" class="text-[10px] bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full font-sans font-semibold border border-blue-500/30">Wali Kelas - Bulanan</span>
             </div>
             
             <div class="space-y-1.5 pt-1">
-                <div class="text-[10px] text-slate-500 font-sans font-bold uppercase tracking-wider">TRANSFER BANK:</div>
-                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/60 py-0.5 hover:bg-slate-9olog/50 transition">
+                <div class="text-[10px] text-slate-500 font-sans font-bold uppercase tracking-wider">TRANSFER BANK INSTITUSI:</div>
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-blue-500/60 py-0.5">
                     <span>BRI: <strong class="text-white select-all font-bold tracking-wider">8135-01-021552-53-4</strong></span>
                 </div>
-                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/60 py-0.5 hover:bg-slate-9olog/50 transition">
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-blue-500/60 py-0.5">
                     <span>BNI: <strong class="text-white select-all font-bold tracking-wider">2035660724</strong></span>
                 </div>
-                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/60 py-0.5 hover:bg-slate-9olog/50 transition">
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-blue-500/60 py-0.5">
                     <span>MANDIRI: <strong class="text-white select-all font-bold tracking-wider">114-00-3250062-4</strong></span>
                 </div>
-                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-emerald-500/60 py-0.5 hover:bg-slate-9olog/50 transition">
+                <div class="flex justify-between items-center text-slate-300 pl-2 border-l-2 border-blue-500/60 py-0.5">
                     <span>BSI: <strong class="text-white select-all font-bold tracking-wider">7276102804</strong></span>
                 </div>
             </div>
@@ -156,7 +157,7 @@
 
             <div class="text-center pt-1">
                 <a href="/logout" class="text-slate-500 hover:text-slate-300 text-xs transition inline-flex items-center gap-1.5">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar dari Akun (Logout)
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar dari Sesi Instansi (Logout)
                 </a>
             </div>
         </div>
@@ -182,14 +183,14 @@
 
             // Update tombol kategori aktif
             document.querySelectorAll('.kat-btn').forEach(btn => {
-                btn.classList.remove('border-amber-500/60', 'bg-amber-500/15', 'text-white');
+                btn.classList.remove('border-blue-500/60', 'bg-blue-500/15', 'text-white');
                 btn.classList.add('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
             });
 
             const targetBtn = namaKat === 'Wali Kelas' ? 'btnKatWali' : (namaKat === 'Petugas' ? 'btnKatPetugas' : 'btnKatAdmin');
             const activeBtn = document.getElementById(targetBtn);
             activeBtn.classList.remove('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
-            activeBtn.classList.add('border-amber-500/60', 'bg-amber-500/15', 'text-white');
+            activeBtn.classList.add('border-blue-500/60', 'bg-blue-500/15', 'text-white');
 
             // Update teks label harga di tombol durasi
             document.getElementById('hargaBulanText').innerText = formatRupiah(hargaBulan) + ' / bln';
@@ -203,13 +204,13 @@
 
             // Update tombol durasi aktif
             document.querySelectorAll('.durasi-btn').forEach(btn => {
-                btn.classList.remove('border-amber-500/60', 'bg-amber-500/15', 'text-white');
+                btn.classList.remove('border-blue-500/60', 'bg-blue-500/15', 'text-white');
                 btn.classList.add('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
             });
 
             const activeBtn = namaDurasi.includes('Bulanan') ? document.getElementById('btnDurasiBulan') : document.getElementById('btnDurasiTahun');
             activeBtn.classList.remove('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
-            activeBtn.classList.add('border-amber-500/60', 'bg-amber-500/15', 'text-white');
+            activeBtn.classList.add('border-blue-500/60', 'bg-blue-500/15', 'text-white');
 
             updateKalkulasi();
         }
@@ -222,7 +223,7 @@
             document.getElementById('labelRingkasanPaket').innerText = `${kategoriAktif} - ${durasiAktif.split(' ')[0]}`;
 
             // Format pesan WhatsApp
-            const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal}.\n\n• Kategori Akun: ${kategoriAktif}\n• Paket: ${durasiAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
+            const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk instansi ${namaSekolahGlobal}.\n\n• Kategori Akun: ${kategoriAktif}\n• Paket: ${durasiAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
             
             const encodedMessage = pesanWa
                 .replace(/ /g, '%20')
