@@ -738,7 +738,7 @@ app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async 
     try {
         const { sekolahId, jumlahHari, actionType } = req.body;
 
-        if (!sekolahId || !jumlahHari) {
+        if (!sekolahId || jumlahHari === undefined || jumlahHari === null || jumlahHari === '') {
             return res.status(400).json({ success: false, message: "ID Sekolah atau durasi hari tidak lengkap." });
         }
 
