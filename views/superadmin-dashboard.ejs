@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts: Orbitron & Share Tech Mono -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
@@ -79,6 +81,7 @@
         .sidebar-menu {
             padding: 15px 10px;
             flex-grow: 1;
+            overflow-y: auto;
         }
 
         .sidebar-item {
@@ -379,7 +382,7 @@
                 <i class="bi bi-database-down text-info"></i> BACKUP & RESTORE
             </a>
             <a href="#sec-sekolah" class="sidebar-item active">
-                <i class="bi bi-buildings"></i> DAFTAR SEKOLAH
+                <i class="bi bi-buildings"></i> DAFTAR SEKOLAH & KLIEN
             </a>
             <a href="#sec-form-sekolah" class="sidebar-item">
                 <i class="bi bi-building-add"></i> TAMBAH SEKOLAH
@@ -411,7 +414,7 @@
                         <i class="bi bi-list fs-5"></i>
                     </button>
                     <span class="navbar-brand mb-0 h1 cyber-font text-info fs-6">
-                        <i class="bi bi-gear-wide-connected"></i> CONTROL CENTER
+                        <i class="bi bi-gear-wide-connected"></i> CONTROL CENTER & SUBSCRIPTION
                     </span>
                 </div>
                 <div class="d-flex align-items-center">
@@ -614,14 +617,14 @@
 
                 </div>
 
-                <!-- KOLOM KANAN (TABEL MONITORING & KENDALI DATA) -->
+                <!-- KOLOM KANAN (TABEL MONITORING, KENDALI DATA & LANGGANAN) -->
                 <div class="col-lg-8">
                     
-                    <!-- Tabel Sekolah -->
+                    <!-- Tabel Sekolah & Langganan -->
                     <div class="cyber-card mb-4" id="sec-sekolah">
                         <div class="cyber-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fs-6"><i class="bi bi-buildings"></i> DAFTAR SEKOLAH</h5>
-                            <span class="badge badge-cyber-success">SYSTEM ONLINE</span>
+                            <h5 class="mb-0 fs-6"><i class="bi bi-buildings"></i> DAFTAR SEKOLAH & STATUS LANGGANAN</h5>
+                            <span class="badge badge-cyber-success">SUBSCRIPTION CONTROL</span>
                         </div>
                         <div class="card-body p-0 table-responsive">
                             <table class="table table-cyber align-middle mb-0">
@@ -629,10 +632,11 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>NAMA SEKOLAH</th>
-                                        <th>PENGGUNA</th>
+                                        <th>STATUS LANGGANAN</th>
+                                        <th>BERAKHIR PADA</th>
                                         <th>PENGIRIM WA</th>
                                         <th>STATUS</th>
-                                        <th class="text-center">KENDALI</th>
+                                        <th class="text-center">KENDALI & PERPANJANG</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -645,7 +649,14 @@
                                                     <br><small class="text-danger">[DITANGGUHKAN]</small>
                                                 <% } %>
                                             </td>
-                                            <td><%= s.total_pengguna %> Acc</td>
+                                            <td>
+                                                <% if (s.status_langganan === 'aktif') { %>
+                                                    <span class="badge badge-cyber-success">AKTIF</span>
+                                                <% } else { %>
+                                                    <span class="badge badge-cyber-danger">EXPIRED</span>
+                                                <% } %>
+                                            </td>
+                                            <td class="font-mono text-info text-xs"><%= s.expired_date || '-' %></td>
                                             
                                             <td>
                                                 <form action="/api/sekolah/wa-mode/<%= s.id %>" method="POST">
@@ -666,8 +677,16 @@
                                                 <% } %>
                                             </td>
                                             <td class="text-center">
+                                                <!-- TOMBOL PERPANJANG LANGGANAN DI SINI -->
+                                                <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 30)" class="btn btn-cyber-success btn-sm me-1" title="Perpanjang Langganan 1 Bulan">
+                                                    <i class="fa-solid fa-check"></i> +1 Bln
+                                                </button>
+                                                <button type="button" onclick="aktifkanLangganan('<%= s.id %>', 365)" class="btn btn-cyber-blue btn-sm me-1" title="Perpanjang Langganan 1 Tahun">
+                                                    <i class="fa-solid fa-calendar-days"></i> +1 Thn
+                                                </button>
+
                                                 <a href="/superadmin/switch-sekolah/<%= s.id %>" class="btn btn-cyber-warning btn-sm me-1" title="Masuk & Kelola Penuh Sekolah Ini">
-                                                    <i class="bi bi-door-open-fill"></i> KELOLA
+                                                    <i class="bi bi-door-open-fill"></i>
                                                 </a>
 
                                                 <button class="btn btn-cyber-primary btn-sm me-1" onclick="lihatSekolah('<%= s.id %>')" title="Intip Detail Ringkas">
@@ -676,7 +695,7 @@
 
                                                 <!-- TOMBOL UJI CRON ALPA SPESIFIK SEKOLAH -->
                                                 <button class="btn btn-cyber-blue btn-sm me-1" onclick="ujiCronSekolah('<%= s.id %>', '<%= s.nama_sekolah %>')" title="Uji Cron Alpa Sekolah Ini">
-                                                    <i class="bi bi-lightning-charge-fill"></i> UJI CRON
+                                                    <i class="bi bi-lightning-charge-fill"></i>
                                                 </button>
 
                                                 <form action="/api/sekolah/toggle-status/<%= s.id %>" method="POST" class="d-inline">
@@ -900,6 +919,31 @@
         const modalSekolahBs = new bootstrap.Modal(document.getElementById('modalSekolah'));
         const modalAdminBs = new bootstrap.Modal(document.getElementById('modalAdmin'));
         const modalLihatBs = new bootstrap.Modal(document.getElementById('modalLihatSekolah'));
+
+        // FUNGSI AKTIFKAN / PERPANJANG LANGGANAN KLIEN
+        function aktifkanLangganan(sekolahId, jumlahHari) {
+            const labelWaktu = jumlahHari >= 365 ? '1 Tahun' : '1 Bulan';
+            if (!confirm(`Konfirmasi pembayaran diterima via WhatsApp?\n\nPerpanjang masa aktif sekolah ini selama ${labelWaktu} (${jumlahHari} hari)?`)) return;
+
+            fetch('/api/admin/perpanjang-langganan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sekolahId, jumlahHari })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Gagal: ' + (data.message || 'Terjadi kesalahan sistem'));
+                }
+            })
+            .catch(err => {
+                console.error('Error Langganan:', err);
+                alert('Gagal terhubung ke server!');
+            });
+        }
 
         // Sakelar Maintenance Mode
         function setMaintenance(status) {
