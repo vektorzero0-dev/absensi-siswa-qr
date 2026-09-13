@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pemeliharaan Sistem - Sistem Presensi Digital Sekolah</title>
+    <title>Lagi Modifikasi Mesin Waktu - Sistem Presensi</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome & Font Google -->
@@ -14,11 +14,11 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        /* Animasi Latar Belakang Gradasi Halus */
+        /* Animasi Latar Belakang Gokil Berubah Warna */
         .bg-light-animated {
-            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #022c22, #09090b);
+            background: linear-gradient(-45deg, #ff007f, #7928ca, #4f46e5, #06b6d4);
             background-size: 400% 400%;
-            animation: gradientBG 12s ease infinite;
+            animation: gradientBG 8s ease infinite;
         }
 
         @keyframes gradientBG {
@@ -27,110 +27,112 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Efek Denyut Kilau Elegan */
+        /* Efek Denyut Lebay */
         @keyframes pulseGlow {
-            0%, 100% { opacity: 0.2; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.15); }
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.25); }
         }
-        .animate-glow { animation: pulseGlow 6s infinite ease-in-out; }
+        .animate-glow { animation: pulseGlow 3s infinite ease-in-out; }
 
-        /* Floating Icon Animasi */
-        @keyframes floatSlow {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+        /* Animasi Ikon Panik Berputar & Bergeser */
+        @keyframes panikMode {
+            0% { transform: rotate(0deg) translateY(0); }
+            25% { transform: rotate(-15deg) translateY(-10px); }
+            50% { transform: rotate(15deg) translateY(0); }
+            75% { transform: rotate(-10deg) translateY(-5px); }
+            100% { transform: rotate(0deg) translateY(0); }
         }
-        .animate-float { animation: floatSlow 4s ease-in-out infinite; }
+        .animate-panik { animation: panikMode 1.5s ease-in-out infinite; }
     </style>
 </head>
-<body class="bg-light-animated text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-hidden select-none">
+<body class="bg-light-animated text-white min-h-screen flex items-center justify-center p-4 relative overflow-hidden select-none">
     
-    <!-- Ornamen Lingkaran Glow Elegan di Latar Belakang -->
-    <div class="absolute -top-32 -left-32 w-[30rem] h-[30rem] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none animate-glow"></div>
-    <div class="absolute -bottom-32 -right-32 w-[30rem] h-[30rem] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none animate-glow" style="animation-delay: 3s;"></div>
+    <!-- Ornamen Lingkaran Glow Warnanya Asyik -->
+    <div class="absolute -top-32 -left-32 w-[25rem] h-[25rem] bg-pink-500/30 rounded-full blur-[100px] pointer-events-none animate-glow"></div>
+    <div class="absolute -bottom-32 -right-32 w-[25rem] h-[25rem] bg-yellow-400/30 rounded-full blur-[100px] pointer-events-none animate-glow" style="animation-delay: 1.5s;"></div>
 
-    <!-- Kartu Konten Utama -->
-    <div class="max-w-lg w-full text-center bg-slate-900/85 p-8 sm:p-10 rounded-3xl border border-slate-800/80 shadow-2xl backdrop-blur-2xl relative z-10 transition-all duration-300">
+    <!-- Kartu Konten Utama (Glassmorphism Gokil) -->
+    <div class="max-w-md w-full text-center bg-slate-900/90 p-8 sm:p-10 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl relative z-10 transition-all duration-300">
         
-        <!-- Header Instansi / Sistem -->
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-bold tracking-wider uppercase mb-6">
-            <i class="fa-solid fa-shield-halved"></i> Pemeliharaan Terjadwal
+        <!-- Badge Status Kocak -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs font-extrabold tracking-wider uppercase mb-6 shadow-inner">
+            <i class="fa-solid fa-mug-hot animate-bounce"></i> Admin Lagi Ngopi & Ngoding
         </div>
 
-        <!-- Ikon Animasi Utama (Gaya Profesional Pendidikan) -->
-        <div class="relative w-24 h-24 mx-auto mb-6 animate-float">
-            <div class="w-full h-full bg-gradient-to-tr from-emerald-600/20 to-blue-600/20 text-emerald-400 rounded-3xl flex items-center justify-center border border-emerald-500/30 shadow-xl shadow-emerald-950/50">
-                <i class="fa-solid fa-screwdriver-wrench text-4xl"></i>
+        <!-- Ikon Panik Bergerak -->
+        <div class="relative w-24 h-24 mx-auto mb-6">
+            <div class="w-full h-full bg-gradient-to-tr from-yellow-500 to-pink-500 text-slate-950 rounded-3xl flex items-center justify-center border-2 border-white/40 shadow-2xl animate-panik">
+                <i class="fa-solid fa-laptop-code text-4xl"></i>
             </div>
-            <!-- Titik Notifikasi Berdenyut -->
-            <span class="absolute -top-1 -right-1 flex h-4 w-4">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+            <!-- Bintang Kejut Berdenyut -->
+            <span class="absolute -top-2 -right-2 flex h-6 w-6">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-6 w-6 bg-yellow-500 items-center justify-center text-[10px] font-bold text-slate-950">⚠️</span>
             </span>
         </div>
         
-        <!-- Judul Formal & Informatif -->
-        <h1 id="maintenance-title" class="text-lg sm:text-xl font-extrabold tracking-wide text-slate-100 mb-3 uppercase">
-            Pembaruan & Optimalisasi Sistem Presensi
+        <!-- Judul Gokil -->
+        <h1 id="maintenance-title" class="text-xl sm:text-2xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-400 mb-3 uppercase">
+            Sistem Lagi 'Masuk Angin'!
         </h1>
         
-        <!-- Pesan Penjelasan Ramah & Profesional -->
+        <!-- Pesan Penjelasan Lucu -->
         <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 px-1">
-            Mohon maaf atas ketidaknyamanannya. Saat ini tim pengembang sedang melakukan peningkatan performa infrastruktur server dan basis data demi kenyamanan layanan presensi warga satuan pendidikan.
+            Tenang cuy, data siswa aman sentosa kok! Server-nya lagi diajak kompromi sama tim pengembang biar gak ngadat pas, silakan tarik napas sebentar ya.
         </p>
 
-        <!-- Kotak Informasi Dinamis / Pesan Motivasi Akademik -->
-        <div class="bg-slate-800/70 rounded-2xl p-3.5 border border-slate-700/60 mb-8 shadow-inner">
-            <p id="quote-text" class="text-[11px] sm:text-xs text-emerald-300/90 font-medium leading-relaxed">
-                <i class="fa-solid fa-circle-info mr-1"></i> Memuat informasi pemeliharaan...
+        <!-- Kotak Alasan Absurd (Bisa diganti-ganti lewat tombol) -->
+        <div class="bg-slate-800/80 rounded-2xl p-4 border border-white/10 mb-6 shadow-inner relative group cursor-pointer" onclick="randomizeMaintenanceText()" title="Klik buat ganti alasan!">
+            <p id="quote-text" class="text-xs sm:text-sm text-yellow-300 font-semibold leading-relaxed">
+                <i class="fa-solid fa-face-laugh-wink mr-1"></i> Memuat alasan ngeles...
             </p>
+            <span class="text-[10px] text-slate-400 mt-2 block italic">👆 (Klik kotak ini buat ganti alasan halu admin)</span>
         </div>
 
-        <!-- Tombol Aksi Navigasi -->
-        <div class="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-center gap-3">
-            <button onclick="location.reload()" class="w-full sm:w-flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-3 rounded-xl transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30">
-                <i class="fa-solid fa-rotate-right"></i> Periksa Status Sistem
+        <!-- Tombol Aksi Interaktif -->
+        <div class="pt-2 flex flex-col gap-3">
+            <button onclick="location.reload()" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3 rounded-2xl transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30">
+                <i class="fa-solid fa-arrows-rotate"></i> Coba Bangunin Server-nya Lagi!
             </button>
-            <a href="/login" class="w-full sm:w-flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs px-5 py-3 rounded-xl transition-all duration-200 border border-slate-700 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-user-shield text-slate-400"></i> Portal Masuk Admin
+            <a href="/login" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-5 py-2.5 rounded-xl transition-all duration-200 border border-slate-700 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-key text-pink-400"></i> Nyelonong Masuk Login Admin
             </a>
         </div>
 
-        <!-- Catatan Kaki Profesional -->
-        <div class="mt-8 pt-4 border-t border-slate-800/50 flex flex-col items-center gap-1 text-[10px] text-slate-400">
-            <p class="font-medium text-slate-400">Sistem Presensi Digital & Manajemen Rombel Terpadu</p>
-            <p>© <%= new Date().getFullYear() %> Satuan Pendidikan • Layanan Berjalan Normal Segera</p>
+        <!-- Footer Santai -->
+        <div class="mt-6 pt-4 border-t border-white/10 flex flex-col items-center gap-1 text-[10px] text-slate-400">
+            <p class="font-medium">Sistem Presensi Digital Paling Santuy Se-Indonesia</p>
+            <p>© <%= new Date().getFullYear() %> • Dibikin pake ❤️ dan kopi saset</p>
         </div>
     </div>
 
-    <!-- SKRIP KATA-KATA DINAMIS & PROFESIONAL -->
+    <!-- SKRIP KATA-KATA KOCAK DINAMIS -->
     <script>
-        // Koleksi Informasi Pemeliharaan & Kutipan Akademik yang Elegan
         const quotes = [
-            '💡 "Optimalisasi server berkala ini dilakukan untuk memastikan akurasi data kehadiran real-time."',
-            '💡 "Peningkatan sistem keamanan data siswa & rekapitulasi bulanan sedang diproses."',
-            '💡 "Terima kasih atas kesabaran Bapak/Ibu Guru serta Wali Murid selama proses pemeliharaan berlangsung."',
-            '💡 "Pembaruan modul enkripsi presensi QR Code guna mempercepat proses pemindaian harian."',
-            '💡 "Sistem akan segera kembali aktif dengan performa terbaiknya. Silakan muat ulang halaman secara berkala."'
+            '☕ "Admin lagi nyari kabel LAN yang dimakan kucing tetangga. Mohon bersabar."',
+            '🤖 "Kecerdasan buatan sistem lagi cuti, diganti sama kecerdasan buatan warung kopi."',
+            '🚀 "Lagi nambahin fitur jet pribadi buat siswa yang sering kesiangan kesekolah."',
+            '💾 "Database-nya lagi masuk angin, dikerok dulu pake koin 500-an."',
+            '🎯 "Sabar ya ges ya, nge-fix bug itu mirip nyari jarum di tumpukan jerami tapi jeraminya dibakar."',
+            '🍕 "Tukang kodingnya lagi disogok pakai pizza dulu biar servernya mau nyala lagi."'
         ];
 
-        // Koleksi Judul Alternatif Formal & Menarik
         const titles = [
-            "Pembaruan & Optimalisasi Sistem Presensi",
-            "Pemeliharaan Infrastruktur Server Sekolah",
-            "Peningkatan Performa Layanan Digital",
-            "Pemeliharaan Terjadwal Basis Data"
+            "Sistem Lagi 'Masuk Angin'!",
+            "Server-nya Lagi Ngopi Dulu Bro!",
+            "Lagi Renovasi Warung Kopi Digital!",
+            "Sistem Istirahat Sejenak, Jangan Panik!"
         ];
 
-        // Fungsi Memilih Teks Secara Acak Saat Dimuat
         function randomizeMaintenanceText() {
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
             const randomTitle = titles[Math.floor(Math.random() * titles.length)];
 
-            document.getElementById('quote-text').innerHTML = `<i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i> ${randomQuote}`;
+            document.getElementById('quote-text').innerHTML = `<i class="fa-solid fa-face-laugh-wink mr-1 text-yellow-400"></i> ${randomQuote}`;
             document.getElementById('maintenance-title').innerText = randomTitle;
         }
 
-        // Jalankan saat halaman dirender
+        // Jalankan saat pertama kali buka
         window.addEventListener('DOMContentLoaded', randomizeMaintenanceText);
     </script>
 </body>
