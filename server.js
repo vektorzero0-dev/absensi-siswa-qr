@@ -499,9 +499,20 @@ app.get('/tagihan-habis', async (req, res) => {
     try {
         let namaSekolah = 'Sekolah Anda';
         if (req.session && req.session.userId) {
-            const userRes = await pool.query('SELECT sekolah_id FROM users WHERE id = $1', [req.session.userId]);
-            if (userRes.rows.length > 0 && userRes.rows[0].sekolah_id) {
-                namaSekolah = await getNamaSekolah(userRes.rows[0].sekolah_id);
+            // Melacak sekolah_id dari tabel users atau melalui relasi kelas_id
+            const userRes = await pool.query(`
+                SELECT u.sekolah_id, k.sekolah_id AS kelas_sekolah_id 
+                FROM users u 
+                LEFT JOIN kelas k ON u.kelas_id = k.id 
+                WHERE u.id = $1
+            `, [req.session.userId]);
+
+            if (userRes.rows.length > 0) {
+                const row = userRes.rows[0];
+                const targetSekolahId = row.sekolah_id || row.kelas_sekolah_id;
+                if (targetSekolahId) {
+                    namaSekolah = await getNamaSekolah(targetSekolahId);
+                }
             }
         }
         res.render('tagihan-habis', { namaSekolah });
@@ -566,7 +577,6 @@ app.get('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
-
 // ----------------- DASBOR PETUGAS ABSEN ----------------- //
 app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
