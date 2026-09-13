@@ -71,7 +71,6 @@ function requireAuth(allowedRoles = []) {
                     const now = new Date();
                     const expiredDate = schData.expired_date ? new Date(schData.expired_date) : null;
 
-                    // Jika status bukan 'spesial' dan expired atau melewati batas waktu dan bukan sedang membuka halaman tagihan
                     if (schData.status_langganan !== 'spesial' && (schData.status_langganan === 'expired' || (expiredDate && now > expiredDate))) {
                         if (req.path !== '/tagihan-habis' && !req.path.startsWith('/api/')) {
                             return res.redirect('/tagihan-habis');
@@ -499,7 +498,6 @@ app.get('/tagihan-habis', async (req, res) => {
     try {
         let namaSekolah = 'Sekolah Anda';
         if (req.session && req.session.userId) {
-            // Melacak sekolah_id dari tabel users atau melalui relasi kelas_id
             const userRes = await pool.query(`
                 SELECT u.sekolah_id, k.sekolah_id AS kelas_sekolah_id 
                 FROM users u 
@@ -577,6 +575,7 @@ app.get('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
+
 // ----------------- DASBOR PETUGAS ABSEN ----------------- //
 app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
@@ -635,7 +634,8 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
             absensiHariIni: absensiFormatted,
             userId: user.id,
             statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[user.id] || 'BELUM_TERHUBUNG'),
-            qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[user.id] || null)
+            qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[user.id] || null),
+            pengirimWA: waMode // Menyertakan mode pengirim WA yang diatur Super Admin ke Petugas
         });
     } catch (err) {
         res.status(500).send("Kesalahan Database Petugas: " + err.message);
@@ -743,7 +743,6 @@ app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) =
     }
 });
 
-// ENDPOINT SUPER ADMIN: PERPANJANG / ATUR LANGGANAN & TRIAL SEKOLAH
 app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async (req, res) => {
     try {
         const { sekolahId, jumlahHari, actionType } = req.body;
@@ -801,7 +800,6 @@ app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async 
     }
 });
 
-// ENDPOINT SUPER ADMIN: SET BASIC SPESIAL (SELAMANYA / TANPA LANGGANAN)
 app.post('/api/admin/set-spesial', requireAuth(['SUPER_ADMIN']), async (req, res) => {
     try {
         const { sekolahId } = req.body;
@@ -1209,8 +1207,6 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             ORDER BY a.waktu DESC
         `, [userSekolahId, bulanPilihan]);
 
-        const settingsAll = await pool.query("SELECT key, value FROM settings WHERE key = 'pengirim_wa'");
-        let pengirimWA = settingsAll.rows.length > 0 ? settingsAll.rows[0].value : 'ADMIN';
         let namaSekolah = await getNamaSekolah(userSekolahId);
 
         const absensiFormatted = absensiHariIniRes.rows.map(row => {
@@ -1238,7 +1234,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             cronAlpaActive: cronAlpaActive,
             statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[currentUser.id] || 'BELUM_TERHUBUNG'),
             qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[currentUser.id] || null),
-            pengirimWA: pengirimWA,
+            pengirimWA: waMode, // Mengirimkan mode pengirim WA yang diatur Super Admin ke Dasbor Admin
             namaSekolah: namaSekolah
         });
     } catch (err) {
@@ -1247,20 +1243,6 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
 });
 
 // ----------------- ENDPOINT SETTINGS & CETAK KARTU ----------------- //
-app.post('/api/settings/pengirim-wa', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
-    const { pengirim_wa } = req.body;
-    try {
-        await pool.query(
-            `INSERT INTO settings (key, value) VALUES ('pengirim_wa', $1)
-             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-            [pengirim_wa]
-        );
-        return res.redirect('/admin');
-    } catch (err) {
-        return res.status(500).send("Gagal menyimpan pengaturan: " + err.message);
-    }
-});
-
 app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
     const { nama_sekolah } = req.body;
     try {
@@ -1278,7 +1260,6 @@ app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), asyn
     }
 });
 
-// ROUTE TOGGLE CRON ALPA OLEH ADMIN SEKOLAH
 app.post('/api/settings/toggle-cron', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -1432,6 +1413,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             cronAlpaActive: cronAlpaActive,
             statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[userRaw.id] || 'BELUM_TERHUBUNG'),
             qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[userRaw.id] || null),
+            pengirimWA: waMode, // Menyertakan mode pengirim WA yang diatur Super Admin ke Wali Kelas
             namaSekolah
         });
     } catch (err) {
