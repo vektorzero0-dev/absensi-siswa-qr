@@ -12,7 +12,7 @@
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-center shadow-2xl relative overflow-hidden">
         
         <!-- Efek Cahaya Latar -->
         <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -23,21 +23,36 @@
 
         <h1 class="text-base font-extrabold uppercase tracking-wider text-white mb-2">Masa Uji Coba / Langganan Berakhir</h1>
         <p class="text-xs text-slate-400 mb-5 leading-relaxed">
-            Masa aktif penggunaan sistem untuk <strong id="namaSekolahText" class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. 
-            Paket di bawah ini otomatis disesuaikan dengan jenis akun Anda (<strong class="text-amber-400" id="badgeRoleText"></strong>).
+            Masa aktif penggunaan sistem untuk <strong id="namaSekolahText" class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan pilih kategori akun dan paket langganan Anda di bawah ini:
         </p>
 
-        <!-- PILIHAN DURASI / PAKET (OTOMATIS SESUAI LEVEL AKUN) -->
+        <!-- PILIHAN KATEGORI AKUN -->
+        <div class="mb-4 text-left">
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">1. Pilih Kategori / Jenis Akun:</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="pilihKategori('Wali Kelas', 30000, 300000)" id="btnKatWali" class="kat-btn border border-amber-500/50 bg-amber-500/10 text-white p-2.5 rounded-xl text-xs font-semibold text-center transition">
+                    <div class="font-bold text-amber-400">Wali Kelas</div>
+                </button>
+                <button type="button" onclick="pilihKategori('Petugas', 80000, 800000)" id="btnKatPetugas" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-2.5 rounded-xl text-xs font-semibold text-center transition">
+                    <div class="font-bold text-white">Petugas</div>
+                </button>
+                <button type="button" onclick="pilihKategori('Admin', 150000, 1500000)" id="btnKatAdmin" class="kat-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-2.5 rounded-xl text-xs font-semibold text-center transition">
+                    <div class="font-bold text-white">Admin</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- PILIHAN DURASI / PAKET -->
         <div class="mb-5 text-left">
-            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Pilih Durasi Langganan:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">2. Pilih Durasi Langganan:</label>
             <div class="grid grid-cols-2 gap-2">
                 <button type="button" onclick="pilihDurasi('Bulanan (1 Bulan)')" id="btnDurasiBulan" class="durasi-btn border border-amber-500/50 bg-amber-500/10 text-white p-3 rounded-xl text-xs font-semibold text-center transition">
                     <div class="font-bold text-amber-400">Bulanan</div>
-                    <div id="hargaBulanText" class="text-[11px] text-slate-300 mt-0.5">Rp 0 / bln</div>
+                    <div id="hargaBulanText" class="text-[11px] text-slate-300 mt-0.5">Rp 30.000 / bln</div>
                 </button>
                 <button type="button" onclick="pilihDurasi('Tahunan (1 Tahun)')" id="btnDurasiTahun" class="durasi-btn border border-slate-800 bg-slate-950/60 text-slate-400 p-3 rounded-xl text-xs font-semibold text-center transition">
                     <div class="font-bold text-white">Tahunan</div>
-                    <div id="hargaTahunText" class="text-[11px] text-slate-400 mt-0.5">Rp 0 / thn</div>
+                    <div id="hargaTahunText" class="text-[11px] text-slate-400 mt-0.5">Rp 300.000 / thn</div>
                 </button>
             </div>
         </div>
@@ -46,7 +61,7 @@
         <div class="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 text-left text-xs mb-6 space-y-3 font-mono">
             <div class="text-amber-400 font-sans font-bold tracking-wide border-b border-slate-800 pb-1.5 flex justify-between items-center">
                 <span>TUJUAN TRANSFER MANUAL:</span>
-                <span id="labelRingkasanPaket" class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">Bulanan</span>
+                <span id="labelRingkasanPaket" class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">Wali Kelas - Bulanan</span>
             </div>
             
             <div class="space-y-1.5 pt-1">
@@ -87,37 +102,39 @@
     </div>
 
     <script>
-        // Menerima data role dari backend EJS secara dinamis
-        let userRole = "<%= typeof userRole !== 'undefined' ? userRole : 'WALI_KELAS' %>";
         let namaSekolahGlobal = document.getElementById('namaSekolahText').innerText.trim();
-
-        let kategoriLabel = 'Wali Kelas';
-        let hargaBulan = 30000;
-        let hargaTahun = 300000;
+        
+        let kategoriAktif = 'Wali Kelas';
+        let hargaBulanAktif = 30000;
+        let hargaTahunAktif = 300000;
         let durasiAktif = 'Bulanan (1 Bulan)';
         let nominalAktif = 'Rp 30.000';
 
-        // Atur nominal otomatis berdasarkan role akun yang login
-        if (userRole === 'ADMIN') {
-            kategoriLabel = 'Admin Sekolah';
-            hargaBulan = 150000;
-            hargaTahun = 1500000;
-        } else if (userRole === 'PETUGAS') {
-            kategoriLabel = 'Petugas Absen';
-            hargaBulan = 80000;
-            hargaTahun = 800000;
-        } else {
-            kategoriLabel = 'Wali Kelas';
-            hargaBulan = 30000;
-            hargaTahun = 300000;
-        }
-
-        document.getElementById('badgeRoleText').innerText = kategoriLabel;
-        document.getElementById('hargaBulanText').innerText = 'Rp ' + hargaBulan.toLocaleString('id-ID') + ' / bln';
-        document.getElementById('hargaTahunText').innerText = 'Rp ' + hargaTahun.toLocaleString('id-ID') + ' / thn';
-
         function formatRupiah(angka) {
             return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function pilihKategori(namaKat, hargaBulan, hargaTahun) {
+            kategoriAktif = namaKat;
+            hargaBulanAktif = hargaBulan;
+            hargaTahunAktif = hargaTahun;
+
+            // Update tombol kategori aktif
+            document.querySelectorAll('.kat-btn').forEach(btn => {
+                btn.classList.remove('border-amber-500/50', 'bg-amber-500/10', 'text-white');
+                btn.classList.add('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
+            });
+
+            const targetBtn = namaKat === 'Wali Kelas' ? 'btnKatWali' : (namaKat === 'Petugas' ? 'btnKatPetugas' : 'btnKatAdmin');
+            const activeBtn = document.getElementById(targetBtn);
+            activeBtn.classList.remove('border-slate-800', 'bg-slate-950/60', 'text-slate-400');
+            activeBtn.classList.add('border-amber-500/50', 'bg-amber-500/10', 'text-white');
+
+            // Update teks label harga di tombol durasi
+            document.getElementById('hargaBulanText').innerText = formatRupiah(hargaBulan) + ' / bln';
+            document.getElementById('hargaTahunText').innerText = formatRupiah(hargaTahun) + ' / thn';
+
+            updateKalkulasi();
         }
 
         function pilihDurasi(namaDurasi) {
@@ -137,14 +154,14 @@
         }
 
         function updateKalkulasi() {
-            let nominalAngka = durasiAktif.includes('Bulanan') ? hargaBulan : hargaTahun;
+            let nominalAngka = durasiAktif.includes('Bulanan') ? hargaBulanAktif : hargaTahunAktif;
             nominalAktif = formatRupiah(nominalAngka);
 
             // Update ringkasan badge
-            document.getElementById('labelRingkasanPaket').innerText = `${kategoriLabel} - ${durasiAktif.split(' ')[0]}`;
+            document.getElementById('labelRingkasanPaket').innerText = `${kategoriAktif} - ${durasiAktif.split(' ')[0]}`;
 
             // Format pesan WhatsApp yang bersih dari kode mentah
-            const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal}.\n\n• Jenis Akun: ${kategoriLabel}\n• Paket: ${durasiAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
+            const pesanWa = `Halo Admin, saya ingin konfirmasi pembayaran langganan untuk sekolah ${namaSekolahGlobal}.\n\n• Kategori Akun: ${kategoriAktif}\n• Paket: ${durasiAktif}\n• Nominal: ${nominalAktif}\n\nBerikut terlampir bukti transfernya ke AHMAD MISBAHUL MUNIR.`;
             
             const encodedMessage = pesanWa
                 .replace(/ /g, '%20')
@@ -156,7 +173,7 @@
         }
 
         // Inisialisasi awal saat halaman dibuka
-        pilihDurasi('Bulanan (1 Bulan)');
+        pilihKategori('Wali Kelas', 30000, 300000);
     </script>
 </body>
 </html>
