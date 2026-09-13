@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masa Uji Coba / Langganan Berakhir</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden">
+        
+        <!-- Efek Cahaya Latar -->
+        <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl border border-amber-500/30 shadow-inner">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+
+        <h1 class="text-base font-extrabold uppercase tracking-wider text-white mb-2">Masa Uji Coba Berakhir</h1>
+        <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+            Masa aktif penggunaan sistem untuk <strong class="text-white"><%= typeof namaSekolah !== 'undefined' ? namaSekolah : 'Sekolah Anda' %></strong> telah kedaluwarsa. Silakan lakukan perpanjangan langganan untuk melanjutkan akses penuh aplikasi.
+        </p>
+
+        <!-- Informasi Rekening Pembayaran -->
+        <div class="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 text-left text-xs mb-6 space-y-2 font-mono">
+            <div class="text-slate-400 font-sans font-bold mb-1 tracking-wide">METODE PEMBAYARAN MANUAL:</div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">Bank Tujuan:</span> 
+                <strong class="text-slate-200">BCA / 1234567890</strong>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">Atas Nama:</span> 
+                <strong class="text-slate-200">Zeeo Digital</strong>
+            </div>
+            <div class="flex justify-between border-t border-slate-800/80 pt-2 text-emerald-400 font-bold">
+                <span>Pilihan Layanan:</span> 
+                <span>Bulanan / Tahunan</span>
+            </div>
+        </div>
+
+        <!-- Tombol Konfirmasi WhatsApp -->
+        <a href="https://wa.me/6282371729760?text=Halo%20Admin,%20saya%20ingin%20konfirmasi%20pembayaran%20langganan%20aplikasi%20presensi%20untuk%20sekolah%20kami.%20Berikut%20bukti%20transfernya." 
+           target="_blank" 
+           class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3.5 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 mb-3">
+            <i class="fa-brands fa-whatsapp text-base"></i> Konfirmasi Pembayaran via WhatsApp
+        </a>
+
+        <a href="/logout" class="text-slate-500 hover:text-slate-300 text-[11px] underline transition">
+            Keluar dari Akun (Logout)
+        </a>
+    </div>
+</body>
+</html>
