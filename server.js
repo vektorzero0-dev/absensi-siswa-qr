@@ -2008,9 +2008,17 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
                         `_Pesan otomatis dikirim via Sistem Presensi SD._`;
             }
 
-            waClient.sendMessage(formattedJid, { text: pesan })
-                .then(() => console.log(`✅ [WA] Notifikasi ${tipeAbsen} terkirim ke ${phone}`))
-                .catch(e => console.error("❌ [WA Error] Gagal Mengirim WA:", e.message));
+            // PERBAIKAN: Kirim sinyal presence dulu agar enkripsi & socket stabil (mencegah "Menunggu pesan ini")
+            try {
+                await waClient.presenceSubscribe(formattedJid);
+                await waClient.sendPresenceUpdate('composing', formattedJid);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Jeda 1 detik agar sinkron
+
+                await waClient.sendMessage(formattedJid, { text: pesan });
+                console.log(`✅ [WA] Notifikasi ${tipeAbsen} terkirim ke ${phone}`);
+            } catch (e) {
+                console.error("❌ [WA Error] Gagal Mengirim WA:", e.message);
+            }
 
             statusWA = `Notifikasi WA (${tipeAbsen}) Berhasil Dikirimkan ke Wali Murid ✅`;
         }
