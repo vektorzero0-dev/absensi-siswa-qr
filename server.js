@@ -141,7 +141,7 @@ async function initDB() {
                 wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS',
                 cron_alpa_active BOOLEAN DEFAULT TRUE,
                 status_langganan VARCHAR(20) DEFAULT 'aktif',
-                expired_date TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days'),
+                expired_date TIMESTAMP DEFAULT (timezone('Asia/Jakarta', NOW()) + INTERVAL '14 days'),
                 paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)'
             );
         `);
@@ -149,7 +149,7 @@ async function initDB() {
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS wa_mode VARCHAR(20) DEFAULT 'WALI_KELAS';`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS cron_alpa_active BOOLEAN DEFAULT TRUE;`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS status_langganan VARCHAR(20) DEFAULT 'aktif';`);
-        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS expired_date TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days');`);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS expired_date TIMESTAMP DEFAULT (timezone('Asia/Jakarta', NOW()) + INTERVAL '14 days');`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)';`);
 
         await pool.query(`
@@ -188,7 +188,7 @@ async function initDB() {
             CREATE TABLE IF NOT EXISTS absensi (
                 id SERIAL PRIMARY KEY,
                 siswa_id INT REFERENCES siswa(id) ON DELETE CASCADE,
-                waktu TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                waktu TIMESTAMP DEFAULT timezone('Asia/Jakarta', NOW()),
                 status VARCHAR(20) DEFAULT 'HADIR',
                 scanned_by INT,
                 tipe VARCHAR(10) DEFAULT 'MASUK'
@@ -287,10 +287,10 @@ async function getNamaSekolah(sekolahId = null) {
 
 async function generateQRDataURL(text) {
     try {
-        if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        if (!text) return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
         return await QRCode.toDataURL(text.toString());
     } catch (err) {
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORTH5CYII=';
     }
 }
 
@@ -609,7 +609,7 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
@@ -652,7 +652,7 @@ app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
                    COALESCE(s.wa_mode, 'WALI_KELAS') AS wa_mode,
                    COALESCE(s.cron_alpa_active, TRUE) AS cron_alpa_active,
                    COALESCE(s.status_langganan, 'aktif') AS status_langganan,
-                   COALESCE(s.expired_date, CURRENT_TIMESTAMP + INTERVAL '14 days') AS expired_date,
+                   COALESCE(s.expired_date, timezone('Asia/Jakarta', NOW()) + INTERVAL '14 days') AS expired_date,
                    COALESCE(s.paket, 'Paket Uji Coba (14 Hari)') AS paket,
                    COUNT(DISTINCT k.id) AS total_kelas,
                    COUNT(DISTINCT sis.id) AS total_siswa,
@@ -722,7 +722,7 @@ app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) =
         await client.query('BEGIN');
         const schRes = await client.query(`
             INSERT INTO sekolah (nama_sekolah, is_active, wa_mode, cron_alpa_active, status_langganan, expired_date, paket) 
-            VALUES ($1, TRUE, $2, TRUE, 'aktif', CURRENT_TIMESTAMP + ($3 || ' days')::INTERVAL, $4) 
+            VALUES ($1, TRUE, $2, TRUE, 'aktif', timezone('Asia/Jakarta', NOW()) + ($3 || ' days')::INTERVAL, $4) 
             RETURNING id
         `, [nama_sekolah.trim(), validMode, jumlahHariTrial, namaPaketTrial]);
         
@@ -762,7 +762,7 @@ app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async 
                 UPDATE sekolah 
                 SET status_langganan = 'expired', 
                     paket = $1,
-                    expired_date = CURRENT_TIMESTAMP
+                    expired_date = timezone('Asia/Jakarta', NOW())
                 WHERE id = $2
             `, [namaPaket, parseInt(sekolahId)]);
 
@@ -785,8 +785,8 @@ app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async 
             SET status_langganan = 'aktif', 
                 paket = $1,
                 expired_date = CASE 
-                    WHEN expired_date > CURRENT_TIMESTAMP THEN expired_date + ($2 || ' days')::INTERVAL 
-                    ELSE CURRENT_TIMESTAMP + ($2 || ' days')::INTERVAL 
+                    WHEN expired_date > timezone('Asia/Jakarta', NOW()) THEN expired_date + ($2 || ' days')::INTERVAL 
+                    ELSE timezone('Asia/Jakarta', NOW()) + ($2 || ' days')::INTERVAL 
                 END
             WHERE id = $3
         `, [namaPaket, hari, parseInt(sekolahId)]);
@@ -1191,7 +1191,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
@@ -1361,7 +1361,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
         `;
         const queryParamsHarian = [userSekolahId];
 
@@ -1415,7 +1415,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             cronAlpaActive: cronAlpaActive,
             statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[userRaw.id] || 'BELUM_TERHUBUNG'),
             qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[userRaw.id] || null),
-            pengirimWA: waMode, // Disinkronkan dengan variabel pengirimWA di EJS Wali Kelas
+            pengirimWA: waMode,
             namaSekolah
         });
     } catch (err) {
@@ -1935,7 +1935,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             const cekAbsenHariIni = await pool.query(`
                 SELECT id FROM absensi 
                 WHERE siswa_id = $1 
-                  AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+                  AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
             `, [siswa.id]);
 
             tipeAbsen = cekAbsenHariIni.rows.length > 0 ? 'PULANG' : 'MASUK';
@@ -1950,7 +1950,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
 
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
-             VALUES ($1, 'HADIR', $2, $3, CURRENT_TIMESTAMP)`,
+             VALUES ($1, 'HADIR', $2, $3, timezone('Asia/Jakarta', NOW()))`,
             [siswa.id, scannedByUserId, tipeAbsen]
         );
 
@@ -2008,11 +2008,11 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
                         `_Pesan otomatis dikirim via Sistem Presensi SD._`;
             }
 
-            // PERBAIKAN: Kirim sinyal presence dulu agar enkripsi & socket stabil (mencegah "Menunggu pesan ini")
+            // PERBAIKAN: Kirim sinyal presence dulu agar enkripsi & socket stabil
             try {
                 await waClient.presenceSubscribe(formattedJid);
                 await waClient.sendPresenceUpdate('composing', formattedJid);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Jeda 1 detik agar sinkron
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
                 await waClient.sendMessage(formattedJid, { text: pesan });
                 console.log(`✅ [WA] Notifikasi ${tipeAbsen} terkirim ke ${phone}`);
@@ -2079,19 +2079,19 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
             WHERE siswa_id = $1 
-              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
         `, [siswa.id]);
 
         if (cekAbsen.rows.length > 0) {
             await pool.query(`
                 UPDATE absensi 
-                SET status = $1, tipe = $1, scanned_by = $2 
+                SET status = $1, tipe = $1, scanned_by = $2, waktu = timezone('Asia/Jakarta', NOW())
                 WHERE id = $3
             `, [statusUpper, scannedByUserId, cekAbsen.rows[0].id]);
         } else {
             await pool.query(`
                 INSERT INTO absensi (siswa_id, status, tipe, scanned_by, waktu) 
-                VALUES ($1, $2, $2, $3, CURRENT_TIMESTAMP)
+                VALUES ($1, $2, $2, $3, timezone('Asia/Jakarta', NOW()))
             `, [siswa.id, statusUpper, scannedByUserId]);
         }
 
@@ -2165,19 +2165,19 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
             WHERE siswa_id = $1 
-              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
         `, [siswa.id]);
 
         if (cekAbsen.rows.length > 0) {
             await pool.query(`
                 UPDATE absensi 
-                SET status = 'HADIR', tipe = 'MASUK', scanned_by = $1 
+                SET status = 'HADIR', tipe = 'MASUK', scanned_by = $1, waktu = timezone('Asia/Jakarta', NOW())
                 WHERE id = $2
             `, [scannedByUserId, cekAbsen.rows[0].id]);
         } else {
             await pool.query(`
                 INSERT INTO absensi (siswa_id, status, tipe, scanned_by, waktu) 
-                VALUES ($1, 'HADIR', 'MASUK', $2, CURRENT_TIMESTAMP)
+                VALUES ($1, 'HADIR', 'MASUK', $2, timezone('Asia/Jakarta', NOW()))
             `, [siswa.id, scannedByUserId]);
         }
 
@@ -2617,7 +2617,7 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
                   AND s.id NOT IN (
                     SELECT DISTINCT siswa_id 
                     FROM absensi 
-                    WHERE TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+                    WHERE TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(timezone('Asia/Jakarta', NOW()), 'YYYY-MM-DD')
                 )
             `;
 
@@ -2633,7 +2633,7 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
                 try {
                     await pool.query(
                         `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
-                         VALUES ($1, 'ALPA', 'ALPA', CURRENT_TIMESTAMP)`,
+                         VALUES ($1, 'ALPA', 'ALPA', timezone('Asia/Jakarta', NOW()))`,
                         [siswa.id]
                     );
                     totalSiswaDiAlpakan++;
