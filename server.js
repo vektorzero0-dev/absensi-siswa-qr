@@ -3,7 +3,7 @@ const session = require('express-session');
 const path = require('path');
 const pino = require('pino');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { DisconnectReason, fetchLatestBaileysVersion, initAuthCreds, BufferJSON, proto } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 const fs = require('fs');
@@ -203,6 +203,15 @@ async function initDB() {
                 value VARCHAR(255)
             );
         `);
+
+        // Tabel Penampung Sesi WhatsApp di Database Neon (Agar Sesi Abadi)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS wa_sessions (
+                id VARCHAR(255) PRIMARY KEY,
+                data TEXT NOT NULL
+            );
+        `);
+
         await pool.query(`
             INSERT INTO settings (key, value) 
             VALUES ('nama_sekolah', 'NAMA SEKOLAH BELUM DIATUR')
@@ -234,7 +243,7 @@ async function initDB() {
             ON CONFLICT (username) DO NOTHING;
         `, [currentSekolahId]);
 
-        console.log("✅ Database Multi-Tenant Initialized: Data Aman & Multi-Sekolah Siap!");
+        console.log("✅ Database Multi-Tenant & WA Sessions Initialized: Data & Sesi WA Aman di Neon!");[cite: 5]
         
         autoRestoreWASessions();
     } catch (err) {
@@ -249,21 +258,18 @@ const waStatus = {};
 const pairingCodes = {};
 const reconnectTimers = {};
 
+// ----------------- AUTO-RESTORE SESI WA DARI DATABASE NEON ----------------- //
 async function autoRestoreWASessions() {
-    const authFolder = path.join(__dirname, 'auth_sessions');
-    if (!fs.existsSync(authFolder)) return;
-
     try {
-        const folders = fs.readdirSync(authFolder);
-        for (const folder of folders) {
-            if (folder.startsWith('user_')) {
-                const userId = folder.replace('user_', '');
-                console.log(`🔄 [Auto-Restore] Memulihkan sesi WhatsApp User #${userId}...`);
-                connectToWhatsApp(userId);
+        const res = await pool.query("SELECT DISTINCT SUBSTRING(id FROM 'user_([0-9]+)_') AS user_id FROM wa_sessions WHERE id LIKE 'user_%'");
+        for (const row of res.rows) {
+            if (row.user_id) {
+                console.log(`🔄 [Auto-Restore] Memulihkan sesi WhatsApp User #${row.user_id} dari Database Neon...`);[cite: 5]
+                connectToWhatsApp(row.user_id);
             }
         }
     } catch (err) {
-        console.error("❌ Gagal auto-restore sesi WA:", err.message);
+        console.error("❌ Gagal auto-restore sesi WA dari database:", err.message);
     }
 }
 
@@ -294,12 +300,81 @@ async function generateQRDataURL(text) {
     }
 }
 
+// ----------------- DATABASE AUTH STATE (ABADI DI NEON) ----------------- //
 async function getAuthState(userId) {
-    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-    if (!fs.existsSync(authFolder)) {
-        fs.mkdirSync(authFolder, { recursive: true });
+    const sessionId = `user_${userId}`;
+
+    const readData = async (key) => {
+        try {
+            const res = await pool.query('SELECT data FROM wa_sessions WHERE id = $1', [`${sessionId}_${key}`]);
+            if (res.rows.length === 0) return null;
+            return JSON.parse(res.rows[0].data, BufferJSON.reviver);
+        } catch (err) {
+            console.error(`Gagal membaca sesi ${key}:`, err);
+            return null;
+        }
+    };
+
+    const writeData = async (data, key) => {
+        try {
+            const jsonString = JSON.stringify(data, BufferJSON.replacer);
+            await pool.query(`
+                INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
+                ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+            `, [`${sessionId}_${key}`, jsonString]);
+        } catch (err) {
+            console.error(`Gagal menyimpan sesi ${key}:`, err);
+        }
+    };
+
+    const removeData = async (key) => {
+        try {
+            await pool.query('DELETE FROM wa_sessions WHERE id = $1', [`${sessionId}_${key}`]);
+        } catch (err) {
+            console.error(`Gagal menghapus sesi ${key}:`, err);
+        }
+    };
+
+    let creds = await readData('creds');
+    if (!creds) {
+        creds = initAuthCreds();
+        await writeData(creds, 'creds');
     }
-    return await useMultiFileAuthState(authFolder);
+
+    return {
+        state: {
+            creds,
+            keys: {
+                get: async (type, ids) => {
+                    const data = {};
+                    for (const id of ids) {
+                        let value = await readData(`${type}-${id}`);
+                        if (type === 'app-state-sync-key' && value) {
+                            value = proto.Message.AppStateSyncKeyData.fromObject(value);
+                        }
+                        data[id] = value;
+                    }
+                    return data;
+                },
+                set: async (data) => {
+                    const tasks = [];
+                    for (const category of Object.keys(data)) {
+                        for (const id of Object.keys(data[category])) {
+                            const value = data[category][id];
+                            const key = `${category}-${id}`;
+                            if (value) {
+                                tasks.push(writeData(value, key));
+                            } else {
+                                tasks.push(removeData(key));
+                            }
+                        }
+                    }
+                    await Promise.all(tasks);
+                }
+            }
+        },
+        saveCreds: () => writeData(creds, 'creds')
+    };
 }
 
 async function connectToWhatsApp(userId, phoneNumber = null) {
@@ -397,8 +472,9 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
                 } else {
                     delete qrCodes[userId];
                     delete pairingCodes[userId];
-                    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-                    if (fs.existsSync(authFolder)) fs.rmSync(authFolder, { recursive: true, force: true });
+                    try {
+                        await pool.query('DELETE FROM wa_sessions WHERE id LIKE $1', [`user_${userId}_%`]);
+                    } catch (e) {}
                 }
             }
         });
@@ -1746,10 +1822,14 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
-    const authFolder = path.join(__dirname, 'auth_sessions', `user_${userId}`);
-    if (fs.existsSync(authFolder)) fs.rmSync(authFolder, { recursive: true, force: true });
+    // Hapus sesi dari database Neon
+    try {
+        await pool.query('DELETE FROM wa_sessions WHERE id LIKE $1', [`user_${userId}_%`]);
+    } catch (err) {
+        console.error("Gagal menghapus sesi dari database:", err.message);
+    }
     
-    res.json({ success: true, message: 'Sesi WA Berhasil Direset!' });
+    res.json({ success: true, message: 'Sesi WA Berhasil Direset dari Database!' });
 });
 
 // =========================================================================
@@ -2008,11 +2088,10 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
                         `_Pesan otomatis dikirim via Sistem Presensi SD._`;
             }
 
-            // PERBAIKAN: Kirim sinyal presence dulu agar enkripsi & socket stabil (mencegah "Menunggu pesan ini")
             try {
                 await waClient.presenceSubscribe(formattedJid);
                 await waClient.sendPresenceUpdate('composing', formattedJid);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Jeda 1 detik agar sinkron
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
                 await waClient.sendMessage(formattedJid, { text: pesan });
                 console.log(`✅ [WA] Notifikasi ${tipeAbsen} terkirim ke ${phone}`);
@@ -2133,7 +2212,7 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
     }
 });
 
-// ----------------- ENDPOINT INPUT MASUK MANUAL (OFFLINE / ANTISIPASI KENDALA) ----------------- //
+// ----------------- ENDPOINT INPUT MASUK MANUAL ----------------- //
 app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, keterangan } = req.body;
     
