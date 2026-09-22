@@ -264,7 +264,7 @@ async function autoRestoreWASessions() {
         const res = await pool.query("SELECT DISTINCT SUBSTRING(id FROM 'user_([0-9]+)_') AS user_id FROM wa_sessions WHERE id LIKE 'user_%'");
         for (const row of res.rows) {
             if (row.user_id) {
-                console.log(`🔄 [Auto-Restore] Memulihkan sesi WhatsApp User #${row.user_id} dari Database Neon...`);[cite: 5]
+                console.log(`🔄 [Auto-Restore] Memulihkan sesi WhatsApp User #${row.user_id} dari Database Neon...`);
                 connectToWhatsApp(row.user_id);
             }
         }
