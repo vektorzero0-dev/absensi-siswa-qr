@@ -237,13 +237,13 @@ async function initDB() {
             ON CONFLICT (username) DO NOTHING;
         `);
 
-        await pool.query(`
+      await pool.query(`
             INSERT INTO users (nama, username, password, role, sekolah_id)
             VALUES ('Admin Sekolah 1', 'admin', 'admin123', 'ADMIN', $1)
             ON CONFLICT (username) DO NOTHING;
         `, [currentSekolahId]);
 
-        console.log("✅ Database Multi-Tenant & WA Sessions Initialized: Data & Sesi WA Aman di Neon!");[cite: 5]
+        console.log("✅ Database Multi-Tenant & WA Sessions Initialized: Data & Sesi WA Aman di Neon!");
         
         autoRestoreWASessions();
     } catch (err) {
