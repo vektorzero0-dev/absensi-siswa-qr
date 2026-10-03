@@ -2791,6 +2791,230 @@ app.get('/api/cron/auto-alpa', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req
     }
 });
 
+// =========================================================================
+// 📥 ENDPOINT SUPER ADMIN: IMPORT REKAP ABSENSI BULANAN PER SEKOLAH (MATRIKS & PILIHAN BULAN)
+// =========================================================================
+app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), upload.single('file_excel'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { sekolah_id, bulan_target } = req.body;
+
+        if (!sekolah_id) {
+            return res.status(400).json({ success: false, message: "ID Sekolah tujuan wajib disertakan." });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Berkas Excel/CSV rekap wajib diunggah!" });
+        }
+
+        const targetSekolahId = parseInt(sekolah_id);
+
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+        if (sheetData.length === 0) {
+            return res.status(400).json({ success: false, message: "Berkas Excel kosong atau tidak terbaca." });
+        }
+
+        let targetBulan = bulan_target; // Format: "YYYY-MM" (prioritas pilihan dropdown manual)
+
+        if (!targetBulan) {
+            let titleText = "";
+            for (let r = 0; r < Math.min(3, sheetData.length); r++) {
+                for (let c = 0; c < sheetData[r].length; c++) {
+                    const val = String(sheetData[r][c] || "").toUpperCase();
+                    if (val.includes("BULAN") || val.includes("JANUARI") || val.includes("FEBRUARI") || val.includes("MARET") || val.includes("APRIL") || val.includes("MEI") || val.includes("JUNI") || val.includes("JULI") || val.includes("AGUSTUS") || val.includes("SEPTEMBER") || val.includes("OKTOBER") || val.includes("NOVEMBER") || val.includes("DESEMBER")) {
+                        titleText = val;
+                        break;
+                    }
+                }
+                if (titleText) break;
+            }
+
+            if (!titleText && sheetData.length > 0) {
+                titleText = String(sheetData[0][1] || "");
+            }
+
+            let detectedYear = new Date().getFullYear();
+            let detectedMonth = new Date().getMonth() + 1;
+
+            const bulanMap = {
+                'JANUARI': 1, 'FEBRUARI': 2, 'MARET': 3, 'APRIL': 4, 'MEI': 5, 'JUNI': 6,
+                'JULI': 7, 'AGUSTUS': 8, 'SEPTEMBER': 9, 'OKTOBER': 10, 'NOVEMBER': 11, 'DESEMBER': 12
+            };
+
+            for (const [mName, mNum] of Object.entries(bulanMap)) {
+                if (titleText.toUpperCase().includes(mName)) {
+                    detectedMonth = mNum;
+                    break;
+                }
+            }
+
+            const yearMatch = titleText.match(/20\d{2}/);
+            if (yearMatch) {
+                detectedYear = parseInt(yearMatch[0]);
+            }
+
+            targetBulan = `${detectedYear}-${String(detectedMonth).padStart(2, '0')}`;
+        }
+
+        let isMatrixFormat = false;
+        let dayCols = {};
+        let headerRowIdx = -1;
+
+        for (let r = 0; r < Math.min(5, sheetData.length); r++) {
+            let tempDays = {};
+            for (let c = 0; c < sheetData[r].length; c++) {
+                const val = parseFloat(sheetData[r][c]);
+                if (!isNaN(val) && Number.isInteger(val) && val >= 1 && val <= 31) {
+                    tempDays[c] = val;
+                }
+            }
+            if (Object.keys(tempDays).length >= 10) {
+                dayCols = tempDays;
+                headerRowIdx = r;
+                isMatrixFormat = true;
+                break;
+            }
+        }
+
+        await client.query('BEGIN');
+
+        // Hapus rekap absensi lama yang HANYA berada di bulan target ini saja untuk sekolah terkait
+        await client.query(`
+            DELETE FROM absensi 
+            WHERE id IN (
+                SELECT a.id 
+                FROM absensi a
+                INNER JOIN siswa s ON a.siswa_id = s.id
+                INNER JOIN kelas k ON s.kelas_id = k.id
+                WHERE k.sekolah_id = $1 
+                  AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+            )
+        `, [targetSekolahId, targetBulan]);
+
+        let successCount = 0;
+        let skippedCount = 0;
+
+        if (isMatrixFormat) {
+            for (let rowIdx = headerRowIdx + 1; rowIdx < sheetData.length; rowIdx++) {
+                const namaSiswa = String(sheetData[rowIdx][0] || "").trim();
+                if (!namaSiswa || namaSiswa.toLowerCase() === 'nan') continue;
+
+                for (const [colIdxStr, dayNum] of Object.entries(dayCols)) {
+                    const colIdx = parseInt(colIdxStr);
+                    const statusVal = String(sheetData[rowIdx][colIdx] || "").trim().toUpperCase();
+
+                    if (statusVal && statusVal !== 'NAN' && statusVal !== 'L' && statusVal !== '') {
+                        let statusAbsen = 'HADIR';
+                        if (['S', 'SAKIT'].includes(statusVal)) statusAbsen = 'SAKIT';
+                        else if (['I', 'IZIN'].includes(statusVal)) statusAbsen = 'IZIN';
+                        else if (['A', 'ALPA', 'MANGKIR'].includes(statusVal)) statusAbsen = 'ALPA';
+                        else if (['H', 'HADIR'].includes(statusVal)) statusAbsen = 'HADIR';
+
+                        const tanggalAbsen = `${targetBulan}-${String(dayNum).padStart(2, '0')} 07:00:00`;
+
+                        const cekSiswa = await client.query(`
+                            SELECT s.id 
+                            FROM siswa s 
+                            INNER JOIN kelas k ON s.kelas_id = k.id 
+                            WHERE LOWER(TRIM(s.nama)) = LOWER(TRIM($1)) AND k.sekolah_id = $2
+                            LIMIT 1
+                        `, [namaSiswa, targetSekolahId]);
+
+                        if (cekSiswa.rows.length > 0) {
+                            const siswaId = cekSiswa.rows[0].id;
+                            await client.query(`
+                                INSERT INTO absensi (siswa_id, waktu, status, tipe) 
+                                VALUES ($1, $2::timestamp, $3, 'import_super_admin')
+                            `, [siswaId, tanggalAbsen, statusAbsen]);
+                            successCount++;
+                        } else {
+                            skippedCount++;
+                        }
+                    }
+                }
+            }
+        } else {
+            const tabularData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+            for (const row of tabularData) {
+                let namaSiswa = "";
+                let tanggalAbsen = "";
+                let statusAbsen = "HADIR";
+
+                Object.keys(row).forEach(key => {
+                    const cleanKey = key.toString().toLowerCase().trim();
+                    const val = row[key] ? row[key].toString().trim() : "";
+
+                    if ((cleanKey.includes('nama') || cleanKey.includes('siswa')) && !namaSiswa && val) {
+                        namaSiswa = val;
+                    }
+                    if ((cleanKey.includes('tanggal') || cleanKey.includes('waktu') || cleanKey.includes('tgl')) && !tanggalAbsen && val) {
+                        tanggalAbsen = val;
+                    }
+                    if ((cleanKey.includes('status') || cleanKey.includes('keterangan') || cleanKey.includes('kehadiran')) && val) {
+                        const upVal = val.toUpperCase();
+                        if (['H', 'HADIR'].includes(upVal)) statusAbsen = 'HADIR';
+                        else if (['S', 'SAKIT'].includes(upVal)) statusAbsen = 'SAKIT';
+                        else if (['I', 'IZIN'].includes(upVal)) statusAbsen = 'IZIN';
+                        else if (['A', 'ALPA', 'MANGKIR'].includes(upVal)) statusAbsen = 'ALPA';
+                    }
+                });
+
+                if (namaSiswa && tanggalAbsen) {
+                    const dateObj = new Date(tanggalAbsen);
+                    if (!isNaN(dateObj.getTime())) {
+                        const yearStr = dateObj.getFullYear();
+                        const monthStr = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const rowYyyyMm = `${yearStr}-${monthStr}`;
+
+                        if (rowYyyyMm === targetBulan) {
+                            const cekSiswa = await client.query(`
+                                SELECT s.id 
+                                FROM siswa s 
+                                INNER JOIN kelas k ON s.kelas_id = k.id 
+                                WHERE LOWER(TRIM(s.nama)) = LOWER(TRIM($1)) AND k.sekolah_id = $2
+                                LIMIT 1
+                            `, [namaSiswa, targetSekolahId]);
+
+                            if (cekSiswa.rows.length > 0) {
+                                const siswaId = cekSiswa.rows[0].id;
+                                await client.query(`
+                                    INSERT INTO absensi (siswa_id, waktu, status, tipe) 
+                                    VALUES ($1, $2::timestamp, $3, 'import_super_admin')
+                                `, [siswaId, tanggalAbsen, statusAbsen]);
+                                successCount++;
+                            } else {
+                                skippedCount++;
+                            }
+                        } else {
+                            skippedCount++;
+                        }
+                    } else {
+                        skippedCount++;
+                    }
+                } else {
+                    skippedCount++;
+                }
+            }
+        }
+
+        await client.query('COMMIT');
+        return res.json({ 
+            success: true, 
+            message: `Berhasil mengimpor ${successCount} data rekap untuk bulan ${targetBulan} (${skippedCount} baris/nama diabaikan). Rekap bulan lain aman dan tidak terhapus.` 
+        });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        return res.status(500).json({ success: false, message: "Gagal memproses rekap excel: " + err.message });
+    } finally {
+        client.release();
+    }
+});
+
 app.get('/ping', (req, res) => res.send('OK'));
 
 process.on('uncaughtException', (err) => {
