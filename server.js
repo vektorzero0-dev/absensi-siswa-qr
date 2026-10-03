@@ -1491,7 +1491,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             cronAlpaActive: cronAlpaActive,
             statusWA: waMode === 'TANPA_WA' ? 'OFF' : (waStatus[userRaw.id] || 'BELUM_TERHUBUNG'),
             qrCodeWA: waMode === 'TANPA_WA' ? null : (qrCodes[userRaw.id] || null),
-            pengirimWA: waMode, // Disinkronkan dengan variabel pengirimWA di EJS Wali Kelas
+            pengirimWA: waMode,
             namaSekolah
         });
     } catch (err) {
@@ -1520,7 +1520,6 @@ app.get(['/scan', '/scanner'], requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'S
     }
 });
 
-// TAMBAH KELAS DENGAN ISOLASI SESI
 app.post('/api/kelas/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
     const { nama_kelas } = req.body;
     try {
@@ -1574,7 +1573,6 @@ app.post('/api/kelas/hapus-semua', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS
     }
 });
 
-// TAMBAH GURU DENGAN ISOLASI SESI
 app.post('/api/guru/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { nama, username, password, kelas_id } = req.body;
     try {
@@ -2664,7 +2662,7 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
     }
 });
 
-// ----------------- FUNGSI EKSEKUSI UTAMA CRON ALPA PER SEKOLAH ----------------- //
+// ----------------- FUNGSI EKSEKUSI UTAMA CRON ALPA PER SEKOLAH (DIPERBAIKI) ----------------- //
 async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
     try {
         let querySekolah = `SELECT id, nama_sekolah, wa_mode FROM sekolah WHERE COALESCE(is_active, TRUE) = TRUE AND COALESCE(cron_alpa_active, TRUE) = TRUE`;
@@ -2696,7 +2694,8 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
                   AND s.id NOT IN (
                     SELECT DISTINCT siswa_id 
                     FROM absensi 
-                    WHERE TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+                    WHERE (waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta')::DATE = CURRENT_DATE
+                      AND (UPPER(status) IN ('HADIR', 'IZIN', 'SAKIT') OR UPPER(tipe) IN ('MASUK', 'IZIN', 'SAKIT'))
                 )
             `;
 
