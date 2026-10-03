@@ -2928,7 +2928,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                             const siswaId = cekSiswa.rows[0].id;
                             await client.query(`
                                 INSERT INTO absensi (siswa_id, waktu, status, tipe) 
-                                VALUES ($1, $2::timestamp, $3, 'import_super_admin')
+                                VALUES ($1, $2::timestamp, $3, 'IMPORT')
                             `, [siswaId, tanggalAbsen, statusAbsen]);
                             successCount++;
                         } else {
@@ -2979,11 +2979,11 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                                 LIMIT 1
                             `, [namaSiswa, targetSekolahId]);
 
-                            if (cekSiswa.rows.length > 0) {
-                                const siswaId = cekSiswa.rows[0].id;
+                            if (cekSsiswa.rows.length > 0) {
+                                const siswaId = cekSsiswa.rows[0].id;
                                 await client.query(`
                                     INSERT INTO absensi (siswa_id, waktu, status, tipe) 
-                                    VALUES ($1, $2::timestamp, $3, 'import_super_admin')
+                                    VALUES ($1, $2::timestamp, $3, 'IMPORT')
                                 `, [siswaId, tanggalAbsen, statusAbsen]);
                                 successCount++;
                             } else {
