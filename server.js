@@ -2920,23 +2920,11 @@ cron.schedule('0 9 * * 1-6', async () => {
     await jalankanCronAlpaUntukSekolah();
 });
 
-// ROUTE MANUAL / UJI COBA CRON AUTO-ALPA (UNTUK ADMIN & SUPER ADMIN)
-app.get('/api/cron/auto-alpa', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+// ROUTE MANUAL / UJI COBA CRON AUTO-ALPA (DIBUAT PUBLIK AGAR BISA DIPICU DARI CRON-JOB.ORG)
+app.get('/api/cron/auto-alpa', async (req, res) => {
     try {
-        const currentUser = req.currentUser;
-        let targetSekolahId = null;
-
-        if (currentUser.role === 'ADMIN') {
-            targetSekolahId = currentUser.sekolah_id;
-            const schCheck = await pool.query("SELECT COALESCE(cron_alpa_active, TRUE) AS cron_alpa_active FROM sekolah WHERE id = $1", [targetSekolahId]);
-            if (schCheck.rows.length > 0 && schCheck.rows[0].cron_alpa_active === false) {
-                return res.status(400).json({ success: false, message: "Fitur pengecekan alpa otomatis sedang DINONAKTIFKAN untuk sekolah ini." });
-            }
-        } else if (currentUser.role === 'SUPER_ADMIN' && req.query.sekolah_id) {
-            targetSekolahId = parseInt(req.query.sekolah_id);
-        }
-
-        const jumlahAlpa = await jalankanCronAlpaUntukSekolah(targetSekolahId);
+        const sekolahIdParam = req.query.sekolah_id ? parseInt(req.query.sekolah_id) : null;
+        const jumlahAlpa = await jalankanCronAlpaUntukSekolah(sekolahIdParam);
 
         return res.json({
             success: true,
