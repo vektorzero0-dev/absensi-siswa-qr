@@ -197,6 +197,17 @@ async function initDB() {
         await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';`);
         await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;`);
 
+        // Tabel Hari Libur / Tanggal Merah
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS hari_libur (
+                id SERIAL PRIMARY KEY,
+                sekolah_id INT REFERENCES sekolah(id) ON DELETE CASCADE,
+                tanggal DATE NOT NULL,
+                keterangan VARCHAR(255) NOT NULL,
+                UNIQUE(sekolah_id, tanggal)
+            );
+        `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS settings (
                 key VARCHAR(50) PRIMARY KEY,
@@ -237,7 +248,7 @@ async function initDB() {
             ON CONFLICT (username) DO NOTHING;
         `);
 
-      await pool.query(`
+        await pool.query(`
             INSERT INTO users (nama, username, password, role, sekolah_id)
             VALUES ('Admin Sekolah 1', 'admin', 'admin123', 'ADMIN', $1)
             ON CONFLICT (username) DO NOTHING;
@@ -257,6 +268,30 @@ const qrCodes = {};
 const waStatus = {};
 const pairingCodes = {};
 const reconnectTimers = {};
+
+// ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
+async function cekApakahLibur(sekolahId, tanggalStr = null) {
+    try {
+        let dateToCheck = tanggalStr ? new Date(tanggalStr) : new Date();
+        const dayOfWeek = dateToCheck.getDay(); // 0 = Minggu
+        
+        if (dayOfWeek === 0) return { libur: true, keterangan: "Hari Minggu (Libur Mingguan)" };
+
+        const formattedDate = dateToCheck.toISOString().slice(0, 10);
+        const res = await pool.query(
+            "SELECT keterangan FROM hari_libur WHERE sekolah_id = $1 AND tanggal = $2",
+            [sekolahId, formattedDate]
+        );
+
+        if (res.rows.length > 0) {
+            return { libur: true, keterangan: res.rows[0].keterangan };
+        }
+
+        return { libur: false, keterangan: null };
+    } catch (err) {
+        return { libur: false, keterangan: null };
+    }
+}
 
 // ----------------- AUTO-RESTORE SESI WA DARI DATABASE NEON ----------------- //
 async function autoRestoreWASessions() {
@@ -783,6 +818,76 @@ app.post('/api/settings/maintenance', requireAuth(['SUPER_ADMIN']), async (req, 
     }
 });
 
+// ----------------- PENGATURAN HARI LIBUR / TANGGAL MERAH ----------------- //
+app.post('/api/sekolah/libur/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const { tanggal, keterangan, sekolah_id } = req.body;
+        const currentUser = req.currentUser;
+        const targetSekolahId = currentUser.role === 'SUPER_ADMIN' ? (sekolah_id ? parseInt(sekolah_id) : 1) : currentUser.sekolah_id;
+
+        if (!tanggal || !keterangan) {
+            return res.status(400).json({ success: false, message: "Tanggal dan keterangan libur wajib diisi." });
+        }
+
+        await pool.query(`
+            INSERT INTO hari_libur (sekolah_id, tanggal, keterangan) 
+            VALUES ($1, $2, $3)
+            ON CONFLICT (sekolah_id, tanggal) DO UPDATE SET keterangan = EXCLUDED.keterangan;
+        `, [targetSekolahId, tanggal, keterangan.trim()]);
+
+        return res.json({ success: true, message: `Tanggal ${tanggal} berhasil diset sebagai hari libur (${keterangan})!` });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal menambah hari libur: " + err.message });
+    }
+});
+
+app.post('/api/sekolah/libur/hapus', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const { id, sekolah_id } = req.body;
+        const currentUser = req.currentUser;
+        const targetSekolahId = currentUser.role === 'SUPER_ADMIN' ? (sekolah_id ? parseInt(sekolah_id) : 1) : currentUser.sekolah_id;
+
+        if (!id) return res.status(400).json({ success: false, message: "ID libur tidak valid." });
+
+        await pool.query("DELETE FROM hari_libur WHERE id = $1 AND sekolah_id = $2", [parseInt(id), targetSekolahId]);
+        return res.json({ success: true, message: "Hari libur berhasil dihapus." });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal menghapus hari libur: " + err.message });
+    }
+});
+
+// 🚀 FITUR PEMBERSIHAN / KOREKSI PRESENSI PADA TANGGAL LIBUR
+app.post('/api/absensi/bersihkan-tanggal', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const { tanggal, sekolah_id } = req.body;
+        const currentUser = req.currentUser;
+        const targetSekolahId = currentUser.role === 'SUPER_ADMIN' ? (sekolah_id ? parseInt(sekolah_id) : 1) : currentUser.sekolah_id;
+
+        if (!tanggal) {
+            return res.status(400).json({ success: false, message: "Tanggal wajib diisi (format: YYYY-MM-DD)." });
+        }
+
+        await pool.query(`
+            DELETE FROM absensi 
+            WHERE id IN (
+                SELECT a.id 
+                FROM absensi a 
+                INNER JOIN siswa s ON a.siswa_id = s.id 
+                INNER JOIN kelas k ON s.kelas_id = k.id 
+                WHERE k.sekolah_id = $1 
+                  AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = $2
+            )
+        `, [targetSekolahId, tanggal]);
+
+        return res.json({
+            success: true,
+            message: `Semua data presensi pada tanggal ${tanggal} berhasil dibersihkan/dihapus karena hari libur!`
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal membersihkan absensi tanggal libur: " + err.message });
+    }
+});
+
 app.post('/api/sekolah/tambah', requireAuth(['SUPER_ADMIN']), async (req, res) => {
     const { nama_sekolah, admin_nama, admin_username, admin_password, wa_mode, trial_days } = req.body;
     const client = await pool.connect();
@@ -829,18 +934,15 @@ app.post('/api/admin/perpanjang-langganan', requireAuth(['SUPER_ADMIN']), async 
 
         const hari = parseInt(jumlahHari);
         let namaPaket = '';
-        let statusLanggananBaru = 'aktif';
 
         if (actionType === 'selesai_trial' || hari === 0) {
-            statusLanggananBaru = 'expired';
-            namaPaket = 'Uji Coba Selesai (Expired)';
             await pool.query(`
                 UPDATE sekolah 
                 SET status_langganan = 'expired', 
-                    paket = $1,
+                    paket = 'Uji Coba Selesai (Expired)',
                     expired_date = CURRENT_TIMESTAMP
                 WHERE id = $2
-            `, [namaPaket, parseInt(sekolahId)]);
+            `, [parseInt(sekolahId)]);
 
             return res.json({
                 success: true,
@@ -1942,7 +2044,7 @@ app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
     }
 });
 
-// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR ----------------- //
+// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (DENGAN CEK HARI LIBUR) ----------------- //
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
@@ -1958,21 +2060,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         }
 
         if (isNaN(parsedSiswaId)) return res.status(400).json({ success: false, message: "Format Kode QR Siswa Tidak Valid." });
-
-        const doubleCheck = await pool.query(`
-            SELECT id, tipe, TO_CHAR(waktu, 'HH24:MI:SS') AS jam 
-            FROM absensi 
-            WHERE siswa_id = $1 
-              AND waktu >= NOW() - INTERVAL '10 seconds'
-            ORDER BY waktu DESC LIMIT 1
-        `, [parsedSiswaId]);
-
-        if (doubleCheck.rows.length > 0) {
-            return res.status(429).json({ 
-                success: false, 
-                message: `Presensi sudah terrekam beberapa detik lalu (${doubleCheck.rows[0].jam} WIB). Mohon tunggu sejenak.` 
-            });
-        }
 
         const scannedByUserId = req.currentUser.id;
         const scannerSekolahId = req.currentUser.sekolah_id;
@@ -2002,6 +2089,30 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             return res.status(403).json({ 
                 success: false, 
                 message: `Gagal! Siswa (${siswa.nama}) terdaftar di sekolah lain.` 
+            });
+        }
+
+        // 🛑 VALIDASI HARI LIBUR
+        const liburCheck = await cekApakahLibur(siswa.sekolah_id);
+        if (liburCheck.libur) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Presensi Ditolak! Hari ini libur (${liburCheck.keterangan}).` 
+            });
+        }
+
+        const doubleCheck = await pool.query(`
+            SELECT id, tipe, TO_CHAR(waktu, 'HH24:MI:SS') AS jam 
+            FROM absensi 
+            WHERE siswa_id = $1 
+              AND waktu >= NOW() - INTERVAL '10 seconds'
+            ORDER BY waktu DESC LIMIT 1
+        `, [parsedSiswaId]);
+
+        if (doubleCheck.rows.length > 0) {
+            return res.status(429).json({ 
+                success: false, 
+                message: `Presensi sudah terrekam beberapa detik lalu (${doubleCheck.rows[0].jam} WIB). Mohon tunggu sejenak.` 
             });
         }
 
@@ -2092,7 +2203,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 await waClient.sendMessage(formattedJid, { text: pesan });
-                console.log(`✅ [WA] Notifikasi ${tipeAbsen} terkirim ke ${phone}`);
             } catch (e) {
                 console.error("❌ [WA Error] Gagal Mengirim WA:", e.message);
             }
@@ -2152,6 +2262,12 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
         }
 
         const siswa = siswaRes.rows[0];
+
+        // 🛑 VALIDASI HARI LIBUR
+        const liburCheck = await cekApakahLibur(siswa.sekolah_id);
+        if (liburCheck.libur) {
+            return res.status(400).json({ success: false, message: `Hari ini libur (${liburCheck.keterangan}), tidak perlu input absensi.` });
+        }
 
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
@@ -2238,6 +2354,12 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
         }
 
         const siswa = siswaRes.rows[0];
+
+        // 🛑 VALIDASI HARI LIBUR
+        const liburCheck = await cekApakahLibur(siswa.sekolah_id);
+        if (liburCheck.libur) {
+            return res.status(400).json({ success: false, message: `Hari ini libur (${liburCheck.keterangan}), tidak dapat melakukan presensi.` });
+        }
 
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
@@ -2367,6 +2489,16 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
             absensiMap[r.siswa_id][r.tgl] = r.status;
         });
 
+        // Ambil hari libur sekolah di bulan tersebut
+        const resLibur = await pool.query(`
+            SELECT EXTRACT(DAY FROM tanggal)::INT AS tgl 
+            FROM hari_libur 
+            WHERE sekolah_id = $1 
+              AND EXTRACT(MONTH FROM tanggal) = $2 
+              AND EXTRACT(YEAR FROM tanggal) = $3
+        `, [userSekolahId, b, t]);
+        const liburSet = new Set(resLibur.rows.map(r => r.tgl));
+
         const dataMatriks = resSiswa.rows.map(s => {
             let logHari = [];
             let h = 0, sCount = 0, i = 0, a = 0;
@@ -2374,8 +2506,9 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
             for (let d = 1; d <= jumlahHari; d++) {
                 const dt = new Date(t, b - 1, d);
                 const isHariMinggu = (dt.getDay() === 0);
+                const isLiburKhusus = liburSet.has(d);
 
-                let statusTgl = absensiMap[s.id]?.[d] || (isHariMinggu ? 'L' : '');
+                let statusTgl = absensiMap[s.id]?.[d] || ((isHariMinggu || isLiburKhusus) ? 'L' : '');
 
                 if (statusTgl === 'HADIR') { statusTgl = 'H'; h++; }
                 else if (statusTgl === 'SAKIT') { statusTgl = 'S'; sCount++; }
@@ -2452,6 +2585,15 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
             absensiMap[r.siswa_id][r.tgl] = r.status;
         });
 
+        const resLibur = await pool.query(`
+            SELECT EXTRACT(DAY FROM tanggal)::INT AS tgl 
+            FROM hari_libur 
+            WHERE sekolah_id = $1 
+              AND EXTRACT(MONTH FROM tanggal) = $2 
+              AND EXTRACT(YEAR FROM tanggal) = $3
+        `, [userSekolahId, b, t]);
+        const liburSet = new Set(resLibur.rows.map(r => r.tgl));
+
         const daftarBulan = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const namaBulan = daftarBulan[b - 1];
         const namaSekolahHeader = await getNamaSekolah(userSekolahId);
@@ -2497,8 +2639,9 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
                 for (let d = 1; d <= jumlahHari; d++) {
                     const dt = new Date(t, b - 1, d);
                     const isMinggu = (dt.getDay() === 0);
+                    const isLiburKhusus = liburSet.has(d);
 
-                    let st = absensiMap[s.id]?.[d] || (isMinggu ? 'L' : '');
+                    let st = absensiMap[s.id]?.[d] || ((isMinggu || isLiburKhusus) ? 'L' : '');
 
                     if (st === 'HADIR') { st = 'H'; h++; }
                     else if (st === 'SAKIT') { st = 'S'; sCount++; }
@@ -2549,8 +2692,11 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
                     let h = 0, sCount = 0, i = 0, a = 0;
                     const logCells = Array.from({ length: jumlahHari }, (_, idx) => {
                         const d = idx + 1;
-                        const isMinggu = (new Date(t, b - 1, d).getDay() === 0);
-                        let st = absensiMap[s.id]?.[d] || (isMinggu ? 'L' : '');
+                        const dt = new Date(t, b - 1, d);
+                        const isMinggu = (dt.getDay() === 0);
+                        const isLiburKhusus = liburSet.has(d);
+
+                        let st = absensiMap[s.id]?.[d] || ((isMinggu || isLiburKhusus) ? 'L' : '');
 
                         if (st === 'HADIR') { st = 'H'; h++; }
                         else if (st === 'SAKIT') { st = 'S'; sCount++; }
@@ -2632,8 +2778,11 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
                 let h = 0, sCount = 0, i = 0, a = 0;
 
                 for (let d = 1; d <= jumlahHari; d++) {
-                    const isMinggu = (new Date(t, b - 1, d).getDay() === 0);
-                    let st = absensiMap[s.id]?.[d] || (isMinggu ? 'L' : '');
+                    const dt = new Date(t, b - 1, d);
+                    const isMinggu = (dt.getDay() === 0);
+                    const isLiburKhusus = liburSet.has(d);
+
+                    let st = absensiMap[s.id]?.[d] || ((isMinggu || isLiburKhusus) ? 'L' : '');
 
                     if (st === 'HADIR') { st = 'H'; h++; }
                     else if (st === 'SAKIT') { st = 'S'; sCount++; }
@@ -2679,6 +2828,13 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
         let totalSiswaDiAlpakan = 0;
 
         for (const sch of sekolahList) {
+            // 🛑 CEK APAKAH HARI INI LIBUR UNTUK SEKOLAH INI
+            const liburCheck = await cekApakahLibur(sch.id);
+            if (liburCheck.libur) {
+                console.log(`ℹ️ [Cron Alpa] Sekolah #${sch.id} (${sch.nama_sekolah}) libur hari ini (${liburCheck.keterangan}), cron alpa dilewati.`);
+                continue;
+            }
+
             const querySiswaAbsen = `
                 SELECT s.id, s.nama, s.nomor_wa_ortu, 
                        COALESCE(k.nama_kelas, '-') AS nama_kelas, 
@@ -2818,7 +2974,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
             return res.status(400).json({ success: false, message: "Berkas Excel kosong atau tidak terbaca." });
         }
 
-        let targetBulan = bulan_target; // Format: "YYYY-MM" (prioritas pilihan dropdown manual)
+        let targetBulan = bulan_target;
 
         if (!targetBulan) {
             let titleText = "";
@@ -2882,7 +3038,6 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
 
         await client.query('BEGIN');
 
-        // Hapus rekap absensi lama yang HANYA berada di bulan target ini saja untuk sekolah terkait
         await client.query(`
             DELETE FROM absensi 
             WHERE id IN (
@@ -2979,8 +3134,8 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                                 LIMIT 1
                             `, [namaSiswa, targetSekolahId]);
 
-                            if (cekSsiswa.rows.length > 0) {
-                                const siswaId = cekSsiswa.rows[0].id;
+                            if (cekSiswa.rows.length > 0) {
+                                const siswaId = cekSiswa.rows[0].id;
                                 await client.query(`
                                     INSERT INTO absensi (siswa_id, waktu, status, tipe) 
                                     VALUES ($1, $2::timestamp, $3, 'IMPORT')
