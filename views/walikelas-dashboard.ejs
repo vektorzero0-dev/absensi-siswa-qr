@@ -452,7 +452,7 @@
             <% } %>
         </div>
 
-        <!-- KOTAK TABEL SISWA (TEMA BLUE) -->
+        <!-- KOTAK TABEL SISWA (TEMA BLUE) DENGAN FITUR EDIT REKAP LANGSUNG PADA TABEL PRATINJAU -->
         <div id="section-siswa-kelas" class="card-pro card-blue-theme p-4 sm:p-5 mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-blue-200/60 pb-3 relative z-10">
                 <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -756,9 +756,9 @@
         document.addEventListener("DOMContentLoaded", function() {
             const selectTahun = document.getElementById('selectTahun');
             if (selectTahun) {
-                const tahunMulai = 2025; // Tahun awal sistem
+                const tahunMulai = 2025;
                 const tahunSekarang = new Date().getFullYear();
-                const tahunBatas = Math.max(tahunSekarang + 20, 2045); // Otomatis bertambah tanpa batas kaku
+                const tahunBatas = Math.max(tahunSekarang + 20, 2045);
                 
                 const urlParams = new URLSearchParams(window.location.search);
                 const tahunTerpilih = urlParams.get('tahun') || tahunSekarang;
@@ -1067,6 +1067,52 @@
             }
         }
 
+        /* 📌 FUNGSI EDIT REKAP MANUAL LANGSUNG DARI TABEL PRATINJAU */
+        async function ubahRekapLangsung(selectElement) {
+            const siswaId = selectElement.getAttribute('data-siswa-id');
+            const tanggalStr = selectElement.getAttribute('data-tanggal');
+            const statusBaru = selectElement.value;
+
+            selectElement.style.opacity = '0.5';
+
+            try {
+                const response = await fetch('/api/absensi/rekap-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        siswa_id: siswaId,
+                        tanggal: tanggalStr,
+                        status: statusBaru
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    selectElement.style.opacity = '1';
+                    selectElement.style.borderColor = '#198754';
+                    setTimeout(() => {
+                        selectElement.style.borderColor = '';
+                    }, 1500);
+                } else {
+                    alert('Gagal memperbarui rekap: ' + result.message);
+                    selectElement.style.opacity = '1';
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi ke server.');
+                selectElement.style.opacity = '1';
+            }
+        }
+
+        /* 📌 DUKUNGAN WARNA STATUS SELECT PADA PRATINJAU MATRIKS */
+        function getStatusColorClass(val) {
+            if (val === 'H') return 'bg-emerald-100 text-emerald-800 font-bold';
+            if (val === 'S') return 'bg-sky-100 text-sky-800 font-bold';
+            if (val === 'I') return 'bg-amber-100 text-amber-800 font-bold';
+            if (val === 'A') return 'bg-rose-100 text-rose-800 font-bold';
+            if (val === 'L') return 'bg-purple-100 text-purple-800 font-bold';
+            return 'bg-transparent text-slate-400';
+        }
+
         function muatPreview() {
             const bulan = document.getElementById('selectBulan').value;
             const tahun = document.getElementById('selectTahun').value;
@@ -1085,6 +1131,7 @@
                     if (data.success && data.data.length > 0) {
                         countTag.innerText = `${data.data.length} Siswa`;
                         const jmlHari = data.jumlahHari || 31;
+                        const bulanStr = String(data.bulan).padStart(2, '0');
 
                         let headerHtml = `
                             <tr>
@@ -1104,15 +1151,26 @@
                         thead.innerHTML = headerHtml;
 
                         tbody.innerHTML = data.data.map((item) => {
-                            let logCells = item.log_hari.map(st => {
-                                let bgClass = 'text-slate-400';
-                                if (st === 'H') bgClass = 'bg-emerald-100 text-emerald-900 font-bold';
-                                else if (st === 'S') bgClass = 'bg-sky-100 text-sky-900 font-bold';
-                                else if (st === 'I') bgClass = 'bg-amber-100 text-amber-900 font-bold';
-                                else if (st === 'A') bgClass = 'bg-rose-100 text-rose-900 font-bold';
-                                else if (st === 'L') bgClass = 'bg-slate-100 text-slate-400 font-medium';
+                            let logCells = item.log_hari.map((st, idx) => {
+                                const dNum = idx + 1;
+                                const tglFormatted = `${tahun}-${bulanStr}-${String(dNum).padStart(2, '0')}`;
+                                const colorClass = getStatusColorClass(st);
 
-                                return `<td class="p-1 border border-slate-200 text-center text-[10px] ${bgClass}">${st}</td>`;
+                                return `
+                                    <td class="p-0.5 border border-slate-200 text-center">
+                                        <select class="w-11 text-[10px] p-1 rounded border border-slate-300 text-center focus:ring-1 focus:ring-purple-500 ${colorClass}"
+                                                data-siswa-id="${item.id}" 
+                                                data-tanggal="${tglFormatted}"
+                                                onchange="this.className = 'w-11 text-[10px] p-1 rounded border border-slate-300 text-center focus:ring-1 focus:ring-purple-500 ' + getStatusColorClass(this.value); ubahRekapLangsung(this);">
+                                            <option value="" ${!st || st === '-' ? 'selected' : ''} class="bg-white text-slate-700">-</option>
+                                            <option value="H" ${st === 'H' ? 'selected' : ''} class="bg-emerald-100 text-emerald-800 font-bold">H</option>
+                                            <option value="S" ${st === 'S' ? 'selected' : ''} class="bg-sky-100 text-sky-800 font-bold">S</option>
+                                            <option value="I" ${st === 'I' ? 'selected' : ''} class="bg-amber-100 text-amber-800 font-bold">I</option>
+                                            <option value="A" ${st === 'A' ? 'selected' : ''} class="bg-rose-100 text-rose-800 font-bold">A</option>
+                                            <option value="L" ${st === 'L' ? 'selected' : ''} class="bg-purple-100 text-purple-800 font-bold">L</option>
+                                        </select>
+                                    </td>
+                                `;
                             }).join('');
 
                             return `
