@@ -939,9 +939,9 @@
         document.addEventListener("DOMContentLoaded", function() {
             const selectTahun = document.getElementById('selectTahun');
             if (selectTahun) {
-                const tahunMulai = 2025;
+                const tahunMulai = 2025; // Tahun awal sistem
                 const tahunSekarang = new Date().getFullYear();
-                const tahunBatas = Math.max(tahunSekarang + 20, 2045);
+                const tahunBatas = Math.max(tahunSekarang + 20, 2045); // Otomatis bertambah tanpa batas kaku
                 
                 const urlParams = new URLSearchParams(window.location.search);
                 const tahunTerpilih = urlParams.get('tahun') || tahunSekarang;
@@ -1434,13 +1434,13 @@
 
                             return `
                                 <tr class="hover:bg-purple-50/50 border-b border-slate-100">
-                                    <td class="p-2 border border-slate-200 font-semibold text-slate-900 truncate"><%= item.nama_siswa %></td>
-                                    <td class="p-2 border border-slate-200 text-center text-slate-600 text-[10px]"><%= item.nama_kelas %></td>
+                                    <td class="p-2 border border-slate-200 font-semibold text-slate-900 truncate">${item.nama_siswa}</td>
+                                    <td class="p-2 border border-slate-200 text-center text-slate-600 text-[10px]">${item.nama_kelas}</td>
                                     ${logCells}
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]"><%= item.rekap.H || '' %></td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]"><%= item.rekap.S || '' %></td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]"><%= item.rekap.I || '' %></td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]"><%= item.rekap.A || '' %></td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]">${item.rekap.H || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]">${item.rekap.S || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]">${item.rekap.I || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]">${item.rekap.A || ''}</td>
                                 </tr>
                             `;
                         }).join('');
