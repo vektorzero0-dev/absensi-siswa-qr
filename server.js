@@ -720,7 +720,7 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
@@ -875,7 +875,7 @@ app.post('/api/absensi/bersihkan-tanggal', requireAuth(['ADMIN', 'SUPER_ADMIN'])
                 INNER JOIN siswa s ON a.siswa_id = s.id 
                 INNER JOIN kelas k ON s.kelas_id = k.id 
                 WHERE k.sekolah_id = $1 
-                  AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = $2
+                  AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = $2
             )
         `, [targetSekolahId, tanggal]);
 
@@ -1369,7 +1369,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
@@ -1539,7 +1539,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
         `;
         const queryParamsHarian = [userSekolahId];
 
@@ -2044,7 +2044,7 @@ app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
     }
 });
 
-// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (DENGAN CEK HARI LIBUR) ----------------- //
+// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (DIPERBAIKI) ----------------- //
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
@@ -2102,10 +2102,10 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         }
 
         const doubleCheck = await pool.query(`
-            SELECT id, tipe, TO_CHAR(waktu, 'HH24:MI:SS') AS jam 
+            SELECT id, tipe, TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam 
             FROM absensi 
             WHERE siswa_id = $1 
-              AND waktu >= NOW() - INTERVAL '10 seconds'
+              AND waktu >= CURRENT_TIMESTAMP - INTERVAL '10 seconds'
             ORDER BY waktu DESC LIMIT 1
         `, [parsedSiswaId]);
 
@@ -2124,7 +2124,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             const cekAbsenHariIni = await pool.query(`
                 SELECT id FROM absensi 
                 WHERE siswa_id = $1 
-                  AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+                  AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
             `, [siswa.id]);
 
             tipeAbsen = cekAbsenHariIni.rows.length > 0 ? 'PULANG' : 'MASUK';
@@ -2134,8 +2134,8 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
         const modePengirim = siswa.wa_mode;
 
         const now = new Date();
-        const jamWib = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
-        const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB';
+        const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
         await pool.query(
             `INSERT INTO absensi (siswa_id, status, scanned_by, tipe, waktu) 
@@ -2272,7 +2272,7 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
             WHERE siswa_id = $1 
-              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
         `, [siswa.id]);
 
         if (cekAbsen.rows.length > 0) {
@@ -2297,7 +2297,7 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
                 const formattedJid = phone + '@s.whatsapp.net';
 
                 const now = new Date();
-                const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
                 const pesan = `*${siswa.nama_sekolah_siswa.toUpperCase()}*\n` +
                               `*KONFIRMASI KETERANGAN ${statusUpper} SISWA*\n` +
@@ -2364,7 +2364,7 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
             WHERE siswa_id = $1 
-              AND TO_CHAR(waktu, 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD')
+              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
         `, [siswa.id]);
 
         if (cekAbsen.rows.length > 0) {
@@ -2389,8 +2389,8 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
                 const formattedJid = phone + '@s.whatsapp.net';
 
                 const now = new Date();
-                const jamWib = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') + ' WIB';
-                const tglWib = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                const jamWib = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') + ' WIB';
+                const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
                 const pesan = `*${siswa.nama_sekolah_siswa.toUpperCase()}*\n` +
                               `*PEMBERITAHUAN PRESENSI MASUK (MANUAL)*\n` +
@@ -2474,13 +2474,13 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
         const resSiswa = await pool.query(querySiswa, paramsSiswa);
 
         const resAbsensi = await pool.query(`
-            SELECT a.siswa_id, EXTRACT(DAY FROM a.waktu)::INT AS tgl, UPPER(a.status) AS status
+            SELECT a.siswa_id, EXTRACT(DAY FROM (a.waktu AT TIME ZONE 'Asia/Jakarta'))::INT AS tgl, UPPER(a.status) AS status
             FROM absensi a
             INNER JOIN siswa s ON a.siswa_id = s.id
             INNER JOIN kelas k ON s.kelas_id = k.id
             WHERE k.sekolah_id = $1
-              AND EXTRACT(MONTH FROM a.waktu) = $2
-              AND EXTRACT(YEAR FROM a.waktu) = $3
+              AND EXTRACT(MONTH FROM (a.waktu AT TIME ZONE 'Asia/Jakarta')) = $2
+              AND EXTRACT(YEAR FROM (a.waktu AT TIME ZONE 'Asia/Jakarta')) = $3
         `, [userSekolahId, b, t]);
 
         const absensiMap = {};
@@ -2570,13 +2570,13 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
         const resSiswa = await pool.query(querySiswa, paramsSiswa);
 
         const resAbsensi = await pool.query(`
-            SELECT a.siswa_id, EXTRACT(DAY FROM a.waktu)::INT AS tgl, UPPER(a.status) AS status
+            SELECT a.siswa_id, EXTRACT(DAY FROM (a.waktu AT TIME ZONE 'Asia/Jakarta'))::INT AS tgl, UPPER(a.status) AS status
             FROM absensi a
             INNER JOIN siswa s ON a.siswa_id = s.id
             INNER JOIN kelas k ON s.kelas_id = k.id
             WHERE k.sekolah_id = $1
-              AND EXTRACT(MONTH FROM a.waktu) = $2
-              AND EXTRACT(YEAR FROM a.waktu) = $3
+              AND EXTRACT(MONTH FROM (a.waktu AT TIME ZONE 'Asia/Jakarta')) = $2
+              AND EXTRACT(YEAR FROM (a.waktu AT TIME ZONE 'Asia/Jakarta')) = $3
         `, [userSekolahId, b, t]);
 
         const absensiMap = {};
@@ -2812,7 +2812,7 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
 });
 
 // ----------------- FUNGSI EKSEKUSI UTAMA CRON ALPA PER SEKOLAH (DIPERBAIKI) ----------------- //
-async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
+async function jalankanCronAlpaUntukSekolah(targetSekolahId = null, isDryRun = false) {
     try {
         let querySekolah = `SELECT id, nama_sekolah, wa_mode FROM sekolah WHERE COALESCE(is_active, TRUE) = TRUE AND COALESCE(cron_alpa_active, TRUE) = TRUE`;
         let params = [];
@@ -2850,7 +2850,7 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
                   AND s.id NOT IN (
                     SELECT DISTINCT siswa_id 
                     FROM absensi 
-                    WHERE (waktu AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta')::DATE = CURRENT_DATE
+                    WHERE TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
                       AND (UPPER(status) IN ('HADIR', 'IZIN', 'SAKIT') OR UPPER(tipe) IN ('MASUK', 'IZIN', 'SAKIT'))
                 )
             `;
@@ -2864,18 +2864,21 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null) {
             const tglWib = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
             for (const siswa of siswaBelumPresensi) {
-                try {
-                    await pool.query(
-                        `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
-                         VALUES ($1, 'ALPA', 'ALPA', CURRENT_TIMESTAMP)`,
-                        [siswa.id]
-                    );
-                    totalSiswaDiAlpakan++;
-                } catch (dbErr) {
-                    console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
+                if (!isDryRun) {
+                    try {
+                        await pool.query(
+                            `INSERT INTO absensi (siswa_id, status, tipe, waktu) 
+                             VALUES ($1, 'ALPA', 'ALPA', CURRENT_TIMESTAMP)`,
+                            [siswa.id]
+                        );
+                    } catch (dbErr) {
+                        console.error(`❌ Gagal simpan ALPA DB untuk ${siswa.nama}:`, dbErr.message);
+                    }
                 }
+                
+                totalSiswaDiAlpakan++;
 
-                if (siswa.wa_mode === 'TANPA_WA' || !siswa.nomor_wa_ortu) continue;
+                if (isDryRun || siswa.wa_mode === 'TANPA_WA' || !siswa.nomor_wa_ortu) continue;
 
                 let waClient = await dapatkanWAClient(siswa);
 
@@ -2920,15 +2923,19 @@ cron.schedule('0 9 * * 1-6', async () => {
     await jalankanCronAlpaUntukSekolah();
 });
 
-// ROUTE MANUAL / UJI COBA CRON AUTO-ALPA (DIBUAT PUBLIK AGAR BISA DIPICU DARI CRON-JOB.ORG)
+// ROUTE MANUAL / UJI COBA CRON AUTO-ALPA DENGAN FITUR AMAN (DRY_RUN)
 app.get('/api/cron/auto-alpa', async (req, res) => {
     try {
         const sekolahIdParam = req.query.sekolah_id ? parseInt(req.query.sekolah_id) : null;
-        const jumlahAlpa = await jalankanCronAlpaUntukSekolah(sekolahIdParam);
+        const isDryRun = req.query.dry_run === 'true';
+
+        const jumlahAlpa = await jalankanCronAlpaUntukSekolah(sekolahIdParam, isDryRun);
 
         return res.json({
             success: true,
-            message: `Uji Cron Job Berhasil! Berhasil memindai dan mencatat ${jumlahAlpa} siswa berstatus ALPA hari ini.`
+            message: isDryRun 
+                ? `[DRY RUN AMAN] Simulasi Berhasil! Terdeteksi ${jumlahAlpa} siswa berstatus ALPA (Database & WhatsApp TIDAK diubah/dikirim).`
+                : `Uji Cron Job Berhasil! Berhasil memindai dan mencatat ${jumlahAlpa} siswa berstatus ALPA hari ini.`
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Gagal menjalankan uji cron: " + err.message });
@@ -3034,7 +3041,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                 INNER JOIN siswa s ON a.siswa_id = s.id
                 INNER JOIN kelas k ON s.kelas_id = k.id
                 WHERE k.sekolah_id = $1 
-                  AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+                  AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
             )
         `, [targetSekolahId, targetBulan]);
 
