@@ -2429,7 +2429,8 @@ app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
     }
 
     const statusUpper = status.toUpperCase();
-    const validStatus = ['HADIR', 'IZIN', 'SAKIT', 'ALPA', 'H', 'S', 'I', 'A', ''];
+    // Tambahkan 'L' dan '' (kosong) ke dalam daftar validStatus agar tidak memicu error 500
+    const validStatus = ['HADIR', 'IZIN', 'SAKIT', 'ALPA', 'H', 'S', 'I', 'A', '', 'L'];
     if (!validStatus.includes(statusUpper)) {
         return res.status(400).json({ success: false, message: "Status kehadiran tidak valid." });
     }
@@ -2451,7 +2452,7 @@ app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
         `, [siswa_id, tanggal]);
 
         if (mappedStatus === '' || mappedStatus === 'L') {
-            // Jika dikosongkan, hapus data absensi pada tanggal tersebut
+            // Jika dikosongkan atau diset Libur, hapus data absensi pada tanggal tersebut
             if (cekAbsen.rows.length > 0) {
                 await pool.query(`DELETE FROM absensi WHERE id = $1`, [cekAbsen.rows[0].id]);
             }
