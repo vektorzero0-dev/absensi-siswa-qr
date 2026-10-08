@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -1530,7 +1529,43 @@
             document.getElementById('sidebarOverlay').classList.add('hidden');
         }
 
-        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & H, S, I, A) */
+        /* 📌 FUNGSI EDIT REKAP MANUAL LANGSUNG DARI TABEL PRATINJAU */
+        async function ubahRekapLangsung(selectElement) {
+            const siswaId = selectElement.getAttribute('data-siswa-id');
+            const tanggalStr = selectElement.getAttribute('data-tanggal');
+            const statusBaru = selectElement.value;
+
+            selectElement.style.opacity = '0.5';
+
+            try {
+                const response = await fetch('/api/absensi/rekap-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        siswa_id: siswaId,
+                        tanggal: tanggalStr,
+                        status: statusBaru
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    selectElement.style.opacity = '1';
+                    selectElement.style.borderColor = '#198754';
+                    setTimeout(() => {
+                        selectElement.style.borderColor = '';
+                    }, 1500);
+                } else {
+                    alert('Gagal memperbarui rekap: ' + result.message);
+                    selectElement.style.opacity = '1';
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi ke server.');
+                selectElement.style.opacity = '1';
+            }
+        }
+
+        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & DROPDOWN EDIT REKAP) */
         function muatPreviewAdmin() {
             const bulan = document.getElementById('selectBulanAdmin').value;
             const tahun = document.getElementById('selectTahunAdmin').value;
@@ -1548,6 +1583,7 @@
                     if (data.success && data.data.length > 0) {
                         countTag.innerText = `${data.data.length} Siswa`;
                         const jmlHari = data.jumlahHari || 31;
+                        const bulanStr = String(data.bulan).padStart(2, '0');
 
                         let headerHtml = `
                             <tr>
@@ -1567,15 +1603,25 @@
                         thead.innerHTML = headerHtml;
 
                         tbody.innerHTML = data.data.map((item) => {
-                            let logCells = item.log_hari.map(st => {
-                                let bgClass = 'text-slate-400';
-                                if (st === 'H') bgClass = 'bg-emerald-100 text-emerald-900 font-bold';
-                                else if (st === 'S') bgClass = 'bg-sky-100 text-sky-900 font-bold';
-                                else if (st === 'I') bgClass = 'bg-amber-100 text-amber-900 font-bold';
-                                else if (st === 'A') bgClass = 'bg-rose-100 text-rose-900 font-bold';
-                                else if (st === 'L') bgClass = 'bg-slate-100 text-slate-400 font-medium';
-
-                                return `<td class="p-1 border border-slate-200 text-center text-[10px] ${bgClass}">${st}</td>`;
+                            let logCells = item.log_hari.map((st, idx) => {
+                                const dNum = idx + 1;
+                                const tglFormatted = `${tahun}-${bulanStr}-${String(dNum).padStart(2, '0')}`;
+                                
+                                return `
+                                    <td class="p-0.5 border border-slate-200 text-center">
+                                        <select class="w-10 text-[10px] p-0.5 bg-transparent border-0 font-bold text-center focus:ring-1 focus:ring-amber-500"
+                                                data-siswa-id="${item.id}" 
+                                                data-tanggal="${tglFormatted}"
+                                                onchange="ubahRekapLangsung(this)">
+                                            <option value="" ${!st || st === '-' ? 'selected' : ''}>-</option>
+                                            <option value="H" ${st === 'H' ? 'selected' : ''}>H</option>
+                                            <option value="S" ${st === 'S' ? 'selected' : ''}>S</option>
+                                            <option value="I" ${st === 'I' ? 'selected' : ''}>I</option>
+                                            <option value="A" ${st === 'A' ? 'selected' : ''}>A</option>
+                                            <option value="L" ${st === 'L' ? 'selected' : ''}>L</option>
+                                        </select>
+                                    </td>
+                                `;
                             }).join('');
 
                             return `
