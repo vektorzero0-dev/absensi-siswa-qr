@@ -2420,6 +2420,69 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
     }
 });
 
+// ----------------- ENDPOINT EDIT / INPUT REKAP MANUAL LANGSUNG ----------------- //
+app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    const { siswa_id, tanggal, status } = req.body;
+    
+    if (!siswa_id || !tanggal || status === undefined) {
+        return res.status(400).json({ success: false, message: "ID Siswa, Tanggal, dan Status wajib diisi." });
+    }
+
+    const statusUpper = status.toUpperCase();
+    const validStatus = ['HADIR', 'IZIN', 'SAKIT', 'ALPA', 'H', 'S', 'I', 'A', ''];
+    if (!validStatus.includes(statusUpper)) {
+        return res.status(400).json({ success: false, message: "Status kehadiran tidak valid." });
+    }
+
+    let mappedStatus = statusUpper;
+    if (statusUpper === 'H') mappedStatus = 'HADIR';
+    if (statusUpper === 'S') mappedStatus = 'SAKIT';
+    if (statusUpper === 'I') mappedStatus = 'IZIN';
+    if (statusUpper === 'A') mappedStatus = 'ALPA';
+
+    try {
+        const scannedByUserId = req.currentUser.id;
+
+        // Cek apakah data absensi pada tanggal tersebut sudah ada di database
+        const cekAbsen = await pool.query(`
+            SELECT id FROM absensi 
+            WHERE siswa_id = $1 
+              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = $2
+        `, [siswa_id, tanggal]);
+
+        if (mappedStatus === '' || mappedStatus === 'L') {
+            // Jika dikosongkan, hapus data absensi pada tanggal tersebut
+            if (cekAbsen.rows.length > 0) {
+                await pool.query(`DELETE FROM absensi WHERE id = $1`, [cekAbsen.rows[0].id]);
+            }
+        } else {
+            if (cekAbsen.rows.length > 0) {
+                // Update data yang sudah ada
+                await pool.query(`
+                    UPDATE absensi 
+                    SET status = $1, tipe = $1, scanned_by = $2 
+                    WHERE id = $3
+                `, [mappedStatus, scannedByUserId, cekAbsen.rows[0].id]);
+            } else {
+                // Insert baru dengan tanggal spesifik yang dipilih pada rekap
+                const targetWaktu = `${tanggal} 07:00:00`;
+                await pool.query(`
+                    INSERT INTO absensi (siswa_id, status, tipe, scanned_by, waktu) 
+                    VALUES ($1, $2, $2, $3, $4::timestamp)
+                `, [siswa_id, mappedStatus, scannedByUserId, targetWaktu]);
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: `Rekap absensi tanggal ${tanggal} berhasil diperbarui.`
+        });
+
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal memperbarui rekap: " + err.message });
+    }
+});
+
 // FIX ISOLASI RESET RIWAYAT
 app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     try {
@@ -3129,7 +3192,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                                 LIMIT 1
                             `, [namaSiswa, targetSekolahId]);
 
-                            if (cekSiswa.rows.length > 0) {
+                            if (cekSysiswa.rows.length > 0) {
                                 const siswaId = cekSiswa.rows[0].id;
                                 await client.query(`
                                     INSERT INTO absensi (siswa_id, waktu, status, tipe) 
