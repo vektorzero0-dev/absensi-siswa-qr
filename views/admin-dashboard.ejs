@@ -89,13 +89,6 @@
             border: 1px solid #e9d5ff;
         }
 
-        /* Styling Warna Dropdown Rekap Matriks */
-        .select-status-h { background-color: #d1fae5 !important; color: #065f46 !important; font-weight: bold; }
-        .select-status-s { background-color: #e0f2fe !important; color: #0369a1 !important; font-weight: bold; }
-        .select-status-i { background-color: #fef3c7 !important; color: #92400e !important; font-weight: bold; }
-        .select-status-a { background-color: #ffe4e6 !important; color: #9f1239 !important; font-weight: bold; }
-        .select-status-l { background-color: #f1f5f9 !important; color: #64748b !important; }
-
         @keyframes fadeInSoft {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -1572,18 +1565,7 @@
             }
         }
 
-        /* Fungsi update warna dropdown secara instan saat diganti */
-        function ubahWarnanya(selectElem) {
-            selectElem.className = "w-11 text-[10px] p-1 rounded border border-slate-300 font-bold text-center focus:ring-1 focus:ring-amber-500";
-            const val = selectElem.value;
-            if (val === 'H') selectElem.classList.add('select-status-h');
-            else if (val === 'S') selectElem.classList.add('select-status-s');
-            else if (val === 'I') selectElem.classList.add('select-status-i');
-            else if (val === 'A') selectElem.classList.add('select-status-a');
-            else selectElem.classList.add('select-status-l');
-        }
-
-        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & DROPDOWN BERWARNA) */
+        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & DROPDOWN EDIT REKAP) */
         function muatPreviewAdmin() {
             const bulan = document.getElementById('selectBulanAdmin').value;
             const tahun = document.getElementById('selectTahunAdmin').value;
@@ -1625,18 +1607,12 @@
                                 const dNum = idx + 1;
                                 const tglFormatted = `${tahun}-${bulanStr}-${String(dNum).padStart(2, '0')}`;
                                 
-                                let warnaClass = 'select-status-l';
-                                if (st === 'H') warnaClass = 'select-status-h';
-                                else if (st === 'S') warnaClass = 'select-status-s';
-                                else if (st === 'I') warnaClass = 'select-status-i';
-                                else if (st === 'A') warnaClass = 'select-status-a';
-
                                 return `
                                     <td class="p-0.5 border border-slate-200 text-center">
-                                        <select class="w-11 text-[10px] p-1 rounded border border-slate-300 font-bold text-center ${warnaClass} focus:ring-1 focus:ring-amber-500"
+                                        <select class="w-10 text-[10px] p-0.5 bg-transparent border-0 font-bold text-center focus:ring-1 focus:ring-amber-500"
                                                 data-siswa-id="${item.id}" 
                                                 data-tanggal="${tglFormatted}"
-                                                onchange="ubahWarnanya(this); ubahRekapLangsung(this);">
+                                                onchange="ubahRekapLangsung(this)">
                                             <option value="" ${!st || st === '-' ? 'selected' : ''}>-</option>
                                             <option value="H" ${st === 'H' ? 'selected' : ''}>H</option>
                                             <option value="S" ${st === 'S' ? 'selected' : ''}>S</option>
@@ -1650,13 +1626,13 @@
 
                             return `
                                 <tr class="hover:bg-amber-50/50 border-b border-slate-100">
-                                    <td class="p-2 border border-slate-200 font-semibold text-slate-900 truncate"><%= item.nama_siswa %></td>
-                                    <td class="p-2 border border-slate-200 text-center text-slate-600 text-[10px]"><%= item.nama_kelas %></td>
+                                    <td class="p-2 border border-slate-200 font-semibold text-slate-900 truncate">${item.nama_siswa}</td>
+                                    <td class="p-2 border border-slate-200 text-center text-slate-600 text-[10px]">${item.nama_kelas}</td>
                                     ${logCells}
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]"><%= item.rekap.H || '' %></td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]"><%= item.rekap.S || '' %></td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]"><%= item.rekap.I || '' %></td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]"><%= item.rekap.A || '' %></td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]">${item.rekap.H || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]">${item.rekap.S || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]">${item.rekap.I || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]">${item.rekap.A || ''}</td>
                                 </tr>
                             `;
                         }).join('');
