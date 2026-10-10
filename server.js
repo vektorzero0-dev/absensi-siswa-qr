@@ -335,15 +335,30 @@ async function generateQRDataURL(text) {
     }
 }
 
-// ----------------- DATABASE AUTH STATE (ABADI DI NEON) ----------------- //
+// ----------------- DATABASE AUTH STATE (HEMAT NEON + AMAN SHUTDOWN) ----------------- //
+const sessionCache = {};
+const saveTimeouts = {};
+const pendingWrites = new Map(); // Untuk melacak data yang belum tersimpan ke DB
+
 async function getAuthState(userId) {
     const sessionId = `user_${userId}`;
 
+    if (!sessionCache[sessionId]) {
+        sessionCache[sessionId] = {};
+    }
+
     const readData = async (key) => {
+        const fullKey = `${sessionId}_${key}`;
+        if (sessionCache[sessionId][key] !== undefined) {
+            return sessionCache[sessionId][key];
+        }
+
         try {
-            const res = await pool.query('SELECT data FROM wa_sessions WHERE id = $1', [`${sessionId}_${key}`]);
+            const res = await pool.query('SELECT data FROM wa_sessions WHERE id = $1', [fullKey]);
             if (res.rows.length === 0) return null;
-            return JSON.parse(res.rows[0].data, BufferJSON.reviver);
+            const parsed = JSON.parse(res.rows[0].data, BufferJSON.reviver);
+            sessionCache[sessionId][key] = parsed;
+            return parsed;
         } catch (err) {
             console.error(`Gagal membaca sesi ${key}:`, err);
             return null;
@@ -351,20 +366,33 @@ async function getAuthState(userId) {
     };
 
     const writeData = async (data, key) => {
-        try {
-            const jsonString = JSON.stringify(data, BufferJSON.replacer);
-            await pool.query(`
-                INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
-                ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-            `, [`${sessionId}_${key}`, jsonString]);
-        } catch (err) {
-            console.error(`Gagal menyimpan sesi ${key}:`, err);
+        const fullKey = `${sessionId}_${key}`;
+        sessionCache[sessionId][key] = data;
+        pendingWrites.set(fullKey, { data, key: fullKey });
+
+        // Batalkan timeout sebelumnya agar tidak spam query
+        if (saveTimeouts[fullKey]) {
+            clearTimeout(saveTimeouts[fullKey]);
         }
+
+        // Tunda tulis ke Neon selama 5 detik (semakin lama, semakin hemat compute)
+        saveTimeouts[fullKey] = setTimeout(async () => {
+            await flushSingleWrite(fullKey);
+        }, 5000); 
     };
 
     const removeData = async (key) => {
+        const fullKey = `${sessionId}_${key}`;
+        delete sessionCache[sessionId][key];
+        pendingWrites.delete(fullKey);
+        
+        if (saveTimeouts[fullKey]) {
+            clearTimeout(saveTimeouts[fullKey]);
+            delete saveTimeouts[fullKey];
+        }
+
         try {
-            await pool.query('DELETE FROM wa_sessions WHERE id = $1', [`${sessionId}_${key}`]);
+            await pool.query('DELETE FROM wa_sessions WHERE id = $1', [fullKey]);
         } catch (err) {
             console.error(`Gagal menghapus sesi ${key}:`, err);
         }
@@ -412,112 +440,48 @@ async function getAuthState(userId) {
     };
 }
 
-async function connectToWhatsApp(userId, phoneNumber = null) {
+// Fungsi bantu untuk eksekusi tulis ke Neon
+async function flushSingleWrite(fullKey) {
+    const item = pendingWrites.get(fullKey);
+    if (!item) return;
+
     try {
-        if (reconnectTimers[userId]) {
-            clearTimeout(reconnectTimers[userId]);
-            delete reconnectTimers[userId];
-        }
-
-        if (waSessions[userId]) {
-            try { waSessions[userId].end(undefined); } catch (e) {}
-            delete waSessions[userId];
-        }
-
-        waStatus[userId] = phoneNumber ? 'MENUNGGU_PAIRING_CODE' : (pairingCodes[userId] ? 'MENUNGGU_PAIRING_CODE' : 'PROSES_INIT');
-        delete qrCodes[userId];
-
-        if (phoneNumber) delete pairingCodes[userId];
-
-        const { state, saveCreds } = await getAuthState(userId);
-        const { version } = await fetchLatestBaileysVersion();
-
-        console.log(`⚡ [User #${userId}] Inisialisasi WA Socket (Baileys v${version.join('.')})...`);
-
-        const sock = makeWASocket({
-            logger: pino({ level: 'silent' }),
-            auth: state,
-            printQRInTerminal: false,
-            browser: ["Ubuntu", "Chrome", "120.0.0.0"],
-            connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 60000,
-            keepAliveIntervalMs: 25000,
-            qrTimeout: 45000,
-            syncFullHistory: false
-        });
-
-        waSessions[userId] = sock;
-        sock.ev.on('creds.update', saveCreds);
-
-        if (phoneNumber && !sock.authState.creds.registered) {
-            setTimeout(async () => {
-                try {
-                    let cleanPhone = phoneNumber.toString().replace(/[^0-9]/g, '');
-                    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-                    
-                    const code = await sock.requestPairingCode(cleanPhone);
-                    pairingCodes[userId] = code;
-                    waStatus[userId] = 'MENUNGGU_PAIRING_CODE';
-
-                    setTimeout(() => {
-                        if (waStatus[userId] !== 'TERHUBUNG') delete pairingCodes[userId];
-                    }, 180000);
-                } catch (pErr) {
-                    waStatus[userId] = 'ERROR_PAIRING';
-                }
-            }, 5000);
-        }
-
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
-
-            if (qr && !phoneNumber && !sock.authState.creds.registered) {
-                try {
-                    qrCodes[userId] = await generateQRDataURL(qr);
-                    waStatus[userId] = 'MENUNGGU_SCAN';
-                    qrcodeTerminal.generate(qr, { small: true });
-                } catch (qrErr) {}
-            }
-
-            if (connection === 'open') {
-                waStatus[userId] = 'TERHUBUNG';
-                delete qrCodes[userId];
-                delete pairingCodes[userId];
-                if (reconnectTimers[userId]) {
-                    clearTimeout(reconnectTimers[userId]);
-                    delete reconnectTimers[userId];
-                }
-                console.log(`✅ [User #${userId}] WhatsApp Berhasil Terhubung!`);
-            }
-
-            if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401);
-
-                waStatus[userId] = 'TERPUTUS';
-                delete waSessions[userId];
-
-                if (!isLoggedOut) {
-                    if (!reconnectTimers[userId]) {
-                        reconnectTimers[userId] = setTimeout(() => {
-                            delete reconnectTimers[userId];
-                            connectToWhatsApp(userId);
-                        }, 8000);
-                    }
-                } else {
-                    delete qrCodes[userId];
-                    delete pairingCodes[userId];
-                    try {
-                        await pool.query('DELETE FROM wa_sessions WHERE id LIKE $1', [`user_${userId}_%`]);
-                    } catch (e) {}
-                }
-            }
-        });
+        const jsonString = JSON.stringify(item.data, BufferJSON.replacer);
+        await pool.query(`
+            INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
+            ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+        `, [fullKey, jsonString]);
+        
+        pendingWrites.delete(fullKey);
+        delete saveTimeouts[fullKey];
     } catch (err) {
-        waStatus[userId] = 'ERROR';
+        console.error(`Gagal menyimpan sesi ${fullKey} ke Neon:`, err);
     }
 }
 
+// ----------------- TAMBAHKAN INI DI FILE UTAMA (server.js / index.js) ----------------- //
+// Berfungsi untuk menyelamatkan data di RAM agar langsung terkirim ke Neon saat server mau berhenti/restart
+async function flushAllPendingSaves() {
+    console.log("💾 Menyimpan sisa sesi WhatsApp ke Neon sebelum server berhenti...");
+    const promises = [];
+    for (const [fullKey] of pendingWrites) {
+        if (saveTimeouts[fullKey]) {
+            clearTimeout(saveTimeouts[fullKey]);
+        }
+        promises.push(flushSingleWrite(fullKey));
+    }
+    await Promise.all(promises);
+}
+
+process.on('SIGINT', async () => {
+    await flushAllPendingSaves();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    await flushAllPendingSaves();
+    process.exit(0);
+});
 // ---------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT MURNI KETAT ---------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
