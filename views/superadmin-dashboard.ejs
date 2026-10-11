@@ -510,20 +510,12 @@
                             <label class="form-label">BERKAS EXCEL / CSV REKAP</label>
                             <div class="d-flex gap-2">
                                 <input type="file" name="file_excel" id="importFileExcel" accept=".xlsx, .xls, .csv" class="form-control" required>
-                                <button type="submit" id="btnImportSubmit" class="btn btn-cyber-success px-4 text-nowrap">
+                                <button type="submit" class="btn btn-cyber-success px-4 text-nowrap">
                                     <i class="bi bi-upload me-1"></i> IMPORT REKAP
                                 </button>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- INDIKATOR LOADING & STATUS HASIL IMPORT -->
-                    <div id="importLoadingIndicator" style="display: none;" class="mt-3 p-2 rounded bg-dark border border-info text-info">
-                        <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
-                        <span>⏳ Sedang memproses berkas Excel rekap absensi... Mohon jangan tutup halaman ini.</span>
-                    </div>
-                    <div id="importResultAlert" class="mt-3" style="display: none;"></div>
-
                     <small class="text-info d-block mt-2">
                         * Mendukung format matriks tanggal (1-31 dengan kolom H, S, I, A) maupun format tabel baris. Data bulan lain aman & hanya bulan target yang diperbarui.
                     </small>
@@ -1040,27 +1032,18 @@
             });
         }
 
-        // Handler Import Rekap Absensi Bulanan Per Sekolah (Dengan Indikator Loading & Pesan Hasil)
+        // Handler Import Rekap Absensi Bulanan Per Sekolah
         function handleImportRekap(e) {
             e.preventDefault();
             const sekolahId = document.getElementById('importSekolahId').value;
             const bulanTarget = document.getElementById('importBulanTarget').value;
             const fileInput = document.getElementById('importFileExcel');
-            
-            const btnSubmit = document.getElementById('btnImportSubmit');
-            const loadingIndicator = document.getElementById('importLoadingIndicator');
-            const resultAlert = document.getElementById('importResultAlert');
 
             if (!sekolahId || !bulanTarget || !fileInput.files.length) {
                 return alert('Pilih sekolah, bulan target, dan berkas excel rekap terlebih dahulu!');
             }
 
             if (!confirm(`Import rekap absensi untuk bulan ${bulanTarget}? Data absensi lama di bulan tersebut untuk sekolah ini akan diperbarui/disesuaikan.`)) return;
-
-            // Tampilkan animasi loading, matikan tombol
-            btnSubmit.disabled = true;
-            loadingIndicator.style.display = 'block';
-            resultAlert.style.display = 'none';
 
             const formData = new FormData();
             formData.append('sekolah_id', sekolahId);
@@ -1073,31 +1056,12 @@
             })
             .then(async (res) => {
                 const data = await res.json();
-                
-                // Sembunyikan loading, aktifkan kembali tombol
-                loadingIndicator.style.display = 'none';
-                btnSubmit.disabled = false;
-
-                resultAlert.style.display = 'block';
-                if (data.success) {
-                    resultAlert.className = 'mt-3 p-3 rounded bg-dark border border-success text-success fw-bold';
-                    resultAlert.innerHTML = `✅ ${data.message}`;
-                    // Beri jeda 2 detik sebelum reload halaman agar pesan sukses sempat terbaca
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    resultAlert.className = 'mt-3 p-3 rounded bg-dark border border-danger text-danger fw-bold';
-                    resultAlert.innerHTML = `❌ Gagal: ${data.message}`;
-                }
+                alert(data.message);
+                if (data.success) window.location.reload();
             })
             .catch(err => {
                 console.error('Error Import Rekap:', err);
-                loadingIndicator.style.display = 'none';
-                btnSubmit.disabled = false;
-                resultAlert.style.display = 'block';
-                resultAlert.className = 'mt-3 p-3 rounded bg-dark border border-danger text-danger fw-bold';
-                resultAlert.innerHTML = `❌ Terjadi kesalahan jaringan / sistem saat memproses berkas.`;
+                alert('Gagal mengimpor berkas rekap! Pastikan format berkas valid.');
             });
         }
 
