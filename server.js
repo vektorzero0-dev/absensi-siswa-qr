@@ -1494,7 +1494,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             return res.status(400).send("Akun ini belum dikaitkan dengan Sekolah manapun.");
         }
 
-        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+        const bulanPilihan = req.query.bulan ? req.query.bulan.toString().trim() : new Date().toISOString().slice(0, 7);
 
         const schRes = await pool.query("SELECT COALESCE(wa_mode, 'WALI_KELAS') AS wa_mode, COALESCE(cron_alpa_active, TRUE) AS cron_alpa_active FROM sekolah WHERE id = $1", [userSekolahId]);
         const waMode = schRes.rows.length > 0 ? schRes.rows[0].wa_mode : 'WALI_KELAS';
@@ -1530,7 +1530,6 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
-        // Menggunakan kueri zona waktu yang akurat untuk rekap bulanan admin
         const rekapBulananRes = await pool.query(`
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
@@ -1668,7 +1667,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
         const waMode = schRes.rows.length > 0 ? schRes.rows[0].wa_mode : 'WALI_KELAS';
         const cronAlpaActive = schRes.rows.length > 0 ? schRes.rows[0].cron_alpa_active : true;
 
-        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+        const bulanPilihan = req.query.bulan ? req.query.bulan.toString().trim() : new Date().toISOString().slice(0, 7);
 
         let siswaQuery = `
             SELECT s.id, s.nama, s.nomor_wa_ortu, s.kelas_id, 
@@ -1712,7 +1711,6 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // Menggunakan kueri zona waktu yang akurat untuk rekap bulanan wali kelas
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
@@ -2652,7 +2650,12 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
 
     try {
-        const userSekolahId = req.currentUser.sekolah_id || 1;
+        const currentUser = req.currentUser;
+        let userSekolahId = currentUser.sekolah_id;
+        if (!userSekolahId && currentUser.role === 'SUPER_ADMIN') {
+            userSekolahId = 1;
+        }
+
         const b = parseInt(bulan);
         const t = parseInt(tahun);
         const jumlahHari = new Date(t, b, 0).getDate();
@@ -2665,7 +2668,10 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
         `;
         const paramsSiswa = [userSekolahId];
 
-        if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
+        if (currentUser.role === 'WALI_KELAS' && currentUser.kelas_id) {
+            querySiswa += ` AND s.kelas_id = $2`;
+            paramsSiswa.push(currentUser.kelas_id);
+        } else if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
             querySiswa += ` AND s.kelas_id = $2`;
             paramsSiswa.push(parseInt(kelas_id));
         }
@@ -2746,7 +2752,12 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
     if (!bulan || !tahun) return res.status(400).send("Bulan dan Tahun wajib diisi.");
 
     try {
-        const userSekolahId = req.currentUser.sekolah_id || 1;
+        const currentUser = req.currentUser;
+        let userSekolahId = currentUser.sekolah_id;
+        if (!userSekolahId && currentUser.role === 'SUPER_ADMIN') {
+            userSekolahId = 1;
+        }
+
         const b = parseInt(bulan);
         const t = parseInt(tahun);
         const jumlahHari = new Date(t, b, 0).getDate();
@@ -2759,7 +2770,10 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
         `;
         const paramsSiswa = [userSekolahId];
 
-        if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
+        if (currentUser.role === 'WALI_KELAS' && currentUser.kelas_id) {
+            querySiswa += ` AND s.kelas_id = $2`;
+            paramsSiswa.push(currentUser.kelas_id);
+        } else if (kelas_id && kelas_id !== 'all' && kelas_id !== 'null' && kelas_id !== '') {
             querySiswa += ` AND s.kelas_id = $2`;
             paramsSiswa.push(parseInt(kelas_id));
         }
