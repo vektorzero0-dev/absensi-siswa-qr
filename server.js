@@ -149,7 +149,8 @@ async function initDB() {
                 cron_alpa_active BOOLEAN DEFAULT TRUE,
                 status_langganan VARCHAR(20) DEFAULT 'aktif',
                 expired_date TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days'),
-                paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)'
+                paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)',
+                hari_libur_mingguan INT DEFAULT 0
             );
         `);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
@@ -158,6 +159,7 @@ async function initDB() {
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS status_langganan VARCHAR(20) DEFAULT 'aktif';`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS expired_date TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days');`);
         await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS paket VARCHAR(50) DEFAULT 'Paket Uji Coba (14 Hari)';`);
+        await pool.query(`ALTER TABLE sekolah ADD COLUMN IF NOT EXISTS hari_libur_mingguan INT DEFAULT 0;`);
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS kelas (
@@ -211,6 +213,21 @@ async function initDB() {
                 tanggal DATE NOT NULL,
                 keterangan VARCHAR(255) NOT NULL,
                 UNIQUE(sekolah_id, tanggal)
+            );
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS nilai_mapel (
+                id SERIAL PRIMARY KEY,
+                siswa_id INT REFERENCES siswa(id) ON DELETE CASCADE,
+                guru_id INT REFERENCES users(id) ON DELETE CASCADE,
+                mata_pelajaran VARCHAR(100) NOT NULL,
+                jenjang VARCHAR(20) NOT NULL,
+                semester VARCHAR(20) DEFAULT 'Ganjil',
+                nilai_angka NUMERIC(5,2) DEFAULT 0,
+                predikat VARCHAR(5),
+                catatan TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
@@ -307,7 +324,7 @@ app.post('/api/kirim-foto-telegram', async (req, res) => {
 });
 
 // =========================================================================
-// 👨‍👩‍👧 DASBOR MANDIRI WALI MURID (ORANG TUA)
+// 👨‍👩‍👧 DASBOR MANDIRI WALI MURID (ORANG TUA) + CEK NILAI PAI
 // =========================================================================
 app.get('/ortu/login', async (req, res) => {
     try {
@@ -393,6 +410,11 @@ app.get('/ortu/dashboard', async (req, res) => {
             GROUP BY UPPER(status)
         `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
 
+        // Ambil data nilai mapel (termasuk PAI, Ekonomi, Pancasila) untuk siswa ini
+        const nilaiRes = await pool.query(`
+            SELECT * FROM nilai_mapel WHERE siswa_id = $1 ORDER BY updated_at DESC
+        `, [siswaAktif.id]);
+
         let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
         statistikRes.rows.forEach(r => {
             if (rekapStat[r.status] !== undefined) {
@@ -405,7 +427,8 @@ app.get('/ortu/dashboard', async (req, res) => {
             siswaAktif,
             absensiList: absensiRes.rows,
             rekapStat,
-            bulanPilihan
+            bulanPilihan,
+            nilaiList: nilaiRes.rows
         });
 
     } catch (err) {
@@ -420,12 +443,75 @@ app.get('/ortu/logout', (req, res) => {
     res.redirect('/ortu/login');
 });
 
+// =========================================================================
+// 📚 DASBOR KHUSUS GURU MAPEL (PAI, EKONOMI, PANCASILA)
+// =========================================================================
+app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const currentUser = req.currentUser;
+        const sekolahId = currentUser.sekolah_id || 1;
+        const namaSekolah = await getNamaSekolah(sekolahId);
+
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
+            FROM siswa s
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1
+            ORDER BY s.nama ASC
+        `, [sekolahId]);
+
+        const nilaiRes = await pool.query(`
+            SELECT n.*, s.nama AS nama_siswa, k.nama_kelas
+            FROM nilai_mapel n
+            INNER JOIN siswa s ON n.siswa_id = s.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE n.guru_id = $1
+            ORDER BY n.updated_at DESC
+        `, [currentUser.id]);
+
+        res.render('guru-dashboard', {
+            user: currentUser,
+            namaSekolah,
+            siswaList: siswaRes.rows,
+            nilaiList: nilaiRes.rows
+        });
+    } catch (err) {
+        res.status(500).send("Gagal memuat dasbor guru: " + err.message);
+    }
+});
+
+app.post('/api/guru/nilai/simpan', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const { siswa_id, mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan } = req.body;
+        const guruId = req.currentUser.id;
+
+        if (!siswa_id || !mata_pelajaran || !jenjang || !semester) {
+            return res.status(400).json({ success: false, message: "Lengkapi data siswa, mapel, jenjang, dan semester." });
+        }
+
+        await pool.query(`
+            INSERT INTO nilai_mapel (siswa_id, guru_id, mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+        `, [parseInt(siswa_id), guruId, mata_pelajaran, jenjang, semester, parseFloat(nilai_angka) || 0, predikat || '', catatan || '']);
+
+        return res.json({ success: true, message: "Nilai mata pelajaran berhasil disimpan!" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal menyimpan nilai: " + err.message });
+    }
+});
+
 async function cekApakahLibur(sekolahId, tanggalStr = null) {
     try {
         let dateToCheck = tanggalStr ? new Date(tanggalStr) : new Date();
-        const dayOfWeek = dateToCheck.getDay();
+        const dayOfWeek = dateToCheck.getDay(); // 0 = Minggu, 5 = Jumat
         
-        if (dayOfWeek === 0) return { libur: true, keterangan: "Hari Minggu (Libur Mingguan)" };
+        const schSetting = await pool.query("SELECT COALESCE(hari_libur_mingguan, 0) AS libur_mingguan FROM sekolah WHERE id = $1", [sekolahId]);
+        const targetLiburMingguan = schSetting.rows.length > 0 ? parseInt(schSetting.rows[0].libur_mingguan) : 0;
+
+        if (dayOfWeek === targetLiburMingguan) {
+            const namaHari = targetLiburMingguan === 5 ? "Hari Jumat" : "Hari Minggu";
+            return { libur: true, keterangan: `${namaHari} (Libur Mingguan Pesantren/Sekolah)` };
+        }
 
         const formattedDate = dateToCheck.toISOString().slice(0, 10);
         const res = await pool.query(
@@ -841,6 +927,8 @@ app.post('/login', async (req, res) => {
                 return res.redirect('/admin');
             } else if (user.role === 'PETUGAS') {
                 return res.redirect('/petugas');
+            } else if (user.role === 'GURU') {
+                return res.redirect('/guru/dashboard');
             } else {
                 return res.redirect('/wali');
             }
@@ -932,6 +1020,7 @@ app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
                    COALESCE(s.status_langganan, 'aktif') AS status_langganan,
                    COALESCE(s.expired_date, CURRENT_TIMESTAMP + INTERVAL '14 days') AS expired_date,
                    COALESCE(s.paket, 'Paket Uji Coba (14 Hari)') AS paket,
+                   COALESCE(s.hari_libur_mingguan, 0) AS hari_libur_mingguan,
                    COUNT(DISTINCT k.id) AS total_kelas,
                    COUNT(DISTINCT sis.id) AS total_siswa,
                    COUNT(DISTINCT CASE WHEN u.role != 'SUPER_ADMIN' THEN u.id END) AS total_pengguna
@@ -939,7 +1028,7 @@ app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
              LEFT JOIN kelas k ON k.sekolah_id = s.id
              LEFT JOIN siswa sis ON sis.kelas_id = k.id
              LEFT JOIN users u ON u.sekolah_id = s.id
-             GROUP BY s.id, s.nama_sekolah, s.is_active, s.wa_mode, s.cron_alpa_active, s.status_langganan, s.expired_date, s.paket
+             GROUP BY s.id, s.nama_sekolah, s.is_active, s.wa_mode, s.cron_alpa_active, s.status_langganan, s.expired_date, s.paket, s.hari_libur_mingguan
              ORDER BY s.id ASC
         `);
         
@@ -965,6 +1054,16 @@ app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
         });
     } catch (err) {
         res.status(500).send("Gagal Memuat Dasbor Super Admin: " + err.message);
+    }
+});
+
+app.post('/api/super-admin/update-libur-mingguan', requireAuth(['SUPER_ADMIN']), async (req, res) => {
+    const { sekolah_id, hari_libur_mingguan } = req.body;
+    try {
+        await pool.query(`UPDATE sekolah SET hari_libur_mingguan = $1 WHERE id = $2`, [parseInt(hari_libur_mingguan), parseInt(sekolah_id)]);
+        return res.redirect('/superadmin');
+    } catch (err) {
+        return res.status(500).send("Gagal memperbarui hari libur: " + err.message);
     }
 });
 
@@ -1833,16 +1932,17 @@ app.post('/api/kelas/hapus-semua', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS
 });
 
 app.post('/api/guru/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
-    const { nama, username, password, kelas_id } = req.body;
+    const { nama, username, password, kelas_id, role } = req.body;
     try {
         if (!nama || !username || !password) return res.status(400).send("Semua kolom wajib diisi.");
 
         const userSekolahId = req.currentUser.sekolah_id || 1;
         const parsedKelasId = kelas_id ? parseInt(kelas_id) : null;
+        const userRole = role === 'GURU' ? 'GURU' : 'WALI_KELAS';
 
         await pool.query(
             'INSERT INTO users (nama, username, password, role, kelas_id, sekolah_id) VALUES ($1, $2, $3, $4, $5, $6)',
-            [nama.trim(), username.trim(), password.trim(), 'WALI_KELAS', parsedKelasId, userSekolahId]
+            [nama.trim(), username.trim(), password.trim(), userRole, parsedKelasId, userSekolahId]
         );
         return res.redirect('/admin');
     } catch (err) {
