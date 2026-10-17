@@ -324,16 +324,26 @@ app.post('/ortu/login', async (req, res) => {
             return res.render('ortu-login', { error: 'Nomor WhatsApp wajib diisi.', namaSekolah: await getNamaSekolah() });
         }
 
+        // Bersihkan input dari spasi, strip, atau karakter non-angka
         let cleanPhone = nomor_wa.toString().trim().replace(/[^0-9]/g, '');
-        if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+        
+        // Buat varian alternatif (jika input 08..., siapkan juga 628... dan sebaliknya)
+        let altPhone = cleanPhone;
+        if (cleanPhone.startsWith('0')) {
+            altPhone = '62' + cleanPhone.slice(1);
+        } else if (cleanPhone.startsWith('62')) {
+            altPhone = '0' + cleanPhone.slice(1);
+        }
 
+        // Cari dengan membersihkan karakter non-angka langsung di sisi database PostgreSQL
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
             FROM siswa s
             LEFT JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
-            WHERE s.nomor_wa_ortu LIKE $1
-        `, [`%${cleanPhone}%`]);
+            WHERE REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $1 
+               OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $2
+        `, [cleanPhone, altPhone]);
 
         if (siswaRes.rows.length === 0) {
             return res.render('ortu-login', { error: 'Nomor WhatsApp tidak ditemukan terdaftar pada data orang tua siswa.', namaSekolah: await getNamaSekolah() });
@@ -346,56 +356,6 @@ app.post('/ortu/login', async (req, res) => {
 
     } catch (err) {
         res.status(500).send("Kesalahan Sistem: " + err.message);
-    }
-});
-
-app.get('/ortu/dashboard', async (req, res) => {
-    if (!req.session || !req.session.ortuSiswa) {
-        return res.redirect('/ortu/login');
-    }
-
-    try {
-        const daftarAnak = req.session.ortuSiswa;
-        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
-        const selectedAnakId = req.query.siswa_id ? parseInt(req.query.siswa_id) : daftarAnak[0].id;
-
-        const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
-
-        const absensiRes = await pool.query(`
-            SELECT id, waktu, status, tipe, 
-                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
-            FROM absensi
-            WHERE siswa_id = $1 
-              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
-            ORDER BY waktu DESC
-        `, [siswaAktif.id, bulanPilihan]);
-
-        const statistikRes = await pool.query(`
-            SELECT UPPER(status) AS status, COUNT(*) AS jumlah
-            FROM absensi
-            WHERE siswa_id = $1 
-              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
-            GROUP BY UPPER(status)
-        `, [siswaAktif.id, bulanPilihan]);
-
-        let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
-        statistikRes.rows.forEach(r => {
-            if (rekapStat[r.status] !== undefined) {
-                rekapStat[r.status] = parseInt(r.jumlah);
-            }
-        });
-
-        res.render('ortu-dashboard', {
-            daftarAnak,
-            siswaAktif,
-            absensiList: absensiRes.rows,
-            rekapStat,
-            bulanPilihan
-        });
-
-    } catch (err) {
-        res.status(500).send("Gagal memuat dasbor orang tua: " + err.message);
     }
 });
 
