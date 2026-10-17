@@ -359,6 +359,57 @@ app.post('/ortu/login', async (req, res) => {
     }
 });
 
+// RUTE GET: HALAMAN DASBOR WALI MURID (PASTIKAN INI ADA)
+app.get('/ortu/dashboard', async (req, res) => {
+    if (!req.session || !req.session.ortuSiswa) {
+        return res.redirect('/ortu/login');
+    }
+
+    try {
+        const daftarAnak = req.session.ortuSiswa;
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+        const selectedAnakId = req.query.siswa_id ? parseInt(req.query.siswa_id) : daftarAnak[0].id;
+
+        const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
+
+        const absensiRes = await pool.query(`
+            SELECT id, waktu, status, tipe, 
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+            FROM absensi
+            WHERE siswa_id = $1 
+              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            ORDER BY waktu DESC
+        `, [siswaAktif.id, bulanPilihan]);
+
+        const statistikRes = await pool.query(`
+            SELECT UPPER(status) AS status, COUNT(*) AS jumlah
+            FROM absensi
+            WHERE siswa_id = $1 
+              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+            GROUP BY UPPER(status)
+        `, [siswaAktif.id, bulanPilihan]);
+
+        let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
+        statistikRes.rows.forEach(r => {
+            if (rekapStat[r.status] !== undefined) {
+                rekapStat[r.status] = parseInt(r.jumlah);
+            }
+        });
+
+        res.render('ortu-dashboard', {
+            daftarAnak,
+            siswaAktif,
+            absensiList: absensiRes.rows,
+            rekapStat,
+            bulanPilihan
+        });
+
+    } catch (err) {
+        res.status(500).send("Gagal memuat dasbor orang tua: " + err.message);
+    }
+});
+
 app.get('/ortu/logout', (req, res) => {
     if (req.session) {
         delete req.session.ortuSiswa;
