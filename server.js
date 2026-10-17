@@ -359,7 +359,9 @@ app.post('/ortu/login', async (req, res) => {
     }
 });
 
-// RUTE GET: HALAMAN DASBOR WALI MURID (PASTIKAN INI ADA)
+// =========================================================================
+// RUTE GET: HALAMAN DASBOR WALI MURID (DIPERBAIKI)
+// =========================================================================
 app.get('/ortu/dashboard', async (req, res) => {
     if (!req.session || !req.session.ortuSiswa) {
         return res.redirect('/ortu/login');
@@ -367,28 +369,38 @@ app.get('/ortu/dashboard', async (req, res) => {
 
     try {
         const daftarAnak = req.session.ortuSiswa;
-        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7); // Format: "YYYY-MM"
         const selectedAnakId = req.query.siswa_id ? parseInt(req.query.siswa_id) : daftarAnak[0].id;
 
         const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
 
+        // Tentukan rentang awal dan akhir bulan secara presisi
+        const awalBulan = `${bulanPilihan}-01 00:00:00`;
+        const [tahun, bulan] = bulanPilihan.split('-');
+        const akhirBulanObj = new Date(tahun, parseInt(bulan), 0); // Tanggal terakhir di bulan tersebut
+        const akhirBulan = `${bulanPilihan}-${akhirBulanObj.getDate()} 23:59:59`;
+
+        // 1. Ambil riwayat absensi berdasarkan rentang tanggal
         const absensiRes = await pool.query(`
             SELECT id, waktu, status, tipe, 
-                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(waktu, 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(waktu, 'HH24:MI:SS') AS jam_formatted
             FROM absensi
             WHERE siswa_id = $1 
-              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+              AND waktu >= $2::timestamp 
+              AND waktu <= $3::timestamp
             ORDER BY waktu DESC
-        `, [siswaAktif.id, bulanPilihan]);
+        `, [siswaAktif.id, awalBulan, akhirBulan]);
 
+        // 2. Ambil statistik rekapitulasi kehadiran
         const statistikRes = await pool.query(`
             SELECT UPPER(status) AS status, COUNT(*) AS jumlah
             FROM absensi
             WHERE siswa_id = $1 
-              AND TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
+              AND waktu >= $2::timestamp 
+              AND waktu <= $3::timestamp
             GROUP BY UPPER(status)
-        `, [siswaAktif.id, bulanPilihan]);
+        `, [siswaAktif.id, awalBulan, akhirBulan]);
 
         let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
         statistikRes.rows.forEach(r => {
