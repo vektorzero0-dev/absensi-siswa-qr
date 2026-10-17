@@ -1111,7 +1111,7 @@
     <script>
         const currentUserId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
 
-        /* 📢 SCRIPT GENERATE TAHUN OTOMATIS & AUTO LOAD PREVIEW */
+        /* 📢 SCRIPT GENERATE TAHUN OTOMATIS */
         document.addEventListener("DOMContentLoaded", function() {
             const selectTahunAdmin = document.getElementById('selectTahunAdmin');
             if (selectTahunAdmin) {
@@ -1134,10 +1134,6 @@
                     selectTahunAdmin.appendChild(option);
                 }
             }
-
-            // Panggil otomatis pratinjau rekap saat halaman selesai dimuat
-            muatPreviewAdmin();
-            cekStatusWA();
         });
 
         /* 📢 SCRIPT KIRIM BROADCAST WHATSAPP MASSAL */
@@ -1197,7 +1193,7 @@
 
             const formData = new FormData();
             formData.append('file_backup', fileInput.files[0]);
-            formData.append('userId', currentUserId);
+            formData.append('userId', '<%= userId %>');
 
             fetch('/api/backup/restore', {
                 method: 'POST',
@@ -1404,6 +1400,7 @@
             document.getElementById('modalEditSiswa').classList.add('hidden');
         }
 
+        /* FUNGSI MODAL MASUK MANUAL */
         function bukaModalMasukManual(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -1451,6 +1448,7 @@
             }
         }
 
+        /* FUNGSI MODAL IZIN / SAKIT ADMIN */
         function bukaModalIzinSakit(btn) {
             const id = btn.getAttribute('data-id');
             const nama = decodeURIComponent(btn.getAttribute('data-nama'));
@@ -1531,6 +1529,7 @@
             document.getElementById('sidebarOverlay').classList.add('hidden');
         }
 
+        /* 📌 FUNGSI EDIT REKAP MANUAL LANGSUNG DARI TABEL PRATINJAU */
         async function ubahRekapLangsung(selectElement) {
             const siswaId = selectElement.getAttribute('data-siswa-id');
             const tanggalStr = selectElement.getAttribute('data-tanggal');
@@ -1566,6 +1565,7 @@
             }
         }
 
+        /* 📌 DUKUNGAN PRATINJAU FORMAT MATRIKS HORISONTAL (TANGGAL 1-31 & DROPDOWN EDIT REKAP DENGAN WARNA) */
         function getStatusColorClass(val) {
             if (val === 'H') return 'bg-emerald-100 text-emerald-800 font-bold';
             if (val === 'S') return 'bg-sky-100 text-sky-800 font-bold';
@@ -1583,15 +1583,13 @@
             const tbody = document.getElementById('previewTableBodyAdmin');
             const countTag = document.getElementById('previewCountAdmin');
 
-            if (!previewArea || !thead || !tbody) return;
-
             tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-slate-500 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data rekapitulasi matriks...</td></tr>`;
             previewArea.classList.remove('hidden');
 
             fetch(`/api/absensi/preview?bulan=${bulan}&tahun=${tahun}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success && data.data && data.data.length > 0) {
+                    if (data.success && data.data.length > 0) {
                         countTag.innerText = `${data.data.length} Siswa`;
                         const jmlHari = data.jumlahHari || 31;
                         const bulanStr = String(data.bulan).padStart(2, '0');
@@ -1641,10 +1639,10 @@
                                     <td class="p-2 border border-slate-200 font-semibold text-slate-900 truncate">${item.nama_siswa}</td>
                                     <td class="p-2 border border-slate-200 text-center text-slate-600 text-[10px]">${item.nama_kelas}</td>
                                     ${logCells}
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]">${item.rekap?.H || 0}</td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]">${item.rekap?.S || 0}</td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]">${item.rekap?.I || 0}</td>
-                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]">${item.rekap?.A || 0}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-emerald-50 text-emerald-800 text-[10px]">${item.rekap.H || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-sky-50 text-sky-800 text-[10px]">${item.rekap.S || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-amber-50 text-amber-800 text-[10px]">${item.rekap.I || ''}</td>
+                                    <td class="p-1 border border-slate-200 text-center font-bold bg-rose-50 text-rose-800 text-[10px]">${item.rekap.A || ''}</td>
                                 </tr>
                             `;
                         }).join('');
@@ -1652,12 +1650,12 @@
                     } else {
                         countTag.innerText = '0 Siswa';
                         thead.innerHTML = '';
-                        tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-slate-400 italic">Tidak ada data kehadiran pada bulan dan tahun yang dipilih (atau data siswa belum terdaftar di sekolah ini).</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-slate-400 italic">Tidak ada data kehadiran pada bulan dan tahun yang dipilih.</td></tr>`;
                     }
                 })
                 .catch(err => {
                     console.error("Preview error:", err);
-                    tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data dari server.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="40" class="p-4 text-center text-rose-500 font-medium">Gagal memuat pratinjau data.</td></tr>`;
                 });
         }
 
@@ -1708,6 +1706,7 @@
         });
 
         setInterval(cekStatusWA, 3000);
+        document.addEventListener("DOMContentLoaded", cekStatusWA);
     </script>
 
     <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px]">
