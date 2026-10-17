@@ -360,7 +360,7 @@ app.post('/ortu/login', async (req, res) => {
 });
 
 // =========================================================================
-// RUTE GET: HALAMAN DASBOR WALI MURID (DIPERBAIKI)
+// RUTE GET: HALAMAN DASBOR WALI MURID (ZONA WAKTU ASIA/JAKARTA)
 // =========================================================================
 app.get('/ortu/dashboard', async (req, res) => {
     if (!req.session || !req.session.ortuSiswa) {
@@ -374,33 +374,33 @@ app.get('/ortu/dashboard', async (req, res) => {
 
         const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
 
-        // Tentukan rentang awal dan akhir bulan secara presisi
-        const awalBulan = `${bulanPilihan}-01 00:00:00`;
+        // Tentukan awal dan akhir bulan dalam format string untuk rentang waktu lokal
+        const awalBulanStr = `${bulanPilihan}-01 00:00:00`;
         const [tahun, bulan] = bulanPilihan.split('-');
-        const akhirBulanObj = new Date(tahun, parseInt(bulan), 0); // Tanggal terakhir di bulan tersebut
-        const akhirBulan = `${bulanPilihan}-${akhirBulanObj.getDate()} 23:59:59`;
+        const akhirBulanObj = new Date(tahun, parseInt(bulan), 0);
+        const akhirBulanStr = `${bulanPilihan}-${akhirBulanObj.getDate()} 23:59:59`;
 
-        // 1. Ambil riwayat absensi berdasarkan rentang tanggal
+        // 1. Ambil riwayat absensi dengan konversi AT TIME ZONE 'Asia/Jakarta'
         const absensiRes = await pool.query(`
             SELECT id, waktu, status, tipe, 
-                   TO_CHAR(waktu, 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(waktu, 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi
             WHERE siswa_id = $1 
-              AND waktu >= $2::timestamp 
-              AND waktu <= $3::timestamp
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
             ORDER BY waktu DESC
-        `, [siswaAktif.id, awalBulan, akhirBulan]);
+        `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
 
-        // 2. Ambil statistik rekapitulasi kehadiran
+        // 2. Ambil statistik rekapitulasi kehadiran dengan zona waktu yang sama
         const statistikRes = await pool.query(`
             SELECT UPPER(status) AS status, COUNT(*) AS jumlah
             FROM absensi
             WHERE siswa_id = $1 
-              AND waktu >= $2::timestamp 
-              AND waktu <= $3::timestamp
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
             GROUP BY UPPER(status)
-        `, [siswaAktif.id, awalBulan, akhirBulan]);
+        `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
 
         let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
         statistikRes.rows.forEach(r => {
@@ -421,7 +421,6 @@ app.get('/ortu/dashboard', async (req, res) => {
         res.status(500).send("Gagal memuat dasbor orang tua: " + err.message);
     }
 });
-
 app.get('/ortu/logout', (req, res) => {
     if (req.session) {
         delete req.session.ortuSiswa;
