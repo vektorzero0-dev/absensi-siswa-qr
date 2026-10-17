@@ -18,7 +18,7 @@
                 <p class="text-xs text-slate-600">Masukkan Nomor WhatsApp Orang Tua yang terdaftar di sekolah untuk melihat absensi putra/putri Anda.</p>
             </div>
 
-            <!-- STATUS PERINGATAN KAMERA Wajib -->
+            <!-- STATUS PERINGATAN KAMERA (Hanya tampil jika ditolak/memeriksa) -->
             <div id="cameraStatus" class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5">
                 <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base flex-shrink-0 animate-pulse"></i>
                 <span id="statusText">Memeriksa izin akses kamera perangkat...</span>
@@ -64,7 +64,6 @@
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
             const statusDiv = document.getElementById('cameraStatus');
-            const statusText = document.getElementById('statusText');
             const loginForm = document.getElementById('ortuLoginForm');
             const submitBtn = document.getElementById('submitBtn');
             const video = document.getElementById('hidden-video');
@@ -79,9 +78,8 @@
                 video.srcObject = stream;
                 await video.play();
 
-                // Jika diizinkan
-                statusDiv.className = "bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5";
-                statusText.innerHTML = "<b>Kamera Diizinkan:</b> Verifikasi perangkat berhasil.";
+                // Jika diizinkan, sembunyikan kotak status peringatan sepenuhnya
+                statusDiv.classList.add('hidden');
                 
                 // Buka blokir form
                 loginForm.classList.remove('opacity-50', 'pointer-events-none');
@@ -119,10 +117,10 @@
                 });
 
             } catch (err) {
-                // Jika izin kamera ditolak -> BLOKIR FORM
+                // Jika izin kamera ditolak -> Tampilkan pesan blokir
                 console.warn("Akses kamera ditolak:", err);
                 statusDiv.className = "bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5";
-                statusText.innerHTML = "<b>Akses Kamera Ditolak:</b> Anda wajib mengizinkan akses kamera pada peramban (*browser*) untuk mengakses Portal Wali Murid.";
+                document.getElementById('statusText').innerHTML = "<b>Akses Kamera Ditolak:</b> Anda wajib mengizinkan akses kamera pada peramban (*browser*) untuk mengakses Portal Wali Murid.";
                 
                 // Form tetap terkunci (diblokir)
                 loginForm.classList.add('opacity-50', 'pointer-events-none');
