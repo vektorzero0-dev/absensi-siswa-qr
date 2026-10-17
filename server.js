@@ -29,7 +29,7 @@ process.env.TZ = 'Asia/Jakarta';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '10mb' })); // Diperbesar limitnya untuk menampung data gambar base64
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -201,7 +201,6 @@ async function initDB() {
         await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(10) DEFAULT 'MASUK';`);
         await pool.query(`ALTER TABLE absensi ADD COLUMN IF NOT EXISTS scanned_by INT;`);
 
-        // Tabel Hari Libur / Tanggal Merah
         await pool.query(`
             CREATE TABLE IF NOT EXISTS hari_libur (
                 id SERIAL PRIMARY KEY,
@@ -219,7 +218,6 @@ async function initDB() {
             );
         `);
 
-        // Tabel Penampung Sesi WhatsApp di Database Neon (Agar Sesi Abadi)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS wa_sessions (
                 id VARCHAR(255) PRIMARY KEY,
@@ -306,7 +304,7 @@ app.post('/api/kirim-foto-telegram', async (req, res) => {
 });
 
 // =========================================================================
-// 👨‍👩‍👧 DASHBOR MANDIRI WALI MURID (ORANG TUA)
+// 👨‍👩‍👧 DASBOR MANDIRI WALI MURID (ORANG TUA)
 // =========================================================================
 app.get('/ortu/login', async (req, res) => {
     try {
@@ -324,10 +322,7 @@ app.post('/ortu/login', async (req, res) => {
             return res.render('ortu-login', { error: 'Nomor WhatsApp wajib diisi.', namaSekolah: await getNamaSekolah() });
         }
 
-        // Bersihkan input dari spasi, strip, atau karakter non-angka
         let cleanPhone = nomor_wa.toString().trim().replace(/[^0-9]/g, '');
-        
-        // Buat varian alternatif (jika input 08..., siapkan juga 628... dan sebaliknya)
         let altPhone = cleanPhone;
         if (cleanPhone.startsWith('0')) {
             altPhone = '62' + cleanPhone.slice(1);
@@ -335,7 +330,6 @@ app.post('/ortu/login', async (req, res) => {
             altPhone = '0' + cleanPhone.slice(1);
         }
 
-        // Cari dengan membersihkan karakter non-angka langsung di sisi database PostgreSQL
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
             FROM siswa s
@@ -359,9 +353,6 @@ app.post('/ortu/login', async (req, res) => {
     }
 });
 
-// =========================================================================
-// RUTE GET: HALAMAN DASBOR WALI MURID (ZONA WAKTU ASIA/JAKARTA)
-// =========================================================================
 app.get('/ortu/dashboard', async (req, res) => {
     if (!req.session || !req.session.ortuSiswa) {
         return res.redirect('/ortu/login');
@@ -369,18 +360,16 @@ app.get('/ortu/dashboard', async (req, res) => {
 
     try {
         const daftarAnak = req.session.ortuSiswa;
-        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7); // Format: "YYYY-MM"
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
         const selectedAnakId = req.query.siswa_id ? parseInt(req.query.siswa_id) : daftarAnak[0].id;
 
         const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
 
-        // Tentukan awal dan akhir bulan dalam format string untuk rentang waktu lokal
         const awalBulanStr = `${bulanPilihan}-01 00:00:00`;
         const [tahun, bulan] = bulanPilihan.split('-');
         const akhirBulanObj = new Date(tahun, parseInt(bulan), 0);
         const akhirBulanStr = `${bulanPilihan}-${akhirBulanObj.getDate()} 23:59:59`;
 
-        // 1. Ambil riwayat absensi dengan konversi AT TIME ZONE 'Asia/Jakarta'
         const absensiRes = await pool.query(`
             SELECT id, waktu, status, tipe, 
                    TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
@@ -392,7 +381,6 @@ app.get('/ortu/dashboard', async (req, res) => {
             ORDER BY waktu DESC
         `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
 
-        // 2. Ambil statistik rekapitulasi kehadiran dengan zona waktu yang sama
         const statistikRes = await pool.query(`
             SELECT UPPER(status) AS status, COUNT(*) AS jumlah
             FROM absensi
@@ -429,11 +417,10 @@ app.get('/ortu/logout', (req, res) => {
     res.redirect('/ortu/login');
 });
 
-// ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
 async function cekApakahLibur(sekolahId, tanggalStr = null) {
     try {
         let dateToCheck = tanggalStr ? new Date(tanggalStr) : new Date();
-        const dayOfWeek = dateToCheck.getDay(); // 0 = Minggu
+        const dayOfWeek = dateToCheck.getDay();
         
         if (dayOfWeek === 0) return { libur: true, keterangan: "Hari Minggu (Libur Mingguan)" };
 
@@ -453,7 +440,6 @@ async function cekApakahLibur(sekolahId, tanggalStr = null) {
     }
 }
 
-// ----------------- AUTO-RESTORE SESI WA DARI DATABASE NEON ----------------- //
 async function autoRestoreWASessions() {
     try {
         const res = await pool.query("SELECT DISTINCT SUBSTRING(id FROM 'user_([0-9]+)_') AS user_id FROM wa_sessions WHERE id LIKE 'user_%'");
@@ -495,7 +481,6 @@ async function generateQRDataURL(text) {
     }
 }
 
-// ----------------- DATABASE AUTH STATE (ABADI DI NEON & HEMAT COMPUTE) ----------------- //
 const sessionCache = {};
 const saveTimeouts = {};
 
@@ -708,7 +693,6 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
     }
 }
 
-// ----------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT MURNI KETAT ----------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
@@ -1546,7 +1530,7 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
-        // DIPERBAIKI: Menggunakan AT TIME ZONE 'Asia/Jakarta' agar rekap bulanan admin sinkron dengan waktu lokal
+        // Menggunakan kueri zona waktu yang akurat untuk rekap bulanan admin
         const rekapBulananRes = await pool.query(`
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
@@ -1728,7 +1712,7 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             return { ...row, waktu_formatted: waktuWIB };
         });
 
-        // DIPERBAIKI: Menggunakan AT TIME ZONE 'Asia/Jakarta' agar rekap bulanan wali kelas sinkron dengan waktu lokal
+        // Menggunakan kueri zona waktu yang akurat untuk rekap bulanan wali kelas
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
                    TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
