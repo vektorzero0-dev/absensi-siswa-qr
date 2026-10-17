@@ -42,6 +42,9 @@ app.use(session({
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // Sesi 1 Hari
 }));
 
+// Global Progress Tracker untuk Impor Transparan Real-time
+const importProgress = {};
+
 // =========================================================================
 // 🔒 MIDDLEWARE AUTENTIKASI & ISOLASI SEKOLAH KETAT
 // =========================================================================
@@ -1986,9 +1989,15 @@ app.post('/api/siswa/import-excel', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
                 const cleanKey = key.toString().toLowerCase().trim();
                 const val = row[key] ? row[key].toString().trim() : "";
 
-                if (cleanKey.includes('nama') || cleanKey.includes('peserta didik') || cleanKey.includes('siswa')) if (!namaSiswa && val) namaSiswa = val;
-                if (cleanKey.includes('hp') || cleanKey.includes('wa') || cleanKey.includes('telepon') || cleanKey.includes('seluler') || cleanKey.includes('kontak')) if (!nomorWa && val) nomorWa = val;
-                if (cleanKey.includes('rombel') || cleanKey.includes('kelas') || cleanKey.includes('rombongan') || cleanKey.includes('tingkat')) if (!namaKelas && val) namaKelas = val;
+                if (cleanKey.includes('nama') || cleanKey.includes('peserta didik') || cleanKey.includes('siswa')) {
+                    if (!namaSiswa && val) namaSiswa = val.replace(/^['"]+|['"]+$/g, '').replace(/\s+/g, ' ').trim();
+                }
+                if (cleanKey.includes('hp') || cleanKey.includes('wa') || cleanKey.includes('telepon') || cleanKey.includes('seluler') || cleanKey.includes('kontak')) {
+                    if (!nomorWa && val) nomorWa = val;
+                }
+                if (cleanKey.includes('rombel') || cleanKey.includes('kelas') || cleanKey.includes('rombongan') || cleanKey.includes('tingkat')) {
+                    if (!namaKelas && val) namaKelas = val;
+                }
             });
 
             if (namaSiswa && namaSiswa.length > 1) {
@@ -3150,16 +3159,29 @@ app.get('/api/cron/auto-alpa', async (req, res) => {
     }
 });
 
+// Endpoint Polling Progress Impor (Transparan Real-time)
+app.get('/api/import-progress', requireAuth(['SUPER_ADMIN', 'ADMIN']), (req, res) => {
+    const processId = req.query.processId || 'default';
+    const progress = importProgress[processId] || { percent: 0, message: 'Menunggu...', successCount: 0, skippedCount: 0, totalRows: 0 };
+    res.json(progress);
+});
+
 app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), upload.single('file_excel'), async (req, res) => {
     const client = await pool.connect();
+    const processId = req.body.processId || 'default';
+    
+    importProgress[processId] = { percent: 5, message: 'Membaca berkas Excel...', successCount: 0, skippedCount: 0, totalRows: 0 };
+
     try {
         const { sekolah_id, bulan_target } = req.body;
 
         if (!sekolah_id) {
+            delete importProgress[processId];
             return res.status(400).json({ success: false, message: "ID Sekolah tujuan wajib disertakan." });
         }
 
         if (!req.file) {
+            delete importProgress[processId];
             return res.status(400).json({ success: false, message: "Berkas Excel/CSV rekap wajib diunggah!" });
         }
 
@@ -3171,6 +3193,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
         const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
         if (sheetData.length === 0) {
+            delete importProgress[processId];
             return res.status(400).json({ success: false, message: "Berkas Excel kosong atau tidak terbaca." });
         }
 
@@ -3236,6 +3259,8 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
             }
         }
 
+        importProgress[processId] = { percent: 20, message: 'Menghapus data rekap lama pada bulan tersebut...', successCount: 0, skippedCount: 0, totalRows: sheetData.length };
+
         await client.query('BEGIN');
 
         await client.query(`
@@ -3252,10 +3277,24 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
 
         let successCount = 0;
         let skippedCount = 0;
+        let totalRowsToProcess = isMatrixFormat ? (sheetData.length - (headerRowIdx + 1)) : sheetData.length;
+        let processedRows = 0;
 
         if (isMatrixFormat) {
             for (let rowIdx = headerRowIdx + 1; rowIdx < sheetData.length; rowIdx++) {
-                const namaSiswa = String(sheetData[rowIdx][0] || "").trim();
+                processedRows++;
+                const rawNamaSiswa = String(sheetData[rowIdx][0] || "").trim();
+                const namaSiswa = rawNamaSiswa.replace(/^['"]+|['"]+$/g, '').replace(/\s+/g, ' ').trim();
+                
+                let currentPercent = Math.min(90, Math.floor(20 + (processedRows / totalRowsToProcess) * 70));
+                importProgress[processId] = { 
+                    percent: currentPercent, 
+                    message: `Memproses baris ${processedRows} dari ${totalRowsToProcess}: ${namaSiswa || 'Baris kosong'}`, 
+                    successCount, 
+                    skippedCount, 
+                    totalRows: totalRowsToProcess 
+                };
+
                 if (!namaSiswa || namaSiswa.toLowerCase() === 'nan') continue;
 
                 for (const [colIdxStr, dayNum] of Object.entries(dayCols)) {
@@ -3294,7 +3333,11 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
             }
         } else {
             const tabularData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-            for (const row of tabularData) {
+            totalRowsToProcess = tabularData.length;
+
+            for (let idx = 0; idx < tabularData.length; idx++) {
+                processedRows++;
+                const row = tabularData[idx];
                 let namaSiswa = "";
                 let tanggalAbsen = "";
                 let statusAbsen = "HADIR";
@@ -3304,7 +3347,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                     const val = row[key] ? row[key].toString().trim() : "";
 
                     if ((cleanKey.includes('nama') || cleanKey.includes('siswa')) && !namaSiswa && val) {
-                        namaSiswa = val;
+                        namaSiswa = val.replace(/^['"]+|['"]+$/g, '').replace(/\s+/g, ' ').trim();
                     }
                     if ((cleanKey.includes('tanggal') || cleanKey.includes('waktu') || cleanKey.includes('tgl')) && !tanggalAbsen && val) {
                         tanggalAbsen = val;
@@ -3317,6 +3360,15 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
                         else if (['A', 'ALPA', 'MANGKIR'].includes(upVal)) statusAbsen = 'ALPA';
                     }
                 });
+
+                let currentPercent = Math.min(90, Math.floor(20 + (processedRows / totalRowsToProcess) * 70));
+                importProgress[processId] = { 
+                    percent: currentPercent, 
+                    message: `Memproses baris ${processedRows} dari ${totalRowsToProcess}: ${namaSiswa || 'Data Tabular'}`, 
+                    successCount, 
+                    skippedCount, 
+                    totalRows: totalRowsToProcess 
+                };
 
                 if (namaSiswa && tanggalAbsen) {
                     const dateObj = new Date(tanggalAbsen);
@@ -3357,6 +3409,18 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
         }
 
         await client.query('COMMIT');
+        
+        importProgress[processId] = { 
+            percent: 100, 
+            message: `Impor Selesai! Berhasil: ${successCount}, Diabaikan/Gagal: ${skippedCount}`, 
+            successCount, 
+            skippedCount, 
+            totalRows: totalRowsToProcess 
+        };
+
+        // Bersihkan progres setelah beberapa saat
+        setTimeout(() => { delete importProgress[processId]; }, 30000);
+
         return res.json({ 
             success: true, 
             message: `Berhasil mengimpor ${successCount} data rekap untuk bulan ${targetBulan} (${skippedCount} baris/nama diabaikan). Rekap bulan lain aman dan tidak terhapus.` 
@@ -3364,6 +3428,7 @@ app.post('/api/super-admin/import-rekap-sekolah', requireAuth(['SUPER_ADMIN']), 
 
     } catch (err) {
         await client.query('ROLLBACK');
+        delete importProgress[processId];
         return res.status(500).json({ success: false, message: "Gagal memproses rekap excel: " + err.message });
     } finally {
         client.release();
