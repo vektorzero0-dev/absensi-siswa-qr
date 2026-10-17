@@ -426,9 +426,15 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
             GROUP BY UPPER(status)
         `, [siswaId, awalBulanStr, akhirBulanStr]);
 
-        const nilaiRes = await pool.query(`
-            SELECT * FROM nilai_mapel WHERE siswa_id = $1 ORDER BY updated_at DESC
-        `, [siswaId]);
+        let nilaiList = [];
+        try {
+            const nilaiRes = await pool.query(`
+                SELECT * FROM nilai_mapel WHERE siswa_id = $1 ORDER BY updated_at DESC
+            `, [siswaId]);
+            nilaiList = nilaiRes.rows;
+        } catch (e) {
+            console.error("Warning: nilai_mapel query failed or table not found:", e.message);
+        }
 
         let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
         statistikRes.rows.forEach(r => {
@@ -442,10 +448,11 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
             absensiList: absensiRes.rows,
             rekapStat,
             bulanPilihan,
-            nilaiList: nilaiRes.rows
+            nilaiList
         });
 
     } catch (err) {
+        console.error("Gagall memuat dasbor siswa:", err);
         res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
     }
 });
@@ -474,20 +481,24 @@ app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async 
             ORDER BY s.nama ASC
         `, [sekolahId]);
 
-        const nilaiRes = await pool.query(`
-            SELECT n.*, s.nama AS nama_siswa, k.nama_kelas
-            FROM nilai_mapel n
-            INNER JOIN siswa s ON n.siswa_id = s.id
-            INNER JOIN kelas k ON s.kelas_id = k.id
-            WHERE n.guru_id = $1
-            ORDER BY n.updated_at DESC
-        `, [currentUser.id]);
+        let nilaiList = [];
+        try {
+            const nilaiRes = await pool.query(`
+                SELECT n.*, s.nama AS nama_siswa, k.nama_kelas
+                FROM nilai_mapel n
+                INNER JOIN siswa s ON n.siswa_id = s.id
+                INNER JOIN kelas k ON s.kelas_id = k.id
+                WHERE n.guru_id = $1
+                ORDER BY n.updated_at DESC
+            `, [currentUser.id]);
+            nilaiList = nilaiRes.rows;
+        } catch (e) {}
 
         res.render('guru-dashboard', {
             user: currentUser,
             namaSekolah,
             siswaList: siswaRes.rows,
-            nilaiList: nilaiRes.rows
+            nilaiList
         });
     } catch (err) {
         res.status(500).send("Gagal memuat dasbor guru: " + err.message);
