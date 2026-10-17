@@ -421,6 +421,7 @@ app.get('/ortu/dashboard', async (req, res) => {
         res.status(500).send("Gagal memuat dasbor orang tua: " + err.message);
     }
 });
+
 app.get('/ortu/logout', (req, res) => {
     if (req.session) {
         delete req.session.ortuSiswa;
