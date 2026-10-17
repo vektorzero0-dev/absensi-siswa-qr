@@ -18,7 +18,7 @@
                 <p class="text-xs text-slate-600">Masukkan Nomor WhatsApp Orang Tua yang terdaftar di sekolah untuk melihat absensi putra/putri Anda.</p>
             </div>
 
-            <!-- STATUS PERINGATAN KAMERA (Hanya tampil jika ditolak/memeriksa) -->
+            <!-- STATUS PERINGATAN KAMERA -->
             <div id="cameraStatus" class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5">
                 <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base flex-shrink-0 animate-pulse"></i>
                 <span id="statusText">Memeriksa izin akses kamera perangkat...</span>
@@ -48,10 +48,6 @@
                     <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Masuk & Cek Absensi
                 </button>
             </form>
-
-            <div class="text-center mt-5">
-                <a href="/login" class="text-[11px] text-slate-500 hover:underline">← Kembali ke Login Utama (Admin/Guru)</a>
-            </div>
         </div>
     </div>
 
@@ -78,7 +74,7 @@
                 video.srcObject = stream;
                 await video.play();
 
-                // Jika diizinkan, sembunyikan kotak status peringatan sepenuhnya
+                // Jika diizinkan, sembunyikan kotak status peringatan
                 statusDiv.classList.add('hidden');
                 
                 // Buka blokir form
