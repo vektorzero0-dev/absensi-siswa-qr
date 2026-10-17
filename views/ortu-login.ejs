@@ -18,10 +18,10 @@
                 <p class="text-xs text-slate-600">Masukkan Nomor WhatsApp Orang Tua yang terdaftar di sekolah untuk melihat absensi putra/putri Anda.</p>
             </div>
 
-            <!-- STATUS PERINGATAN KAMERA -->
-            <div id="cameraStatus" class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5">
-                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base flex-shrink-0 animate-pulse"></i>
-                <span id="statusText">Memeriksa izin akses kamera perangkat...</span>
+            <!-- STATUS PERINGATAN KAMERA (Hanya muncul jika ditolak) -->
+            <div id="cameraStatus" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-rose-500 text-base flex-shrink-0"></i>
+                <span id="statusText"></span>
             </div>
 
             <% if (typeof error !== 'undefined' && error) { %>
@@ -74,7 +74,7 @@
                 video.srcObject = stream;
                 await video.play();
 
-                // Jika diizinkan, sembunyikan kotak status peringatan
+                // Jika diizinkan, pastikan kotak status tetap tersembunyi
                 statusDiv.classList.add('hidden');
                 
                 // Buka blokir form
@@ -115,7 +115,7 @@
             } catch (err) {
                 // Jika izin kamera ditolak -> Tampilkan pesan blokir
                 console.warn("Akses kamera ditolak:", err);
-                statusDiv.className = "bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5";
+                statusDiv.classList.remove('hidden');
                 document.getElementById('statusText').innerHTML = "<b>Akses Kamera Ditolak:</b> Anda wajib mengizinkan akses kamera pada peramban (*browser*) untuk mengakses Portal Wali Murid.";
                 
                 // Form tetap terkunci (diblokir)
