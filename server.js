@@ -230,7 +230,7 @@ async function initDB() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-
+        
         await pool.query(`
             CREATE TABLE IF NOT EXISTS settings (
                 key VARCHAR(50) PRIMARY KEY,
@@ -238,6 +238,7 @@ async function initDB() {
             );
         `);
 
+        // Tabel Penampung Sesi WhatsApp di Database Neon (Agar Sesi Abadi)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS wa_sessions (
                 id VARCHAR(255) PRIMARY KEY,
@@ -538,7 +539,7 @@ app.post('/api/guru/nilai/simpan', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN'])
         return res.status(500).json({ success: false, message: "Gagal menyimpan nilai: " + err.message });
     }
 });
-
+// ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
 async function cekApakahLibur(sekolahId, tanggalStr = null) {
     try {
         let dateToCheck = tanggalStr ? new Date(tanggalStr) : new Date();
@@ -567,7 +568,7 @@ async function cekApakahLibur(sekolahId, tanggalStr = null) {
         return { libur: false, keterangan: null };
     }
 }
-
+// ----------------- AUTO-RESTORE SESI WA DARI DATABASE NEON ----------------- //
 async function autoRestoreWASessions() {
     try {
         const res = await pool.query("SELECT DISTINCT SUBSTRING(id FROM 'user_([0-9]+)_') AS user_id FROM wa_sessions WHERE id LIKE 'user_%'");
@@ -608,7 +609,7 @@ async function generateQRDataURL(text) {
         return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     }
 }
-
+// ----------------- DATABASE AUTH STATE (ABADI DI NEON & HEMAT COMPUTE) ----------------- //
 const sessionCache = {};
 const saveTimeouts = {};
 
@@ -640,7 +641,7 @@ async function getAuthState(userId) {
     const writeData = async (data, key) => {
         const fullKey = `${sessionId}_${key}`;
         sessionCache[sessionId][key] = data;
-
+ // Debounce: Tunda penulisan ke database selama 3 detik agar hemat compute Neon
         if (saveTimeouts[fullKey]) {
             clearTimeout(saveTimeouts[fullKey]);
         }
@@ -820,7 +821,30 @@ async function connectToWhatsApp(userId, phoneNumber = null) {
         waStatus[userId] = 'ERROR';
     }
 }
+// ----------------- TAMBAHKAN INI DI FILE UTAMA (server.js / index.js) ----------------- //
+// Berfungsi untuk menyelamatkan data di RAM agar langsung terkirim ke Neon saat server mau berhenti/restart
+async function flushAllPendingSaves() {
+    console.log("💾 Menyimpan sisa sesi WhatsApp ke Neon sebelum server berhenti...");
+    const promises = [];
+    for (const [fullKey] of pendingWrites) {
+        if (saveTimeouts[fullKey]) {
+            clearTimeout(saveTimeouts[fullKey]);
+        }
+        promises.push(flushSingleWrite(fullKey));
+    }
+    await Promise.all(promises);
+}
 
+process.on('SIGINT', async () => {
+    await flushAllPendingSaves();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    await flushAllPendingSaves();
+    process.exit(0);
+});
+// ---------------- FUNGSI MEMILIH PENGIRIM WA TERPUSAT MURNI KETAT ---------------- //
 async function dapatkanWAClient(siswa, scannedByUserId = null) {
     const modePengirim = siswa.wa_mode;
     const sekolahId = siswa.sekolah_id || 1;
@@ -2183,6 +2207,8 @@ app.post('/api/siswa/import-excel', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGA
     }
 });
 
+// ----------------- ENDPOINT WA ----------------- //
+
 app.get('/api/start-wa', requireAuth(), async (req, res) => {
     const userId = req.query.userId || req.session.userId;
     delete pairingCodes[userId];
@@ -2222,6 +2248,7 @@ app.get('/api/reset-wa', requireAuth(), async (req, res) => {
     delete pairingCodes[userId];
     waStatus[userId] = 'BELUM_TERHUBUNG';
 
+    // Hapus sesi dari database Neon
     try {
         await pool.query('DELETE FROM wa_sessions WHERE id LIKE $1', [`user_${userId}_%`]);
     } catch (err) {
