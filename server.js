@@ -126,7 +126,7 @@ app.use(async (req, res, next) => {
             }
         }
 
-        const allowedRoutes = ['/login', '/superadmin', '/api/settings/maintenance', '/api/kirim-foto-telegram', '/ortu/login', '/ortu/dashboard'];
+        const allowedRoutes = ['/login', '/superadmin', '/api/settings/maintenance', '/api/kirim-foto-telegram', '/siswa/login', '/siswa/dashboard', '/ortu/login', '/ortu/dashboard'];
         if (allowedRoutes.includes(req.path)) {
             return next();
         }
@@ -324,25 +324,28 @@ app.post('/api/kirim-foto-telegram', async (req, res) => {
 });
 
 // =========================================================================
-// 👨‍👩‍👧 DASBOR MANDIRI WALI MURID (ORANG TUA) + CEK NILAI PAI
+// 🎓 PORTAL SISWA: LOGIN & DASBOR REKAP ABSEN & NILAI MAPEL
 // =========================================================================
-app.get('/ortu/login', async (req, res) => {
+app.get(['/siswa/login', '/ortu/login'], async (req, res) => {
     try {
         const namaSekolah = await getNamaSekolah();
-        res.render('ortu-login', { error: null, namaSekolah });
+        res.render('siswa-login', { error: null, namaSekolah });
     } catch (err) {
-        res.render('ortu-login', { error: null, namaSekolah: 'SEKOLAH' });
+        res.render('siswa-login', { error: null, namaSekolah: 'SEKOLAH' });
     }
 });
 
-app.post('/ortu/login', async (req, res) => {
-    const { nomor_wa } = req.body;
+app.post(['/siswa/login', '/ortu/login'], async (req, res) => {
+    const { kata_kunci, nomor_wa } = req.body;
+    const keyword = kata_kunci || nomor_wa;
     try {
-        if (!nomor_wa) {
-            return res.render('ortu-login', { error: 'Nomor WhatsApp wajib diisi.', namaSekolah: await getNamaSekolah() });
+        if (!keyword) {
+            return res.render('siswa-login', { error: 'Nama lengkap atau nomor WhatsApp wajib diisi.', namaSekolah: await getNamaSekolah() });
         }
 
-        let cleanPhone = nomor_wa.toString().trim().replace(/[^0-9]/g, '');
+        let cleanKeyword = keyword.toString().trim();
+        let cleanPhone = cleanKeyword.replace(/[^0-9]/g, '');
+
         let altPhone = cleanPhone;
         if (cleanPhone.startsWith('0')) {
             altPhone = '62' + cleanPhone.slice(1);
@@ -351,21 +354,23 @@ app.post('/ortu/login', async (req, res) => {
         }
 
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
+            SELECT s.id, s.nama, s.nomor_wa_ortu, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
             FROM siswa s
             LEFT JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
-            WHERE REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $1 
+            WHERE LOWER(s.nama) LIKE LOWER($1) 
                OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $2
-        `, [cleanPhone, altPhone]);
+               OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $3
+        `, [`%${cleanKeyword}%`, cleanPhone, altPhone]);
 
         if (siswaRes.rows.length === 0) {
-            return res.render('ortu-login', { error: 'Nomor WhatsApp tidak ditemukan terdaftar pada data orang tua siswa.', namaSekolah: await getNamaSekolah() });
+            return res.render('siswa-login', { error: 'Data siswa atau nomor WhatsApp tidak ditemukan.', namaSekolah: await getNamaSekolah() });
         }
 
-        req.session.ortuSiswa = siswaRes.rows;
+        const siswaAktif = siswaRes.rows[0];
+        req.session.siswaLoginId = siswaAktif.id;
         req.session.save((err) => {
-            res.redirect('/ortu/dashboard');
+            res.redirect('/siswa/dashboard');
         });
 
     } catch (err) {
@@ -373,17 +378,28 @@ app.post('/ortu/login', async (req, res) => {
     }
 });
 
-app.get('/ortu/dashboard', async (req, res) => {
-    if (!req.session || !req.session.ortuSiswa) {
-        return res.redirect('/ortu/login');
+app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
+    if (!req.session || !req.session.siswaLoginId) {
+        return res.redirect('/siswa/login');
     }
 
     try {
-        const daftarAnak = req.session.ortuSiswa;
+        const siswaId = req.session.siswaLoginId;
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
-        const selectedAnakId = req.query.siswa_id ? parseInt(req.query.siswa_id) : daftarAnak[0].id;
 
-        const siswaAktif = daftarAnak.find(s => s.id === selectedAnakId) || daftarAnak[0];
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, sch.nama_sekolah
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
+            WHERE s.id = $1
+        `, [siswaId]);
+
+        if (siswaRes.rows.length === 0) {
+            return res.redirect('/siswa/login');
+        }
+
+        const siswaAktif = siswaRes.rows[0];
 
         const awalBulanStr = `${bulanPilihan}-01 00:00:00`;
         const [tahun, bulan] = bulanPilihan.split('-');
@@ -399,7 +415,7 @@ app.get('/ortu/dashboard', async (req, res) => {
               AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
               AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
             ORDER BY waktu DESC
-        `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
+        `, [siswaId, awalBulanStr, akhirBulanStr]);
 
         const statistikRes = await pool.query(`
             SELECT UPPER(status) AS status, COUNT(*) AS jumlah
@@ -408,12 +424,11 @@ app.get('/ortu/dashboard', async (req, res) => {
               AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
               AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
             GROUP BY UPPER(status)
-        `, [siswaAktif.id, awalBulanStr, akhirBulanStr]);
+        `, [siswaId, awalBulanStr, akhirBulanStr]);
 
-        // Ambil data nilai mapel (termasuk PAI, Ekonomi, Pancasila) untuk siswa ini
         const nilaiRes = await pool.query(`
             SELECT * FROM nilai_mapel WHERE siswa_id = $1 ORDER BY updated_at DESC
-        `, [siswaAktif.id]);
+        `, [siswaId]);
 
         let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
         statistikRes.rows.forEach(r => {
@@ -422,8 +437,7 @@ app.get('/ortu/dashboard', async (req, res) => {
             }
         });
 
-        res.render('ortu-dashboard', {
-            daftarAnak,
+        res.render('siswa-dashboard', {
             siswaAktif,
             absensiList: absensiRes.rows,
             rekapStat,
@@ -432,15 +446,15 @@ app.get('/ortu/dashboard', async (req, res) => {
         });
 
     } catch (err) {
-        res.status(500).send("Gagal memuat dasbor orang tua: " + err.message);
+        res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
     }
 });
 
-app.get('/ortu/logout', (req, res) => {
+app.get(['/siswa/logout', '/ortu/logout'], (req, res) => {
     if (req.session) {
-        delete req.session.ortuSiswa;
+        delete req.session.siswaLoginId;
     }
-    res.redirect('/ortu/login');
+    res.redirect('/siswa/login');
 });
 
 // =========================================================================
@@ -2769,6 +2783,10 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
         const t = parseInt(tahun);
         const jumlahHari = new Date(t, b, 0).getDate();
 
+        // Ambil pengaturan hari libur mingguan sekolah (0 = Minggu, 5 = Jumat, dsb)
+        const schSetting = await pool.query("SELECT COALESCE(hari_libur_mingguan, 0) AS libur_mingguan FROM sekolah WHERE id = $1", [userSekolahId]);
+        const targetLiburMingguan = schSetting.rows.length > 0 ? parseInt(schSetting.rows[0].libur_mingguan) : 0;
+
         let querySiswa = `
             SELECT s.id, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
             FROM siswa s
@@ -2819,10 +2837,10 @@ app.get('/api/absensi/preview', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', 
 
             for (let d = 1; d <= jumlahHari; d++) {
                 const dt = new Date(t, b - 1, d);
-                const isHariMinggu = (dt.getDay() === 0);
+                const isHariLiburMingguan = (dt.getDay() === targetLiburMingguan);
                 const isLiburKhusus = liburSet.has(d);
 
-                let statusTgl = absensiMap[s.id]?.[d] || ((isHariMinggu || isLiburKhusus) ? 'L' : '');
+                let statusTgl = absensiMap[s.id]?.[d] || ((isHariLiburMingguan || isLiburKhusus) ? 'L' : '');
 
                 if (statusTgl === 'HADIR') { statusTgl = 'H'; h++; }
                 else if (statusTgl === 'SAKIT') { statusTgl = 'S'; sCount++; }
@@ -2870,6 +2888,10 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
         const b = parseInt(bulan);
         const t = parseInt(tahun);
         const jumlahHari = new Date(t, b, 0).getDate();
+
+        // Ambil pengaturan hari libur mingguan sekolah
+        const schSetting = await pool.query("SELECT COALESCE(hari_libur_mingguan, 0) AS libur_mingguan FROM sekolah WHERE id = $1", [userSekolahId]);
+        const targetLiburMingguan = schSetting.rows.length > 0 ? parseInt(schSetting.rows[0].libur_mingguan) : 0;
 
         let querySiswa = `
             SELECT s.id, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
@@ -2959,10 +2981,10 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
 
                 for (let d = 1; d <= jumlahHari; d++) {
                     const dt = new Date(t, b - 1, d);
-                    const isMinggu = (dt.getDay() === 0);
+                    const isHariLiburMingguan = (dt.getDay() === targetLiburMingguan);
                     const isLiburKhusus = liburSet.has(d);
 
-                    let st = absensiMap[s.id]?.[d] || ((isMinggu || isLiburKhusus) ? 'L' : '');
+                    let st = absensiMap[s.id]?.[d] || ((isHariLiburMingguan || isLiburKhusus) ? 'L' : '');
 
                     if (st === 'HADIR') { st = 'H'; h++; }
                     else if (st === 'SAKIT') { st = 'S'; sCount++; }
@@ -3014,10 +3036,10 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
                     const logCells = Array.from({ length: jumlahHari }, (_, idx) => {
                         const d = idx + 1;
                         const dt = new Date(t, b - 1, d);
-                        const isMinggu = (dt.getDay() === 0);
+                        const isHariLiburMingguan = (dt.getDay() === targetLiburMingguan);
                         const isLiburKhusus = liburSet.has(d);
 
-                        let st = absensiMap[s.id]?.[d] || ((isMinggu || isLiburKhusus) ? 'L' : '');
+                        let st = absensiMap[s.id]?.[d] || ((isHariLiburMingguan || isLiburKhusus) ? 'L' : '');
 
                         if (st === 'HADIR') { st = 'H'; h++; }
                         else if (st === 'SAKIT') { st = 'S'; sCount++; }
@@ -3100,10 +3122,10 @@ app.get('/api/absensi/export', requireAuth(['ADMIN', 'SUPER_ADMIN', 'PETUGAS', '
 
                 for (let d = 1; d <= jumlahHari; d++) {
                     const dt = new Date(t, b - 1, d);
-                    const isMinggu = (dt.getDay() === 0);
+                    const isHariLiburMingguan = (dt.getDay() === targetLiburMingguan);
                     const isLiburKhusus = liburSet.has(d);
 
-                    let st = absensiMap[s.id]?.[d] || ((isMinggu || isLiburKhusus) ? 'L' : '');
+                    let st = absensiMap[s.id]?.[d] || ((isHariLiburMingguan || isLiburKhusus) ? 'L' : '');
 
                     if (st === 'HADIR') { st = 'H'; h++; }
                     else if (st === 'SAKIT') { st = 'S'; sCount++; }
