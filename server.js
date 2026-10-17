@@ -1546,15 +1546,16 @@ app.get('/admin', requireAuth(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
             ORDER BY a.waktu DESC
         `, [userSekolahId]);
 
+        // DIPERBAIKI: Menggunakan AT TIME ZONE 'Asia/Jakarta' agar rekap bulanan admin sinkron dengan waktu lokal
         const rekapBulananRes = await pool.query(`
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
-                   TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
             ORDER BY a.waktu DESC
         `, [userSekolahId, bulanPilihan]);
 
@@ -1727,15 +1728,16 @@ app.get(['/wali', '/walikelas-dashboard'], requireAuth(['WALI_KELAS', 'ADMIN', '
             return { ...row, waktu_formatted: waktuWIB };
         });
 
+        // DIPERBAIKI: Menggunakan AT TIME ZONE 'Asia/Jakarta' agar rekap bulanan wali kelas sinkron dengan waktu lokal
         let absensiBulananQuery = `
             SELECT a.id, a.waktu, a.status, a.tipe, s.nama AS nama_siswa, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
-                   TO_CHAR(a.waktu, 'YYYY-MM-DD') AS tanggal_formatted,
-                   TO_CHAR(a.waktu, 'HH24:MI:SS') AS jam_formatted
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
             FROM absensi a 
             INNER JOIN siswa s ON a.siswa_id = s.id 
             INNER JOIN kelas k ON s.kelas_id = k.id 
             WHERE k.sekolah_id = $1 
-              AND TO_CHAR(a.waktu, 'YYYY-MM') = $2
+              AND TO_CHAR(a.waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM') = $2
         `;
         const queryParamsBulanan = [userSekolahId, bulanPilihan];
 
