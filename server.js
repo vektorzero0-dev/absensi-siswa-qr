@@ -384,11 +384,12 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
     }
 
     try {
-        const siswaId = req.session.siswaLoginId;
+        const siswaId = req.query.siswa_id ? parseInt(req.query.siswa_id) : req.session.siswaLoginId;
         const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
 
+        // Ambil data siswa utama yang sedang aktif
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, sch.nama_sekolah
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
             FROM siswa s
             LEFT JOIN kelas k ON s.kelas_id = k.id
             LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
@@ -400,6 +401,18 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
         }
 
         const siswaAktif = siswaRes.rows[0];
+
+        // Ambil daftar anak/saudara lain jika nomor WA orang tua sama
+        let daftarAnak = [];
+        if (siswaAktif.nomor_wa_ortu && siswaAktif.nomor_wa_ortu.trim() !== '') {
+            const anakRes = await pool.query(`
+                SELECT s.id, s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
+                FROM siswa s
+                LEFT JOIN kelas k ON s.kelas_id = k.id
+                WHERE REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = REGEXP_REPLACE($1, '[^0-9]', '', 'g')
+            `, [siswaAktif.nomor_wa_ortu]);
+            daftarAnak = anakRes.rows;
+        }
 
         const awalBulanStr = `${bulanPilihan}-01 00:00:00`;
         const [tahun, bulan] = bulanPilihan.split('-');
@@ -433,7 +446,7 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
             `, [siswaId]);
             nilaiList = nilaiRes.rows;
         } catch (e) {
-            console.error("Warning: nilai_mapel query failed or table not found:", e.message);
+            console.error("Warning: nilai_mapel query failed:", e.message);
         }
 
         let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
@@ -445,6 +458,7 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
 
         res.render('siswa-dashboard', {
             siswaAktif,
+            daftarAnak,
             absensiList: absensiRes.rows,
             rekapStat,
             bulanPilihan,
@@ -452,8 +466,8 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Gagall memuat dasbor siswa:", err);
-        res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
+        console.error("ERROR DETAIL DASBOR SISWA:", err);
+        return res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
     }
 });
 
