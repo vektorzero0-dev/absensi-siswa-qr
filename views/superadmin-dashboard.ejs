@@ -502,7 +502,7 @@
             </div>
         </div>
 
-        <!-- KOTAK IMPORT REKAP ABSENSI BULANAN PER SEKOLAH (DENGAN PROGRESS BAR TRANSPARAN) -->
+        <!-- KOTAK IMPORT REKAP ABSENSI BULANAN PER SEKOLAH (DENGAN PROGRESS BAR & POLLING TRANSPARAN) -->
         <div class="cyber-card mb-4" id="sec-import-rekap">
             <div class="cyber-header cyber-header-green d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fs-6"><i class="bi bi-file-earmark-spreadsheet me-2"></i> IMPORT REKAP ABSENSI BULANAN PER SEKOLAH</h5>
@@ -1025,7 +1025,7 @@
             });
         }
 
-        // Handler Import Rekap Absensi Bulanan Per Sekolah (Menggunakan XHR untuk progress nyata & transparan)
+        // Handler Transparan Import Rekap Absensi Bulanan Per Sekolah (Dengan Polling Real-Time Anti-Macet)
         function handleImportRekap(e) {
             e.preventDefault();
             const sekolahId = document.getElementById('importSekolahId').value;
@@ -1047,80 +1047,73 @@
             if (!confirm(`Import rekap absensi untuk bulan ${bulanTarget}? Data absensi lama di bulan tersebut untuk sekolah ini akan diperbarui/disesuaikan.`)) return;
 
             // Tampilkan panel transparan & kunci tombol
-            container.classList.remove('d-none');
-            btnSubmit.disabled = true;
+            if (container) container.classList.remove('d-none');
+            if (btnSubmit) btnSubmit.disabled = true;
             
             const fileName = fileInput.files[0].name;
-            logTerminal.innerText = `[INFO] Menginisialisasi payload berkas: ${fileName}\n[INFO] Membuka koneksi stream ke server...`;
-            progressBar.style.width = '5%';
-            percentText.innerText = '5%';
-            statusText.innerHTML = '<i class="bi bi-arrow-repeat fa-spin text-warning"></i> MENGIRIM BERKAS...';
+            const processId = 'proc_' + Date.now();
+
+            if (logTerminal) logTerminal.innerText = `[INFO] Menginisialisasi payload berkas: ${fileName}\n[INFO] Mengirim data ke server backend...`;
+            if (progressBar) progressBar.style.width = '5%';
+            if (percentText) percentText.innerText = '5%';
+            if (statusText) statusText.innerHTML = '<i class="bi bi-arrow-repeat fa-spin text-warning"></i> MENGUNGGAH BERKAS...';
 
             const formData = new FormData();
             formData.append('sekolah_id', sekolahId);
             formData.append('bulan_target', bulanTarget);
             formData.append('file_excel', fileInput.files[0]);
+            formData.append('processId', processId);
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/api/super-admin/import-rekap-sekolah', true);
-
-            // Pantau progres unggah (upload) secara real-time
-            xhr.upload.onprogress = function (event) {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 90);
-                    progressBar.style.width = percentComplete + '%';
-                    percentText.innerText = percentComplete + '%';
-                    statusText.innerHTML = `<i class="bi bi-arrow-repeat fa-spin text-warning"></i> MENGIRIM (${percentComplete}%)...`;
-                    logTerminal.innerText = `[UPLOAD] Mengirim data: ${event.loaded} dari ${event.total} bytes (${percentComplete}%)`;
-                }
-            };
-
-            xhr.onloadstart = function () {
-                logTerminal.innerText += `\n[SERVER] Berkas diterima, memulai parsing data dan pembaruan database...`;
-                progressBar.style.width = '95%';
-                percentText.innerText = '95%';
-                statusText.innerHTML = '<i class="bi bi-gear-fill fa-spin text-primary"></i> MEMPROSES DI SERVER...';
-            };
-
-            xhr.onload = function () {
-                btnSubmit.disabled = false;
+            // Polling progres berkala setiap 500ms agar berjalan transparan & tidak macet
+            const pollInterval = setInterval(async () => {
                 try {
-                    const data = JSON.parse(xhr.responseText);
-                    if (xhr.status >= 200 && xhr.status < 300 && data.success) {
-                        progressBar.style.width = '100%';
-                        percentText.innerText = '100%';
-                        statusText.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> SELESAI';
-                        logTerminal.innerText += `\n[SUCCESS] ${data.message}`;
-                        setTimeout(() => {
-                            alert(data.message);
-                            window.location.reload();
-                        }, 800);
-                    } else {
-                        progressBar.classList.remove('bg-success');
-                        progressBar.classList.add('bg-danger');
-                        statusText.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i> GAGAL';
-                        logTerminal.innerText += `\n[ERROR] ${data.message || 'Gagal diproses server'}`;
-                        alert('Gagal: ' + (data.message || 'Terjadi kesalahan sistem'));
+                    const res = await fetch(`/api/import-progress?processId=${processId}`);
+                    const data = await res.json();
+                    
+                    if (data && data.percent) {
+                        if (progressBar) progressBar.style.width = data.percent + '%';
+                        if (percentText) percentText.innerText = data.percent + '%';
+                        if (statusText) statusText.innerHTML = `<i class="bi bi-gear-fill fa-spin text-primary"></i> ${data.message}`;
+                        if (logTerminal) {
+                            logTerminal.innerText += `\n[PROGRESS] ${data.message} (${data.percent}%)`;
+                            logTerminal.scrollTop = logTerminal.scrollHeight;
+                        }
                     }
                 } catch (err) {
+                    console.error('Polling error:', err);
+                }
+            }, 500);
+
+            fetch('/api/super-admin/import-rekap-sekolah', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async (res) => {
+                clearInterval(pollInterval);
+                const data = await res.json();
+                
+                if (progressBar) progressBar.style.width = '100%';
+                if (percentText) percentText.innerText = '100%';
+                if (statusText) statusText.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> SELESAI';
+                if (logTerminal) logTerminal.innerText += `\n[SUCCESS] ${data.message || 'Impor selesai.'}`;
+
+                setTimeout(() => {
+                    alert(data.message || 'Impor rekap berhasil!');
+                    window.location.reload();
+                }, 1000);
+            })
+            .catch(err => {
+                clearInterval(pollInterval);
+                console.error('Error Import Rekap:', err);
+                if (progressBar) {
                     progressBar.classList.remove('bg-success');
                     progressBar.classList.add('bg-danger');
-                    statusText.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i> ERROR';
-                    logTerminal.innerText += `\n[PARSER_ERROR] Gagal memparsing respons JSON dari server.`;
-                    alert('Terjadi kesalahan format respons dari server.');
                 }
-            };
-
-            xhr.onerror = function () {
-                btnSubmit.disabled = false;
-                progressBar.classList.remove('bg-success');
-                progressBar.classList.add('bg-danger');
-                statusText.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i> KONEKSI PUTUS';
-                logTerminal.innerText += `\n[EXCEPTION] Koneksi jaringan terputus atau server tidak merespons.`;
-                alert('Gagal terhubung ke server! Periksa koneksi Anda.');
-            };
-
-            xhr.send(formData);
+                if (statusText) statusText.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i> GAGAL';
+                if (logTerminal) logTerminal.innerText += `\n[EXCEPTION] Gagal terhubung ke server atau terjadi kendala jaringan.`;
+                alert('Gagal mengimpor berkas rekap! Pastikan format berkas valid.');
+                if (btnSubmit) btnSubmit.disabled = false;
+            });
         }
 
         // Sakelar Maintenance Mode
