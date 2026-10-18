@@ -479,7 +479,46 @@ app.get(['/siswa/logout', '/ortu/logout'], (req, res) => {
     res.redirect('/siswa/login');
 });
 
-// =========================================================================
+// HALAMAN LOGIN KHUSUS GURU
+app.get('/guru/login', (req, res) => {
+    res.render('guru-login', { error: null });
+});
+
+// PROSES LOGIN KHUSUS GURU
+app.post('/guru/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        // Cari user berdasarkan username dan pastikan rolenya GURU (atau ADMIN/SUPER_ADMIN jika ingin fleksibel)
+        const userRes = await pool.query(`
+            SELECT * FROM users WHERE username = $1 AND role IN ('GURU', 'ADMIN', 'SUPER_ADMIN')
+        `, [username]);
+
+        if (userRes.rows.length === 0) {
+            return res.render('guru-login', { error: 'Username atau password salah / Akun bukan hak akses guru.' });
+        }
+
+        const user = userRes.rows[0];
+
+        // Verifikasi password (sesuaikan dengan metode enkripsi yang kamu gunakan, misal bcrypt atau string biasa)
+        // Jika menggunakan enkripsi bcrypt: const match = await bcrypt.compare(password, user.password);
+        // Jika menggunakan string biasa/MD5, sesuaikan pengecekannya di sini:
+        const passwordMatch = (password === user.password); // Ganti dengan verifikasi hash jika pakai bcrypt
+
+        if (!passwordMatch) {
+            return res.render('guru-login', { error: 'Password yang Anda masukkan salah.' });
+        }
+
+        // Set session login
+        req.session.userId = user.id;
+        req.session.role = user.role;
+
+        // Redirect langsung ke dasbor guru
+        return res.redirect('/guru/dashboard');
+    } catch (err) {
+        return res.render('guru-login', { error: 'Terjadi kesalahan sistem: ' + err.message });
+    }
+});
 // =========================================================================
 // 📚 DASBOR KHUSUS GURU MAPEL (PAI, EKONOMI, PANCASILA)
 // =========================================================================
