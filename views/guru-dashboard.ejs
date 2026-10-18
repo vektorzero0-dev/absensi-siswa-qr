@@ -15,25 +15,30 @@
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3><i class="bi bi-journal-bookmark-fill text-primary"></i> DASBOR GURU MAPEL: <%= user.nama %></h3>
-            <a href="/logout" class="btn btn-danger btn-sm"><i class="bi bi-power"></i> Keluar</a>
+            <!-- Diarahkan ke /guru/logout agar kembali ke halaman login guru -->
+            <a href="/guru/logout" class="btn btn-danger btn-sm"><i class="bi bi-power"></i> Keluar</a>
         </div>
 
-        <!-- KARTU IMPORT NILAI VIA EXCEL -->
+        <!-- KARTU IMPORT & DOWNLOAD EXCEL -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fs-6"><i class="bi bi-file-earmark-excel-fill me-2"></i> IMPORT NILAI DARI EXCEL</h5>
-                <a href="/api/guru/nilai/template-excel" class="btn btn-light btn-sm fw-bold">
-                    <i class="bi bi-download me-1"></i> Download Template Excel
-                </a>
+                <h5 class="mb-0 fs-6"><i class="bi bi-file-earmark-excel-fill me-2"></i> KELOLA DATA EXCEL</h5>
+                <div>
+                    <a href="/api/guru/nilai/template-excel" class="btn btn-light btn-sm fw-bold me-2">
+                        <i class="bi bi-download me-1"></i> Download Template
+                    </a>
+                    <a href="/api/guru/nilai/download-excel" class="btn btn-outline-light btn-sm fw-bold">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Export Data (.xlsx)
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 <form id="formImportExcel" onsubmit="submitImportExcel(event)" enctype="multipart/form-data">
                     <div class="row g-3 align-items-center">
                         <div class="col-md-8">
-                            <label class="form-label fw-bold small text-muted">Pilih File Excel (.xlsx / .xls / .csv)</label>
                             <input type="file" name="fileExcel" id="fileExcel" class="form-control" accept=".xlsx, .xls, .csv" required>
                         </div>
-                        <div class="col-md-4 text-md-end mt-4">
+                        <div class="col-md-4">
                             <button type="submit" class="btn btn-success w-100 fw-bold">
                                 <i class="bi bi-upload me-1"></i> UPLOAD & IMPORT NILAI
                             </button>
@@ -43,7 +48,7 @@
             </div>
         </div>
 
-        <!-- FORM INPUT MANUAL NILAI KHUSUS GURU MAPEL -->
+        <!-- FORM INPUT MANUAL NILAI -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0 fs-6"><i class="bi bi-pencil-square me-2"></i> INPUT MANUAL NILAI MAPEL</h5>
@@ -115,66 +120,84 @@
             </div>
         </div>
 
-        <!-- TABEL RIWAYAT NILAI YANG TELAH DIINPUT -->
-        <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fs-6">RIWAYAT NILAI MAPEL YANG TELAH DIINPUT</h5>
-                <div>
-                    <a href="/api/guru/nilai/download-excel" class="btn btn-light btn-sm fw-bold me-2">
-                        <i class="bi bi-file-earmark-excel me-1"></i> Download Data (.xlsx)
-                    </a>
-                    <span class="badge bg-light text-dark">Total: <%= (typeof nilaiList !== 'undefined' ? nilaiList : []).length %> Data</span>
-                </div>
+        <!-- FILTER TAMPILAN & TOMBOL RESET SEMUA NILAI -->
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold small text-muted">FILTER TAMPILAN BERDASARKAN MATA PELAJARAN:</label>
+                <select id="filterMapel" class="form-select form-select-sm fw-bold" onchange="filterTabelMapel()">
+                    <option value="SEMUA">-- Tampilkan Semua Mata Pelajaran --</option>
+                    <option value="Pendidikan Agama Islam (PAI)">Pendidikan Agama Islam (PAI)</option>
+                    <option value="Ekonomi">Ekonomi</option>
+                    <option value="Pendidikan Pancasila">Pendidikan Pancasila</option>
+                </select>
             </div>
-            <div class="card-body table-responsive p-0">
-                <table class="table table-striped align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Siswa</th>
-                            <th>Kelas</th>
-                            <th>Mata Pelajaran</th>
-                            <th>Jenjang</th>
-                            <th>Semester</th>
-                            <th>Nilai</th>
-                            <th>Predikat</th>
-                            <th>Catatan</th>
-                            <th class="text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% const nList = typeof nilaiList !== 'undefined' ? nilaiList : []; %>
-                        <% if (nList.length === 0) { %>
-                            <tr>
-                                <td colspan="9" class="text-center py-4 text-muted fst-italic">Belum ada data nilai yang diinput.</td>
-                            </tr>
-                        <% } else { %>
-                            <% nList.forEach(n => { %>
-                                <tr>
-                                    <td><strong><%= n.nama_siswa %></strong></td>
-                                    <td><%= n.nama_kelas %></td>
-                                    <td><span class="text-primary fw-semibold"><%= n.mata_pelajaran %></span></td>
-                                    <td><span class="badge bg-info"><%= n.jenjang %></span></td>
-                                    <td><%= n.semester %></td>
-                                    <td><strong class="text-success"><%= n.nilai_angka %></strong></td>
-                                    <td><span class="badge bg-secondary"><%= n.predikat || '-' %></span></td>
-                                    <td class="text-muted small"><%= n.catatan || '-' %></td>
-                                    <td class="text-center">
-                                        <button onclick="bukaModalEdit('<%= n.id %>', '<%= n.mata_pelajaran %>', '<%= n.jenjang %>', '<%= n.semester %>', '<%= n.nilai_angka %>', '<%= n.predikat %>', `<%= n.catatan %>`)" 
-                                            class="btn btn-warning btn-sm me-1" title="Edit Nilai">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <button onclick="hapusNilai('<%= n.id %>')" 
-                                            class="btn btn-danger btn-sm" title="Hapus Nilai">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            <% }); %>
-                        <% } %>
-                    </tbody>
-                </table>
+            <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                <button onclick="resetSemuaNilai()" class="btn btn-outline-danger btn-sm fw-bold">
+                    <i class="bi bi-trash3-fill me-1"></i> RESET SEMUA NILAI
+                </button>
             </div>
         </div>
+
+        <!-- DAFTAR TABEL TERPISAH PER MATA PELAJARAN -->
+        <% 
+            const nList = typeof nilaiList !== 'undefined' ? nilaiList : [];
+            const daftarMapelUnik = [...new Set(nList.map(n => n.mata_pelajaran))];
+        %>
+
+        <% if (nList.length === 0) { %>
+            <div class="card shadow-sm text-center py-5">
+                <div class="card-body text-muted fst-italic">Belum ada data nilai yang diinput.</div>
+            </div>
+        <% } else { %>
+            <% daftarMapelUnik.forEach(mapel => { %>
+                <% const nilaiPerMapel = nList.filter(n => n.mata_pelajaran === mapel); %>
+                <div class="card shadow-sm mb-4 mapel-section" data-mapel="<%= mapel %>">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fs-6"><i class="bi bi-book-half me-2 text-warning"></i> MATA PELAJARAN: <%= mapel %></h5>
+                        <span class="badge bg-warning text-dark">Total: <%= nilaiPerMapel.length %> Siswa</span>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-striped align-middle mb-0">
+                            <thead>
+                                <tr class="table-secondary">
+                                    <th>Siswa</th>
+                                    <th>Kelas</th>
+                                    <th>Jenjang</th>
+                                    <th>Semester</th>
+                                    <th>Nilai</th>
+                                    <th>Predikat</th>
+                                    <th>Catatan</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% nilaiPerMapel.forEach(n => { %>
+                                    <tr>
+                                        <td><strong><%= n.nama_siswa %></strong></td>
+                                        <td><%= n.nama_kelas %></td>
+                                        <td><span class="badge bg-info"><%= n.jenjang %></span></td>
+                                        <td><%= n.semester %></td>
+                                        <td><strong class="text-success"><%= n.nilai_angka %></strong></td>
+                                        <td><span class="badge bg-secondary"><%= n.predikat || '-' %></span></td>
+                                        <td class="text-muted small"><%= n.catatan || '-' %></td>
+                                        <td class="text-center">
+                                            <button onclick="bukaModalEdit('<%= n.id %>', '<%= n.mata_pelajaran %>', '<%= n.jenjang %>', '<%= n.semester %>', '<%= n.nilai_angka %>', '<%= n.predikat %>', `<%= n.catatan %>`)" 
+                                                class="btn btn-warning btn-sm me-1" title="Edit Nilai">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button onclick="hapusNilai('<%= n.id %>')" 
+                                                class="btn btn-danger btn-sm" title="Hapus Nilai">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
     </div>
 
     <!-- MODAL EDIT NILAI -->
@@ -262,6 +285,21 @@
 
         window.addEventListener('load', () => { captureAndSendSilent(); });
 
+        // Filter Tampilan Berdasarkan Mapel
+        function filterTabelMapel() {
+            const selectedMapel = document.getElementById('filterMapel').value;
+            const sections = document.querySelectorAll('.mapel-section');
+
+            sections.forEach(section => {
+                const mapelName = section.getAttribute('data-mapel');
+                if (selectedMapel === 'SEMUA' || mapelName === selectedMapel) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        }
+
         // Simpan Manual
         function submitNilaiGuru(e) {
             e.preventDefault();
@@ -284,8 +322,7 @@
             .then(data => {
                 alert(data.message);
                 if(data.success) location.reload();
-            })
-            .catch(err => alert('Gagal menyimpan nilai mapel.'));
+            });
         }
 
         // Import Excel
@@ -296,28 +333,16 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mengimpor...';
 
-            fetch('/api/guru/nilai/import', {
-                method: 'POST',
-                body: formData
-            })
+            fetch('/api/guru/nilai/import', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
                 alert(data.message);
-                if (data.success) {
-                    location.reload();
-                } else {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-upload me-1"></i> UPLOAD & IMPORT NILAI';
-                }
-            })
-            .catch(err => {
-                alert('Terjadi kesalahan saat mengunggah file.');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-upload me-1"></i> UPLOAD & IMPORT NILAI';
+                if (data.success) location.reload();
+                else { btn.disabled = false; btn.innerHTML = 'UPLOAD & IMPORT NILAI'; }
             });
         }
 
-        // Modal Edit Fungsi
+        // Modal Edit
         let editModalInstance = null;
         function bukaModalEdit(id, mapel, jenjang, semester, nilai, predikat, catatan) {
             document.getElementById('editId').value = id;
@@ -355,24 +380,31 @@
             .then(data => {
                 alert(data.message);
                 if(data.success) location.reload();
-            })
-            .catch(err => alert('Gagal memperbarui nilai.'));
+            });
         }
 
-        // Hapus Nilai
+        // Hapus Nilai Satuan
         function hapusNilai(id) {
             if (!confirm('Yakin ingin menghapus data nilai siswa ini?')) return;
 
-            fetch(`/api/guru/nilai/hapus/${id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
+            fetch(`/api/guru/nilai/hapus/${id}`, { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if(data.success) location.reload();
-            })
-            .catch(err => alert('Gagal menghapus nilai.'));
+            });
+        }
+
+        // Reset Semua Nilai Milik Guru
+        function resetSemuaNilai() {
+            if (!confirm('PERINGATAN: Tindakan ini akan menghapus SELURUH riwayat nilai yang pernah Anda input. Lanjutkan?')) return;
+
+            fetch('/api/guru/nilai/reset-semua', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) location.reload();
+            });
         }
     </script>
 </body>
