@@ -479,17 +479,19 @@ app.get(['/siswa/logout', '/ortu/logout'], (req, res) => {
     res.redirect('/siswa/login');
 });
 
+// ==========================================
+// 2. RUTE LOGIN, DASBOR, IMPORT & DOWNLOAD EXCEL GURU (DI BAWAH / SEBELUM app.listen)
+// ==========================================
+
 // HALAMAN LOGIN KHUSUS GURU
 app.get('/guru/login', (req, res) => {
     res.render('guru-login', { error: null });
 });
 
-// PROSES LOGIN KHUSUS GURU
+// PROSES LOGIN GURU
 app.post('/guru/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        
-        // Cari user berdasarkan username dan pastikan rolenya GURU (atau ADMIN/SUPER_ADMIN jika ingin fleksibel)
         const userRes = await pool.query(`
             SELECT * FROM users WHERE username = $1 AND role IN ('GURU', 'ADMIN', 'SUPER_ADMIN')
         `, [username]);
@@ -499,41 +501,29 @@ app.post('/guru/login', async (req, res) => {
         }
 
         const user = userRes.rows[0];
-
-        // Verifikasi password (sesuaikan dengan metode enkripsi yang kamu gunakan, misal bcrypt atau string biasa)
-        // Jika menggunakan enkripsi bcrypt: const match = await bcrypt.compare(password, user.password);
-        // Jika menggunakan string biasa/MD5, sesuaikan pengecekannya di sini:
-        const passwordMatch = (password === user.password); // Ganti dengan verifikasi hash jika pakai bcrypt
-
-        if (!passwordMatch) {
+        if (password !== user.password) {
             return res.render('guru-login', { error: 'Password yang Anda masukkan salah.' });
         }
 
-        // Set session login
         req.session.userId = user.id;
         req.session.role = user.role;
-
-        // Redirect langsung ke dasbor guru
         return res.redirect('/guru/dashboard');
     } catch (err) {
         return res.render('guru-login', { error: 'Terjadi kesalahan sistem: ' + err.message });
     }
 });
-// =========================================================================
-// 📚 DASBOR KHUSUS GURU MAPEL (PAI, EKONOMI, PANCASILA)
-// =========================================================================
+
+// DASBOR GURU DENGAN PENGELOMPOKAN KELAS
 app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const currentUser = req.currentUser;
         const sekolahId = currentUser.sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(sekolahId);
 
-        // Ambil data kelas untuk pengelompokan dropdown
         const kelasRes = await pool.query(`
             SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY nama_kelas ASC
         `, [sekolahId]);
 
-        // Ambil data siswa beserta id kelasnya
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
             FROM siswa s
@@ -567,6 +557,7 @@ app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async 
     }
 });
 
+// SIMPAN NILAI MANUAL
 app.post('/api/guru/nilai/simpan', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
     try {
         const { siswa_id, mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan } = req.body;
@@ -613,6 +604,133 @@ app.post('/api/guru/nilai/hapus/:id', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN
         return res.json({ success: true, message: "Nilai berhasil dihapus!" });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Gagal menghapus nilai: " + err.message });
+    }
+});
+
+// DOWNLOAD TEMPLATE EXCEL
+app.get('/api/guru/nilai/template-excel', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const sekolahId = req.currentUser.sekolah_id || 1;
+
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
+            FROM siswa s
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE k.sekolah_id = $1
+            ORDER BY k.nama_kelas ASC, s.nama ASC
+        `, [sekolahId]);
+
+        const dataTemplate = siswaRes.rows.map(s => ({
+            "ID_Siswa": s.id,
+            "Nama_Siswa": s.nama,
+            "Kelas": s.nama_kelas,
+            "Mata_Pelajaran": "Pendidikan Agama Islam (PAI)",
+            "Jenjang": "SD",
+            "Semester": "Ganjil",
+            "Nilai_Angka": 85.5,
+            "Predikat": "A",
+            "Catatan": "Sangat baik dalam pemahaman materi."
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dataTemplate);
+        XLSX.utils.book_append_sheet(wb, ws, "Template_Nilai");
+
+        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+        res.setHeader('Content-Disposition', 'attachment; filename="Template_Input_Nilai.xlsx"');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        return res.send(buffer);
+    } catch (err) {
+        return res.status(500).send("Gagal mengunduh template: " + err.message);
+    }
+});
+
+// PROSES IMPORT EXCEL
+app.post('/api/guru/nilai/import', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), upload.single('fileExcel'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Pilih file Excel terlebih dahulu!" });
+        }
+
+        const guruId = req.currentUser.id;
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, message: "File Excel kosong atau format tidak sesuai." });
+        }
+
+        let importedCount = 0;
+
+        for (let row of rows) {
+            const siswaId = row['ID_Siswa'] || row['id_siswa'] || row['ID'];
+            const mapel = row['Mata_Pelajaran'] || row['mata_pelajaran'] || row['Mapel'];
+            const jenjang = row['Jenjang'] || row['jenjang'] || 'SD';
+            const semester = row['Semester'] || row['semester'] || 'Ganjil';
+            const nilaiAngka = parseFloat(row['Nilai_Angka'] || row['nilai_angka'] || row['Nilai']) || 0;
+            const predikat = row['Predikat'] || row['predikat'] || '';
+            const catatan = row['Catatan'] || row['catatan'] || '';
+
+            if (siswaId && mapel) {
+                await pool.query(`
+                    INSERT INTO nilai_mapel (siswa_id, guru_id, mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+                `, [parseInt(siswaId), guruId, mapel, jenjang, semester, nilaiAngka, predikat, catatan]);
+                
+                importedCount++;
+            }
+        }
+
+        return res.json({ 
+            success: true, 
+            message: `Berhasil mengimpor ${importedCount} data nilai siswa dari Excel!` 
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal memproses file Excel: " + err.message });
+    }
+});
+
+// DOWNLOAD REKAP NILAI YANG SUDAH DIINPUT
+app.get('/api/guru/nilai/download-excel', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const guruId = req.currentUser.id;
+
+        const nilaiRes = await pool.query(`
+            SELECT n.id, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas,
+                   n.mata_pelajaran, n.jenjang, n.semester, n.nilai_angka, n.predikat, n.catatan, n.updated_at
+            FROM nilai_mapel n
+            INNER JOIN siswa s ON n.siswa_id = s.id
+            INNER JOIN kelas k ON s.kelas_id = k.id
+            WHERE n.guru_id = $1
+            ORDER BY n.updated_at DESC
+        `, [guruId]);
+
+        const dataExcel = nilaiRes.rows.map((n, index) => ({
+            "No": index + 1,
+            "Nama Siswa": n.nama_siswa,
+            "Kelas": n.nama_kelas,
+            "Mata Pelajaran": n.mata_pelajaran,
+            "Jenjang": n.jenjang,
+            "Semester": n.semester,
+            "Nilai Angka": n.nilai_angka,
+            "Predikat": n.predikat || '-',
+            "Catatan": n.catatan || '-',
+            "Terakhir Diperbarui": new Date(n.updated_at).toLocaleString('id-ID')
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dataExcel);
+        XLSX.utils.book_append_sheet(wb, ws, "Rekap_Nilai");
+
+        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+        res.setHeader('Content-Disposition', 'attachment; filename="Rekap_Nilai_Siswa.xlsx"');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        return res.send(buffer);
+    } catch (err) {
+        return res.status(500).send("Gagal mengunduh rekap nilai: " + err.message);
     }
 });
 // ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
