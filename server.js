@@ -646,7 +646,7 @@ app.get('/api/guru/nilai/template-excel', requireAuth(['GURU', 'ADMIN', 'SUPER_A
     }
 });
 
-// PROSES IMPORT EXCEL
+// PROSES IMPORT EXCEL (DENGAN PENCEGAHAN DATA GANDA / UPSERT)
 app.post('/api/guru/nilai/import', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), upload.single('fileExcel'), async (req, res) => {
     try {
         if (!req.file) {
@@ -662,7 +662,7 @@ app.post('/api/guru/nilai/import', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN'])
             return res.status(400).json({ success: false, message: "File Excel kosong atau format tidak sesuai." });
         }
 
-        let importedCount = 0;
+        let processedCount = 0;
 
         for (let row of rows) {
             const siswaId = row['ID_Siswa'] || row['id_siswa'] || row['ID'];
@@ -674,18 +674,35 @@ app.post('/api/guru/nilai/import', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN'])
             const catatan = row['Catatan'] || row['catatan'] || '';
 
             if (siswaId && mapel) {
-                await pool.query(`
-                    INSERT INTO nilai_mapel (siswa_id, guru_id, mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
-                `, [parseInt(siswaId), guruId, mapel, jenjang, semester, nilaiAngka, predikat, catatan]);
+                // Cek apakah data nilai untuk siswa, guru, mapel, dan semester tersebut sudah ada sebelumnya
+                const existingRes = await pool.query(`
+                    SELECT id FROM nilai_mapel 
+                    WHERE siswa_id = $1 AND guru_id = $2 AND mata_pelajaran = $3 AND semester = $4
+                `, [parseInt(siswaId), guruId, mapel, semester]);
+
+                if (existingRes.rows.length > 0) {
+                    // Jika sudah ada, PERBARUI (UPDATE) data yang ada agar tidak duplikat
+                    const nilaiId = existingRes.rows[0].id;
+                    await pool.query(`
+                        UPDATE nilai_mapel 
+                        SET jenjang = $1, nilai_angka = $2, predikat = $3, catatan = $4, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = $5
+                    `, [jenjang, nilaiAngka, predikat, catatan, nilaiId]);
+                } else {
+                    // Jika belum ada, MASUKKAN (INSERT) sebagai data baru
+                    await pool.query(`
+                        INSERT INTO nilai_mapel (siswa_id, guru_id, mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan, updated_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+                    `, [parseInt(siswaId), guruId, mapel, jenjang, semester, nilaiAngka, predikat, catatan]);
+                }
                 
-                importedCount++;
+                processedCount++;
             }
         }
 
         return res.json({ 
             success: true, 
-            message: `Berhasil mengimpor ${importedCount} data nilai siswa dari Excel!` 
+            message: `Berhasil memproses ${processedCount} data nilai siswa (data ganda dicegah & diperbarui otomatis)!` 
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Gagal memproses file Excel: " + err.message });
