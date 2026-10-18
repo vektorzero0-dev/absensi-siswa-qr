@@ -480,6 +480,7 @@ app.get(['/siswa/logout', '/ortu/logout'], (req, res) => {
 });
 
 // =========================================================================
+// =========================================================================
 // 📚 DASBOR KHUSUS GURU MAPEL (PAI, EKONOMI, PANCASILA)
 // =========================================================================
 app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
@@ -488,18 +489,24 @@ app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async 
         const sekolahId = currentUser.sekolah_id || 1;
         const namaSekolah = await getNamaSekolah(sekolahId);
 
+        // Ambil data kelas untuk pengelompokan dropdown
+        const kelasRes = await pool.query(`
+            SELECT * FROM kelas WHERE sekolah_id = $1 ORDER BY nama_kelas ASC
+        `, [sekolahId]);
+
+        // Ambil data siswa beserta id kelasnya
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
+            SELECT s.id, s.nama, s.kelas_id, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
             FROM siswa s
             INNER JOIN kelas k ON s.kelas_id = k.id
             WHERE k.sekolah_id = $1
-            ORDER BY s.nama ASC
+            ORDER BY k.nama_kelas ASC, s.nama ASC
         `, [sekolahId]);
 
         let nilaiList = [];
         try {
             const nilaiRes = await pool.query(`
-                SELECT n.*, s.nama AS nama_siswa, k.nama_kelas
+                SELECT n.*, s.nama AS nama_siswa, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
                 FROM nilai_mapel n
                 INNER JOIN siswa s ON n.siswa_id = s.id
                 INNER JOIN kelas k ON s.kelas_id = k.id
@@ -512,6 +519,7 @@ app.get('/guru/dashboard', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async 
         res.render('guru-dashboard', {
             user: currentUser,
             namaSekolah,
+            kelasList: kelasRes.rows,
             siswaList: siswaRes.rows,
             nilaiList
         });
@@ -537,6 +545,35 @@ app.post('/api/guru/nilai/simpan', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN'])
         return res.json({ success: true, message: "Nilai mata pelajaran berhasil disimpan!" });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Gagal menyimpan nilai: " + err.message });
+    }
+});
+
+// EDIT NILAI
+app.post('/api/guru/nilai/edit/:id', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const nilaiId = parseInt(req.params.id);
+        const { mata_pelajaran, jenjang, semester, nilai_angka, predikat, catatan } = req.body;
+
+        await pool.query(`
+            UPDATE nilai_mapel 
+            SET mata_pelajaran = $1, jenjang = $2, semester = $3, nilai_angka = $4, predikat = $5, catatan = $6, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $7
+        `, [mata_pelajaran, jenjang, semester, parseFloat(nilai_angka) || 0, predikat || '', catatan || '', nilaiId]);
+
+        return res.json({ success: true, message: "Nilai berhasil diperbarui!" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal mengedit nilai: " + err.message });
+    }
+});
+
+// HAPUS NILAI
+app.post('/api/guru/nilai/hapus/:id', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const nilaiId = parseInt(req.params.id);
+        await pool.query(`DELETE FROM nilai_mapel WHERE id = $1`, [nilaiId]);
+        return res.json({ success: true, message: "Nilai berhasil dihapus!" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Gagal menghapus nilai: " + err.message });
     }
 });
 // ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
