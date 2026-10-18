@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Portal Guru Mapel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center vh-100">
+    <div class="card shadow-sm p-4" style="width: 100%; max-width: 400px;">
+        <div class="text-center mb-4">
+            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px;">
+                <i class="bi bi-journal-bookmark-fill fs-3"></i>
+            </div>
+            <h4 class="fw-bold">Portal Guru Mapel</h4>
+            <p class="text-muted small">Silakan masuk menggunakan akun guru Anda</p>
+        </div>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger py-2 small"><%= error %></div>
+        <% } %>
+
+        <form action="/guru/login" method="POST">
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Username / NIP</label>
+                <input type="text" name="username" class="form-control" required placeholder="Masukkan username guru">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Password</label>
+                <input type="password" name="password" class="form-control" required placeholder="Masukkan password">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+                <i class="bi bi-box-arrow-in-right me-1"></i> MASUK DASBOR GURU
+            </button>
+        </form>
+        <div class="text-center mt-3">
+            <a href="/" class="text-decoration-none small text-muted">&larr; Kembali ke Beranda Utama</a>
+        </div>
+    </div>
+</body>
+</html>
