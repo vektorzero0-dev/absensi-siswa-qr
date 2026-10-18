@@ -733,6 +733,18 @@ app.get('/api/guru/nilai/download-excel', requireAuth(['GURU', 'ADMIN', 'SUPER_A
         return res.status(500).send("Gagal mengunduh rekap nilai: " + err.message);
     }
 });
+// LOGOUT KHUSUS GURU
+app.get('/guru/logout', (req, res) => {
+    // Hapus sesi khusus guru atau hancurkan sesi secara aman
+    if (req.session) {
+        req.session.destroy(() => {
+            res.clearCookie('connect.sid'); // Hapus cookie sesi
+            return res.redirect('/guru/login'); // Arahkan kembali ke login guru
+        });
+    } else {
+        return res.redirect('/guru/login');
+    }
+});
 // ----------------- FUNGSI CEK APAKAH TANGGAL LIBUR ----------------- //
 async function cekApakahLibur(sekolahId, tanggalStr = null) {
     try {
