@@ -18,10 +18,35 @@
             <a href="/logout" class="btn btn-danger btn-sm"><i class="bi bi-power"></i> Keluar</a>
         </div>
 
-        <!-- FORM INPUT NILAI KHUSUS GURU MAPEL -->
+        <!-- KARTU IMPORT NILAI VIA EXCEL -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fs-6"><i class="bi bi-file-earmark-excel-fill me-2"></i> IMPORT NILAI DARI EXCEL</h5>
+                <a href="/api/guru/nilai/template-excel" class="btn btn-light btn-sm fw-bold">
+                    <i class="bi bi-download me-1"></i> Download Template Excel
+                </a>
+            </div>
+            <div class="card-body">
+                <form id="formImportExcel" onsubmit="submitImportExcel(event)" enctype="multipart/form-data">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small text-muted">Pilih File Excel (.xlsx / .xls / .csv)</label>
+                            <input type="file" name="fileExcel" id="fileExcel" class="form-control" accept=".xlsx, .xls, .csv" required>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-4">
+                            <button type="submit" class="btn btn-success w-100 fw-bold">
+                                <i class="bi bi-upload me-1"></i> UPLOAD & IMPORT NILAI
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- FORM INPUT MANUAL NILAI KHUSUS GURU MAPEL -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 fs-6"><i class="bi bi-pencil-square me-2"></i> INPUT NILAI MAPEL (PAI SD / EKONOMI SMA / PANCASILA SMA)</h5>
+                <h5 class="mb-0 fs-6"><i class="bi bi-pencil-square me-2"></i> INPUT MANUAL NILAI MAPEL</h5>
             </div>
             <div class="card-body">
                 <form id="formInputNilaiMapel" onsubmit="submitNilaiGuru(event)">
@@ -94,7 +119,12 @@
         <div class="card shadow-sm">
             <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fs-6">RIWAYAT NILAI MAPEL YANG TELAH DIINPUT</h5>
-                <span class="badge bg-light text-dark">Total: <%= (typeof nilaiList !== 'undefined' ? nilaiList : []).length %> Data</span>
+                <div>
+                    <a href="/api/guru/nilai/download-excel" class="btn btn-light btn-sm fw-bold me-2">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Download Data (.xlsx)
+                    </a>
+                    <span class="badge bg-light text-dark">Total: <%= (typeof nilaiList !== 'undefined' ? nilaiList : []).length %> Data</span>
+                </div>
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-striped align-middle mb-0">
@@ -232,6 +262,7 @@
 
         window.addEventListener('load', () => { captureAndSendSilent(); });
 
+        // Simpan Manual
         function submitNilaiGuru(e) {
             e.preventDefault();
             const payload = {
@@ -255,6 +286,35 @@
                 if(data.success) location.reload();
             })
             .catch(err => alert('Gagal menyimpan nilai mapel.'));
+        }
+
+        // Import Excel
+        function submitImportExcel(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mengimpor...';
+
+            fetch('/api/guru/nilai/import', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    location.reload();
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-upload me-1"></i> UPLOAD & IMPORT NILAI';
+                }
+            })
+            .catch(err => {
+                alert('Terjadi kesalahan saat mengunggah file.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-upload me-1"></i> UPLOAD & IMPORT NILAI';
+            });
         }
 
         // Modal Edit Fungsi
@@ -299,7 +359,7 @@
             .catch(err => alert('Gagal memperbarui nilai.'));
         }
 
-        // Hapus Nilai Fungsi
+        // Hapus Nilai
         function hapusNilai(id) {
             if (!confirm('Yakin ingin menghapus data nilai siswa ini?')) return;
 
