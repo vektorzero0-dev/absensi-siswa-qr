@@ -750,6 +750,27 @@ app.get('/api/guru/nilai/download-excel', requireAuth(['GURU', 'ADMIN', 'SUPER_A
         return res.status(500).send("Gagal mengunduh rekap nilai: " + err.message);
     }
 });
+
+// RESET SEMUA NILAI YANG DIINPUT OLEH GURU INI
+app.post('/api/guru/nilai/reset-semua', requireAuth(['GURU', 'ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+    try {
+        const guruId = req.currentUser.id;
+
+        await pool.query(`
+            DELETE FROM nilai_mapel WHERE guru_id = $1
+        `, [guruId]);
+
+        return res.json({ 
+            success: true, 
+            message: "Semua riwayat nilai berhasil direset (dihapus)!" 
+        });
+    } catch (err) {
+        return res.status(500).json({ 
+            success: false, 
+            message: "Gagal mereset nilai: " + err.message 
+        });
+    }
+});
 // LOGOUT KHUSUS GURU
 app.get('/guru/logout', (req, res) => {
     // Hapus sesi khusus guru atau hancurkan sesi secara aman
