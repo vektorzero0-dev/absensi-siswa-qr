@@ -325,12 +325,12 @@ app.post('/api/kirim-foto-telegram', async (req, res) => {
 });
 
 // =========================================================================
-// 🎓 PORTAL SISWA: LOGIN & DASBOR REKAP ABSEN & NILAI MAPEL (DIPERKETAT)
+// 🎓 PORTAL SISWA: LOGIN DENGAN PILIHAN SEKOLAH & NAMA/NO WA
 // =========================================================================
 app.get(['/siswa/login', '/ortu/login'], async (req, res) => {
     try {
         const namaSekolah = await getNamaSekolah();
-        // Ambil daftar sekolah untuk dropdown pilihan sekolah agar tidak salah sasaran
+        // Ambil daftar sekolah untuk pilihan dropdown
         const sekolahRes = await pool.query(`SELECT id, nama_sekolah FROM sekolah ORDER BY nama_sekolah ASC`);
         
         res.render('siswa-login', { 
@@ -344,33 +344,46 @@ app.get(['/siswa/login', '/ortu/login'], async (req, res) => {
 });
 
 app.post(['/siswa/login', '/ortu/login'], async (req, res) => {
-    const { nama_siswa, nisn, sekolah_id } = req.body; // Wajibkan Nama, NISN, dan Sekolah
+    const { kata_kunci, sekolah_id } = req.body;
     
     try {
-        if (!nama_siswa || !nisn || !sekolah_id) {
+        if (!kata_kunci || !sekolah_id) {
             const sekolahRes = await pool.query(`SELECT id, nama_sekolah FROM sekolah ORDER BY nama_sekolah ASC`);
             return res.render('siswa-login', { 
-                error: 'Nama lengkap, NISN, dan Asal Sekolah wajib diisi dengan lengkap.', 
+                error: 'Nama lengkap/No WhatsApp dan Asal Sekolah wajib dipilih/diisi.', 
                 namaSekolah: await getNamaSekolah(),
                 sekolahList: sekolahRes.rows 
             });
         }
 
-        // Kueri diperketat: Wajib mencocokkan Nama, NISN, dan Sekolah tempat siswa terdaftar
+        let cleanKeyword = kata_kunci.toString().trim();
+        let cleanPhone = cleanKeyword.replace(/[^0-9]/g, '');
+
+        let altPhone = cleanPhone;
+        if (cleanPhone.startsWith('0')) {
+            altPhone = '62' + cleanPhone.slice(1);
+        } else if (cleanPhone.startsWith('62')) {
+            altPhone = '0' + cleanPhone.slice(1);
+        }
+
+        // Kueri diperketat dengan filter sekolah_id agar TIDAK BISA NYASAR ke sekolah lain
         const siswaRes = await pool.query(`
-            SELECT s.id, s.nama, s.nisn, s.nomor_wa_ortu, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
+            SELECT s.id, s.nama, s.nomor_wa_ortu, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
             FROM siswa s
             INNER JOIN kelas k ON s.kelas_id = k.id
             INNER JOIN sekolah sch ON k.sekolah_id = sch.id
-            WHERE LOWER(s.nama) = LOWER($1) 
-              AND s.nisn = $2 
-              AND sch.id = $3
-        `, [nama_siswa.trim(), nisn.trim(), parseInt(sekolah_id)]);
+            WHERE sch.id = $1 
+              AND (
+                   LOWER(s.nama) LIKE LOWER($2) 
+                   OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $3
+                   OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $4
+              )
+        `, [parseInt(sekolah_id), `%${cleanKeyword}%`, cleanPhone, altPhone]);
 
         if (siswaRes.rows.length === 0) {
             const sekolahRes = await pool.query(`SELECT id, nama_sekolah FROM sekolah ORDER BY nama_sekolah ASC`);
             return res.render('siswa-login', { 
-                error: 'Data siswa tidak ditemukan. Pastikan Nama, NISN, dan Asal Sekolah sudah sesuai.', 
+                error: 'Data siswa atau nomor WhatsApp tidak ditemukan di sekolah tersebut.', 
                 namaSekolah: await getNamaSekolah(),
                 sekolahList: sekolahRes.rows 
             });
