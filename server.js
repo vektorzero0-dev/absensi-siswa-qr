@@ -366,7 +366,8 @@ app.post(['/siswa/login', '/ortu/login'], async (req, res) => {
             altPhone = '0' + cleanPhone.slice(1);
         }
 
-        // Kueri diperketat dengan filter sekolah_id agar TIDAK BISA NYASAR ke sekolah lain
+        // PERBAIKAN: Gunakan pencocokan nama yang lebih ketat atau prioritaskan nomor WA
+        // Jika memasukkan nama lengkap, gunakan kesamaan teks yang lebih spesifik di sekolah tersebut
         const siswaRes = await pool.query(`
             SELECT s.id, s.nama, s.nomor_wa_ortu, k.nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
             FROM siswa s
@@ -374,11 +375,14 @@ app.post(['/siswa/login', '/ortu/login'], async (req, res) => {
             INNER JOIN sekolah sch ON k.sekolah_id = sch.id
             WHERE sch.id = $1 
               AND (
-                   LOWER(s.nama) LIKE LOWER($2) 
-                   OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $3
+                   LOWER(s.nama) = LOWER($2) -- Pencocokan nama persis (Exact Match) agar tidak salah orang/kelas
+                   OR LOWER(s.nama) LIKE LOWER($3) -- Cadangan pencarian mengandung kata
                    OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $4
+                   OR REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = $5
               )
-        `, [parseInt(sekolah_id), `%${cleanKeyword}%`, cleanPhone, altPhone]);
+            ORDER BY (LOWER(s.nama) = LOWER($2)) DESC -- Prioritaskan yang namanya paling pas/persis
+            LIMIT 1
+        `, [parseInt(sekolah_id), cleanKeyword, `%${cleanKeyword}%`, cleanPhone, altPhone]);
 
         if (siswaRes.rows.length === 0) {
             const sekolahRes = await pool.query(`SELECT id, nama_sekolah FROM sekolah ORDER BY nama_sekolah ASC`);
@@ -400,7 +404,6 @@ app.post(['/siswa/login', '/ortu/login'], async (req, res) => {
         res.status(500).send("Kesalahan Sistem: " + err.message);
     }
 });
-
 app.get(['/siswa/logout', '/ortu/logout'], (req, res) => {
     if (req.session) {
         delete req.session.siswaLoginId;
