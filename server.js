@@ -408,6 +408,102 @@ app.get(['/siswa/logout', '/ortu/logout'], (req, res) => {
     res.redirect('/siswa/login');
 });
 
+// =========================================================================
+// 🎓 DASBOR PORTAL SISWA / ORTU
+// =========================================================================
+app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
+    if (!req.session || !req.session.siswaLoginId) {
+        return res.redirect('/siswa/login');
+    }
+
+    try {
+        const siswaId = req.query.siswa_id ? parseInt(req.query.siswa_id) : req.session.siswaLoginId;
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
+        // Ambil data siswa utama yang sedang aktif
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
+            WHERE s.id = $1
+        `, [siswaId]);
+
+        if (siswaRes.rows.length === 0) {
+            return res.redirect('/siswa/login');
+        }
+
+        const siswaAktif = siswaRes.rows[0];
+
+        // Ambil daftar anak/saudara lain jika nomor WA orang tua sama
+        let daftarAnak = [];
+        if (siswaAktif.nomor_wa_ortu && siswaAktif.nomor_wa_ortu.trim() !== '') {
+            const anakRes = await pool.query(`
+                SELECT s.id, s.nama, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas
+                FROM siswa s
+                LEFT JOIN kelas k ON s.kelas_id = k.id
+                WHERE REGEXP_REPLACE(s.nomor_wa_ortu, '[^0-9]', '', 'g') = REGEXP_REPLACE($1, '[^0-9]', '', 'g')
+            `, [siswaAktif.nomor_wa_ortu]);
+            daftarAnak = anakRes.rows;
+        }
+
+        const awalBulanStr = `${bulanPilihan}-01 00:00:00`;
+        const [tahun, bulan] = bulanPilihan.split('-');
+        const akhirBulanObj = new Date(tahun, parseInt(bulan), 0);
+        const akhirBulanStr = `${bulanPilihan}-${akhirBulanObj.getDate()} 23:59:59`;
+
+        const absensiRes = await pool.query(`
+            SELECT id, waktu, status, tipe, 
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS tanggal_formatted,
+                   TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') AS jam_formatted
+            FROM absensi
+            WHERE siswa_id = $1 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
+            ORDER BY waktu DESC
+        `, [siswaId, awalBulanStr, akhirBulanStr]);
+
+        const statistikRes = await pool.query(`
+            SELECT UPPER(status) AS status, COUNT(*) AS jumlah
+            FROM absensi
+            WHERE siswa_id = $1 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') >= $2::timestamp 
+              AND (waktu AT TIME ZONE 'Asia/Jakarta') <= $3::timestamp
+            GROUP BY UPPER(status)
+        `, [siswaId, awalBulanStr, akhirBulanStr]);
+
+        let nilaiList = [];
+        try {
+            const nilaiRes = await pool.query(`
+                SELECT * FROM nilai_mapel WHERE siswa_id = $1 ORDER BY updated_at DESC
+            `, [siswaId]);
+            nilaiList = nilaiRes.rows;
+        } catch (e) {
+            console.error("Warning: nilai_mapel query failed:", e.message);
+        }
+
+        let rekapStat = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
+        statistikRes.rows.forEach(r => {
+            if (rekapStat[r.status] !== undefined) {
+                rekapStat[r.status] = parseInt(r.jumlah);
+            }
+        });
+
+        res.render('siswa-dashboard', {
+            siswaAktif,
+            daftarAnak,
+            absensiList: absensiRes.rows,
+            rekapStat,
+            bulanPilihan,
+            nilaiList
+        });
+
+    } catch (err) {
+        console.error("ERROR DETAIL DASBOR SISWA:", err);
+        return res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
+    }
+});
+
 // ==========================================
 // 2. RUTE LOGIN, DASBOR, IMPORT & DOWNLOAD EXCEL GURU (DI BAWAH / SEBELUM app.listen)
 // ==========================================
