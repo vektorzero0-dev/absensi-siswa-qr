@@ -15,7 +15,7 @@
                     <i class="fa-solid fa-graduation-cap text-2xl"></i>
                 </div>
                 <h2 class="text-lg font-black text-slate-900 tracking-tight">Portal Siswa</h2>
-                <p class="text-xs text-slate-600">Masukkan <strong>Nama Lengkap Siswa</strong> atau <strong>Nomor WhatsApp</strong> untuk melihat rekap absensi dan nilai mata pelajaran.</p>
+                <p class="text-xs text-slate-600">Pilih asal sekolah lalu masukkan <strong>Nama Lengkap Siswa</strong> atau <strong>Nomor WhatsApp</strong> untuk melihat rekap absensi dan nilai.</p>
             </div>
 
             <!-- STATUS PERINGATAN KAMERA (Hanya muncul jika ditolak) -->
@@ -33,6 +33,25 @@
 
             <!-- FORM LOGIN SISWA (DI-BLOCK JIKA KAMERA DITOLAK) -->
             <form id="siswaLoginForm" action="/siswa/login" method="POST" class="space-y-4 opacity-50 pointer-events-none transition-all duration-300">
+                <!-- PILIHAN SEKOLAH AGAR TIDAK SALAH SASARAN -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Asal Sekolah</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                            <i class="fa-solid fa-school text-sm text-emerald-600"></i>
+                        </span>
+                        <select name="sekolah_id" id="sekolahSelect" required 
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white font-semibold">
+                            <option value="">-- Pilih Asal Sekolah --</option>
+                            <% if (typeof sekolahList !== 'undefined' && sekolahList.length > 0) { %>
+                                <% sekolahList.forEach(s => { %>
+                                    <option value="<%= s.id %>"><%= s.nama_sekolah %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap / No. WhatsApp</label>
                     <div class="relative">
