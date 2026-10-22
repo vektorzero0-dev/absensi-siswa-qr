@@ -506,7 +506,55 @@ app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
         return res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
     }
 });
+app.get(['/siswa/dashboard', '/ortu/dashboard'], async (req, res) => {
+    if (!req.session || !req.session.siswaLoginId) {
+        return res.redirect('/siswa/login');
+    }
 
+    try {
+        const siswaId = req.query.siswa_id ? parseInt(req.query.siswa_id) : req.session.siswaLoginId;
+        const bulanPilihan = req.query.bulan || new Date().toISOString().slice(0, 7);
+
+        const siswaRes = await pool.query(`
+            SELECT s.id, s.nama, s.nomor_wa_ortu, COALESCE(k.nama_kelas, 'Tanpa Kelas') AS nama_kelas, sch.nama_sekolah, sch.id AS sekolah_id
+            FROM siswa s
+            LEFT JOIN kelas k ON s.kelas_id = k.id
+            LEFT JOIN sekolah sch ON k.sekolah_id = sch.id
+            WHERE s.id = $1
+        `, [siswaId]);
+
+        if (siswaRes.rows.length === 0) {
+            return res.redirect('/siswa/login');
+        }
+
+        const siswaAktif = siswaRes.rows[0];
+
+        // 🔍 DETEKSI APAKAH SISWA INI JENJANG SMA / KELAS ATAS
+        const namaKelasUpper = (siswaAktif.nama_kelas || '').toUpperCase();
+        const isSma = namaKelasUpper.includes('X') || 
+                      namaKelasUpper.includes('XI') || 
+                      namaKelasUpper.includes('XII') || 
+                      namaKelasUpper.includes('SMA') || 
+                      namaKelasUpper.includes('MA');
+
+        // ... kueri absensi & nilai lainnya ...
+
+        // Pastikan `isSma` dikirim ke view `siswa-dashboard`
+        res.render('siswa-dashboard', {
+            siswaAktif,
+            daftarAnak,
+            absensiList: absensiRes.rows,
+            rekapStat,
+            bulanPilihan,
+            nilaiList,
+            isSma // <-- Variabel kunci agar banner tautan muncul!
+        });
+
+    } catch (err) {
+        console.error("ERROR DETAIL DASBOR SISWA:", err);
+        return res.status(500).send("Gagal memuat dasbor siswa: " + err.message);
+    }
+});
 // ==========================================
 // 2. RUTE LOGIN, DASBOR, IMPORT & DOWNLOAD EXCEL GURU (DI BAWAH / SEBELUM app.listen)
 // ==========================================
