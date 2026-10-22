@@ -71,8 +71,7 @@
             </form>
         </div>
 
-        <!-- BANNER EKSKLUSIF KHUSUS SISWA JENJANG SMA -->
-        <% if (typeof isSma !== 'undefined' && isSma) { %>
+        <!-- BANNER PORTAL AKADEMIK TAMBAHAN (MUNCUL LANGSUNG TANPA SYARAT) -->
         <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-6 shadow-xl border border-purple-700 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-4">
                 <div class="bg-amber-400 text-slate-900 p-4 rounded-2xl shadow-md text-2xl font-black">
@@ -80,10 +79,10 @@
                 </div>
                 <div>
                     <span class="bg-amber-400/20 text-amber-300 font-bold text-[10px] uppercase px-3 py-1 rounded-full border border-amber-400/30">
-                        <i class="fa-solid fa-bolt mr-1"></i> Portal Eksklusif SMA
+                        <i class="fa-solid fa-bolt mr-1"></i> Portal Tambahan
                     </span>
-                    <h3 class="text-lg font-black mt-1">Portal Akademik Tambahan</h3>
-                    <p class="text-xs text-purple-200">Akses cepat menuju portal pembelajaran dan sistem tambahan khusus jenjang SMA.</p>
+                    <h3 class="text-lg font-black mt-1">Portal Akademik Pembelajaran</h3>
+                    <p class="text-xs text-purple-200">Akses cepat menuju sistem dan portal pembelajaran tambahan.</p>
                 </div>
             </div>
             
@@ -93,7 +92,6 @@
                 </a>
             </div>
         </div>
-        <% } %>
 
         <!-- KARTU STATISTIK KEHADIRAN BULAN INI -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
