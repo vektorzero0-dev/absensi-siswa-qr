@@ -3566,13 +3566,15 @@ async function jalankanCronAlpaUntukSekolah(targetSekolahId = null, isDryRun = f
                 LEFT JOIN users u ON u.kelas_id = s.kelas_id AND u.role = 'WALI_KELAS'
                 WHERE k.sekolah_id = $1
                   AND s.id NOT IN (
-                    SELECT DISTINCT siswa_id 
+                    SELECT COALESCE(siswa_id, 0) 
                     FROM absensi 
                     WHERE TO_CHAR(waktu AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') = TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')
-                      AND (UPPER(status) IN ('HADIR', 'IZIN', 'SAKIT') OR UPPER(tipe) IN ('MASUK', 'IZIN', 'SAKIT'))
+                      AND (
+                          UPPER(status) IN ('HADIR', 'IZIN', 'SAKIT') 
+                          OR UPPER(tipe) IN ('MASUK', 'PULANG', 'IZIN', 'SAKIT')
+                      )
                 )
             `;
-
             const result = await pool.query(querySiswaAbsen, [sch.id]);
             const siswaBelumPresensi = result.rows;
 
