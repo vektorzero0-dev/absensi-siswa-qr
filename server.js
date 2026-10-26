@@ -2839,10 +2839,7 @@ app.post('/api/scan', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN', 'SUPER_ADMI
             }
 
             try {
-                await waClient.presenceSubscribe(formattedJid);
-                await waClient.sendPresenceUpdate('composing', formattedJid);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
+                // Langsung kirim pesan tanpa jeda/presence update agar enkripsi tidak desync
                 await waClient.sendMessage(formattedJid, { text: pesan });
             } catch (e) {
                 console.error("❌ [WA Error] Gagal Mengirim WA:", e.message);
@@ -2951,7 +2948,11 @@ app.post('/api/absensi/izin-sakit', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADMIN
                               `Semoga ananda dalam keadaan sehat/diberi kelancaran.\n\n` +
                               `_Pesan otomatis dikirim via Sistem Presensi SD._`;
 
-                waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error(e.message));
+                try {
+                    await waClient.sendMessage(formattedJid, { text: pesan });
+                } catch (e) {
+                    console.error("❌ [WA Error Izin/Sakit]:", e.message);
+                }
             }
         }
 
@@ -3043,7 +3044,11 @@ app.post('/api/absensi/masuk-manual', requireAuth(['WALI_KELAS', 'PETUGAS', 'ADM
                               `Terima kasih atas perhatiannya.\n\n` +
                               `_Pesan otomatis dikirim via Sistem Presensi SD._`;
 
-                waClient.sendMessage(formattedJid, { text: pesan }).catch(e => console.error(e.message));
+                try {
+                    await waClient.sendMessage(formattedJid, { text: pesan });
+                } catch (e) {
+                    console.error("❌ [WA Error Masuk Manual]:", e.message);
+                }
             }
         }
 
